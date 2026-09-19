@@ -4,6 +4,7 @@ import {
 	type CloudflareStorageOptions,
 } from "@openauthjs/openauth/storage/cloudflare";
 import { PasswordProvider } from "@openauthjs/openauth/provider/password";
+import { GithubProvider } from "@openauthjs/openauth/provider/github";
 import { PasswordUI } from "@openauthjs/openauth/ui/password";
 import { createSubjects } from "@openauthjs/openauth/subject";
 import { object, string } from "valibot";
@@ -60,6 +61,11 @@ export default {
 						},
 					}),
 				),
+			    github: GithubProvider({
+			      clientID: process.env.GITHUB_CLIENT_ID!,
+			      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+			      scopes: ["user:email"],
+			    }),
 			},
 			theme: {
 				title: "myAuth",
