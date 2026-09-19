@@ -150,10 +150,12 @@ function createStorage(env: Env) {
 		): Promise<void> {
 			if (!expiry) return storage.set(key, value);
 			const ttl = Math.floor((expiry.getTime() - Date.now()) / 1000);
+			// Add headroom: the underlying adapter recomputes floor((expiry -
+			// now) / 1000), which drops back below 60 without the buffer.
 			await storage.set(
 				key,
 				value,
-				new Date(Date.now() + Math.max(60, ttl) * 1000),
+				new Date(Date.now() + Math.max(62, ttl + 2) * 1000),
 			);
 		},
 	};
@@ -459,6 +461,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 				if (isUniqueError(e)) return json({ error: "email_taken" }, 409);
 				throw e;
 			}
+			await writeAudit(db, userId, "user.update", "user", id, JSON.stringify({ email }));
 			return json({ ok: true });
 		}
 		if (method === "DELETE") {
@@ -473,6 +476,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 				])
 				.then((results) => results[1]);
 			if (!result.meta.changes) return json({ error: "not_found" }, 404);
+			await writeAudit(db, userId, "user.delete", "user", id, "");
 			return json({ ok: true });
 		}
 	}
@@ -506,6 +510,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 					.bind(id, role),
 			),
 		]);
+		await writeAudit(db, userId, "user.assign_roles", "user", id, JSON.stringify({ roles }));
 		return json({ ok: true, roles });
 	}
 
@@ -542,6 +547,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 				.bind(name, description)
 				.first<{ id: string }>();
 			await setRolePermissions(db, role!.id, permissions);
+			await writeAudit(db, userId, "role.create", "role", role!.id, JSON.stringify({ name }));
 			return json({ ok: true, id: role!.id });
 		} catch (e) {
 			if (isUniqueError(e)) return json({ error: "role_taken" }, 409);
@@ -582,6 +588,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 			}
 			const permissions = body?.permissions === undefined ? undefined : permissionList(body);
 			if (permissions) await setRolePermissions(db, id, permissions);
+			await writeAudit(db, userId, "role.update", "role", id, JSON.stringify({ name, description, permissions }));
 			return json({ ok: true });
 		}
 		if (method === "DELETE") {
@@ -593,6 +600,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 				db.prepare("DELETE FROM user_role WHERE role_id = ?1").bind(id),
 				db.prepare("DELETE FROM role WHERE id = ?1").bind(id),
 			]);
+			await writeAudit(db, userId, "role.delete", "role", id, JSON.stringify({ name: existing.name }));
 			return json({ ok: true });
 		}
 	}
@@ -618,6 +626,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 				.prepare("INSERT INTO permission (code, description) VALUES (?1, ?2)")
 				.bind(code, description)
 				.run();
+			await writeAudit(db, userId, "permission.create", "permission", code, JSON.stringify({ code, description }));
 			return json({ ok: true });
 		} catch (e) {
 			if (isUniqueError(e)) return json({ error: "permission_taken" }, 409);
@@ -632,7 +641,23 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 			db.prepare("DELETE FROM role_permission WHERE permission_id = ?1").bind(id),
 			db.prepare("DELETE FROM permission WHERE id = ?1").bind(id),
 		]);
+		await writeAudit(db, userId, "permission.delete", "permission", id, "");
 		return json({ ok: true });
+	}
+
+	if (path === "/api/audit" && method === "GET") {
+		const page = intParam(url, "page", 1, 1);
+		const pageSize = intParam(url, "pageSize", 50, 1, 200);
+		const [list, count] = await Promise.all([
+			db
+				.prepare(
+					"SELECT actor_email, action, target_type, target_id, detail, created_at FROM audit_log ORDER BY created_at DESC, id DESC LIMIT ?1 OFFSET ?2",
+				)
+				.bind(pageSize, (page - 1) * pageSize)
+				.all(),
+			db.prepare("SELECT COUNT(*) AS total FROM audit_log").first<{ total: number }>(),
+		]);
+		return json({ entries: list.results, total: count?.total ?? 0, page, pageSize });
 	}
 
 	return json({ error: "not_found" }, 404);
@@ -652,6 +677,9 @@ function routePermission(path: string, method: string): string | null {
 	}
 	if (path === "/api/permissions" || path.match(/^\/api\/permissions\/([a-z0-9-]+)$/)) {
 		return method === "GET" ? "permissions:read" : "permissions:write";
+	}
+	if (path === "/api/audit") {
+		return method === "GET" ? "audit:read" : null;
 	}
 	return null;
 }
@@ -718,6 +746,26 @@ async function getUserPermissionCodes(env: Env, userId: string): Promise<string[
 		.bind(userId)
 		.all<{ code: string }>();
 	return result.results.map((r) => r.code);
+}
+
+async function writeAudit(
+	db: D1Database,
+	actorId: string,
+	action: string,
+	targetType: string,
+	targetId: string,
+	detail: string,
+): Promise<void> {
+	const actor = await db
+		.prepare("SELECT email FROM user WHERE id = ?1")
+		.bind(actorId)
+		.first<{ email: string }>();
+	await db
+		.prepare(
+			"INSERT INTO audit_log (actor_id, actor_email, action, target_type, target_id, detail) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+		)
+		.bind(actorId, actor?.email ?? "", action, targetType, targetId, detail)
+		.run();
 }
 
 /* ------------------------------------------------------------------ */
