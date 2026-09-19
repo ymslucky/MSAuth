@@ -10,7 +10,7 @@ import { createSubjects } from "@openauthjs/openauth/subject";
 import { signingKeys } from "@openauthjs/openauth/keys";
 import { createLocalJWKSet, jwtVerify } from "jose";
 import { array, object, string } from "valibot";
-import { ADMIN_HTML } from "./admin";
+import { renderAdminHtml } from "./admin";
 
 // This value should be shared between the OpenAuth server Worker and other
 // client Workers that you connect to it, so the types and schema validation are
@@ -167,6 +167,12 @@ async function createIssuer(env: Env) {
 	return issuer({
 		storage: createStorage(env),
 		subjects,
+		// Never leak internal error details to browsers.
+		error: async () =>
+			new Response("authentication error", {
+				status: 400,
+				headers: { "content-type": "text/plain" },
+			}),
 		ttl: {
 			access: 60 * 60,
 			refresh: 30 * 24 * 60 * 60,
@@ -240,12 +246,17 @@ async function handleAdminPage(request: Request, env: Env): Promise<Response> {
 	if (!session) {
 		return redirect(new URL("/admin/login", new URL(request.url).origin));
 	}
-	return new Response(ADMIN_HTML, {
+	const nonce = randomToken();
+	return new Response(renderAdminHtml(nonce), {
 		headers: {
 			"content-type": "text/html; charset=utf-8",
 			"cache-control": "no-store",
 			"x-frame-options": "DENY",
 			"x-content-type-options": "nosniff",
+			"content-security-policy":
+				"default-src 'none'; script-src 'nonce-" +
+				nonce +
+				"'; style-src 'unsafe-inline'; img-src https:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
 		},
 	});
 }
@@ -407,6 +418,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 		const page = intParam(url, "page", 1, 1);
 		const pageSize = intParam(url, "pageSize", 20, 1, 100);
 		const q = (url.searchParams.get("q") ?? "").trim();
+		if (q.length > 200) return json({ error: "query_too_long" }, 400);
 		const [list, count] = await Promise.all([
 			db.prepare(
 				`SELECT u.id, u.email, u.created_at,

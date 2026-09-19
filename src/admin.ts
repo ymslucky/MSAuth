@@ -5,7 +5,8 @@
  * Buttons pass ids via data-action/data-id attributes handled by a single
  * delegated click listener, so no inline string escaping is needed.
  */
-export const ADMIN_HTML = `<!doctype html>
+export function renderAdminHtml(nonce: string): string {
+	return `<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -125,7 +126,7 @@ export const ADMIN_HTML = `<!doctype html>
 </main>
 <div id="modal-root"></div>
 <div id="toast"></div>
-<script>
+<script nonce="${nonce}">
 (function () {
   var state = { tab: "users", page: 1, pageSize: 20, q: "", total: 0, editId: null,
     users: [], roles: [], permissions: [], me: null };
@@ -510,3 +511,4 @@ export const ADMIN_HTML = `<!doctype html>
 </script>
 </body>
 </html>`;
+}
