@@ -65,23 +65,6 @@ export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
 		const url = new URL(request.url);
 
-		// Demo entry points: in a real setup another application would redirect
-		// the user to this Worker to be authenticated. They are kept from the
-		// original template.
-		if (url.pathname === "/") {
-			const redirect = new URL(url.origin);
-			redirect.searchParams.set("redirect_uri", url.origin + "/callback");
-			redirect.searchParams.set("client_id", "your-client-id");
-			redirect.searchParams.set("response_type", "code");
-			redirect.pathname = "/authorize";
-			return Response.redirect(redirect.toString());
-		} else if (url.pathname === "/callback") {
-			return Response.json({
-				message: "OAuth flow complete!",
-				params: Object.fromEntries(url.searchParams.entries()),
-			});
-		}
-
 		// The OpenAuth server.
 		const app = await createIssuer(env);
 
@@ -170,6 +153,15 @@ async function createIssuer(env: Env) {
 	return issuer({
 		storage: createStorage(env),
 		subjects,
+		// Only pre-registered clients may start authorization flows, and only
+		// with their exact redirect URI.
+		allow: async (input, req) => {
+			const origin = new URL(req.url).origin;
+			return (
+				input.clientID === ADMIN_CLIENT_ID &&
+				input.redirectURI === origin + "/admin/callback"
+			);
+		},
 		providers: {
 			password: PasswordProvider(
 				PasswordUI({
@@ -726,15 +718,11 @@ async function getOrCreateUser(env: Env, email: string): Promise<string> {
 			.bind(row.id)
 			.run();
 	}
-	// Bootstrap: the first user to sign in becomes the administrator until
-	// another administrator exists.
-	const adminExists = await db
-		.prepare(
-			`SELECT 1 FROM user_role ur JOIN role r ON r.id = ur.role_id
-			WHERE r.name = 'admin' LIMIT 1`,
-		)
-		.first();
-	if (!adminExists) {
+	// The ADMIN_EMAIL allowlist is the single source of truth for admins.
+	// Membership is re-asserted on every login; removal from the list takes
+	// effect the next time the user signs in (or when the role is revoked).
+	const allowlist = await getAdminAllowlist(env);
+	if (allowlist.includes(email.toLowerCase())) {
 		await db
 			.prepare(
 				"INSERT OR IGNORE INTO user_role (user_id, role_id) SELECT ?1, id FROM role WHERE name = 'admin'",
@@ -744,6 +732,26 @@ async function getOrCreateUser(env: Env, email: string): Promise<string> {
 	}
 	console.log(`Found or created user ${row.id} with email ${email}`);
 	return row.id;
+}
+
+/**
+ * Reads the admin email allowlist from the ADMIN_EMAIL binding (comma
+ * separated). An unavailable or empty list means nobody is granted admin.
+ */
+async function getAdminAllowlist(env: Env): Promise<string[]> {
+	try {
+		const raw = await readSecret(env.ADMIN_EMAIL);
+		return raw
+			.split(",")
+			.map((entry) => entry.trim().toLowerCase())
+			.filter(Boolean);
+	} catch (e) {
+		console.warn(
+			"ADMIN_EMAIL unavailable; no users will be granted admin: " +
+				(e instanceof Error ? e.message : String(e)),
+		);
+		return [];
+	}
 }
 
 async function getUserRoleNames(db: D1Database, userId: string): Promise<string[]> {

@@ -16,6 +16,7 @@ export default defineConfig({
 				bindings: {
 					GITHUB_CLIENT_ID: "test-client-id",
 					GITHUB_CLIENT_SECRET: "test-client-secret",
+					ADMIN_EMAIL: "root@example.com,Owner@Example.com",
 				},
 			},
 		}),

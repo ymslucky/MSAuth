@@ -44,8 +44,8 @@ describe("admin authentication flow", () => {
 		expect(res.headers.get("location")).toContain("/admin/login");
 	});
 
-	it("bootstraps the first registered user as admin", async () => {
-		const jar = await registerUserViaPassword("admin@example.com", "password123");
+	it("promotes allowlisted emails to admin on login", async () => {
+		const jar = await registerUserViaPassword("root@example.com", "password123");
 		const meRes = await SELF.fetch(ORIGIN + "/api/me", {
 			headers: { cookie: jar.header() },
 		});
@@ -55,7 +55,7 @@ describe("admin authentication flow", () => {
 			roles: string[];
 			permissions: string[];
 		};
-		expect(me.user.email).toBe("admin@example.com");
+		expect(me.user.email).toBe("root@example.com");
 		expect(me.roles).toContain("admin");
 		expect(me.roles).toContain("user");
 		for (const permission of [
@@ -70,7 +70,16 @@ describe("admin authentication flow", () => {
 		}
 	});
 
-	it("does not promote the second user and still serves the console page", async () => {
+	it("matches the admin allowlist case-insensitively", async () => {
+		const jar = await registerUserViaPassword("owner@example.com", "password123");
+		const meRes = await SELF.fetch(ORIGIN + "/api/me", {
+			headers: { cookie: jar.header() },
+		});
+		const me = (await meRes.json()) as { roles: string[] };
+		expect(me.roles).toContain("admin");
+	});
+
+	it("does not promote non-allowlisted users and still serves the console page", async () => {
 		const jar = await registerUserViaPassword("second@example.com", "password123");
 		const meRes = await SELF.fetch(ORIGIN + "/api/me", {
 			headers: { cookie: jar.header() },
@@ -85,6 +94,44 @@ describe("admin authentication flow", () => {
 		});
 		expect(pageRes.status).toBe(200);
 		expect(pageRes.headers.get("content-type")).toContain("text/html");
+	});
+
+	it("rejects unknown client ids at /authorize", async () => {
+		const url =
+			ORIGIN +
+			"/authorize?" +
+			new URLSearchParams({
+				client_id: "evil-app",
+				redirect_uri: ORIGIN + "/admin/callback",
+				response_type: "code",
+				state: "x",
+			});
+		const res = await SELF.fetch(url, { redirect: "manual" });
+		expect(res.status).toBe(302);
+		const location = res.headers.get("location")!;
+		expect(location).toContain("error=unauthorized_client");
+	});
+
+	it("rejects unknown redirect uris at /authorize", async () => {
+		const url =
+			ORIGIN +
+			"/authorize?" +
+			new URLSearchParams({
+				client_id: "admin-ui",
+				redirect_uri: ORIGIN + "/evil",
+				response_type: "code",
+				state: "x",
+			});
+		const res = await SELF.fetch(url, { redirect: "manual" });
+		expect(res.status).toBe(302);
+		expect(res.headers.get("location")).toContain("error=unauthorized_client");
+	});
+
+	it("returns 404 for the removed demo routes", async () => {
+		const root = await SELF.fetch(ORIGIN + "/", { redirect: "manual" });
+		expect(root.status).toBe(404);
+		const callback = await SELF.fetch(ORIGIN + "/callback", { redirect: "manual" });
+		expect(callback.status).toBe(404);
 	});
 
 	it("clears the session cookie on logout", async () => {
