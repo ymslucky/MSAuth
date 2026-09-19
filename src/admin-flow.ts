@@ -138,8 +138,18 @@ export async function handleLoginPage(
 	});
 }
 
-/** Starts the OAuth authorization-code flow (PKCE) for the console. */
-export async function handleLoginStart(request: Request): Promise<Response> {
+/**
+ * Starts the OAuth authorization-code flow (PKCE) and resolves the issuer's
+ * two internal redirects (/authorize, /github/authorize) in-process, so the
+ * browser gets a single redirect straight to GitHub instead of paying for
+ * two extra worker round trips (each with an RSA cookie-encryption pass).
+ */
+export async function handleLoginStart(
+	request: Request,
+	env: Env,
+	ctx: ExecutionContext,
+	app: Awaited<ReturnType<typeof createIssuer>>,
+): Promise<Response> {
 	const origin = new URL(request.url).origin;
 	const state = randomToken();
 	const verifier = randomToken();
@@ -148,8 +158,10 @@ export async function handleLoginStart(request: Request): Promise<Response> {
 			await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)),
 		),
 	);
-	return redirect(
-		`${origin}/authorize?${new URLSearchParams({
+	const authorizeUrl =
+		origin +
+		"/authorize?" +
+		new URLSearchParams({
 			client_id: ADMIN_CLIENT_ID,
 			redirect_uri: `${origin}/admin/callback`,
 			response_type: "code",
@@ -157,15 +169,38 @@ export async function handleLoginStart(request: Request): Promise<Response> {
 			scope: "openid",
 			code_challenge: challenge,
 			code_challenge_method: "S256",
-		})}`,
-		[
-			setCookieValue(
-				OAUTH_STATE_COOKIE,
-				btoa(JSON.stringify({ state, verifier })),
-				600,
-			),
-		],
-	);
+			provider: "github",
+		});
+
+	const jar: string[] = [];
+	let location = authorizeUrl;
+	// Hop 1: /authorize establishes the authorization state cookie and
+	// redirects to the GitHub provider entry.
+	let res = await app.fetch(new Request(location), env, ctx);
+	for (const c of res.headers.getSetCookie?.() ?? []) jar.push(c.split(";")[0]);
+	location = res.headers.get("location") ?? "";
+	if (!location) return redirect(new URL("/login?error=flow_failed", origin));
+	// Hop 2: the provider entry signs its own state cookie and redirects to
+	// github.com. The issuer may emit a relative Location; absolutize it.
+	if (location.startsWith("/")) location = origin + location;
+	res = await app.fetch(new Request(location), {
+		headers: { cookie: jar.join("; ") },
+		redirect: "manual",
+	});
+	for (const c of res.headers.getSetCookie?.() ?? []) jar.push(c.split(";")[0]);
+	const githubUrl = res.headers.get("location") ?? "";
+	if (!githubUrl.includes("github.com")) {
+		return redirect(new URL("/login?error=flow_failed", origin));
+	}
+
+	return redirect(githubUrl, [
+		setCookieValue(
+			OAUTH_STATE_COOKIE,
+			btoa(JSON.stringify({ state, verifier })),
+			600,
+		),
+		...jar,
+	]);
 }
 
 export async function handleAdminCallback(

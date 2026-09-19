@@ -2,7 +2,7 @@ import { SELF } from "cloudflare:test";
 import { expect, it } from "vitest";
 import { ORIGIN } from "./helpers";
 
-it("rate limits password endpoint POSTs per IP", async () => {
+it("rate limits GitHub authorize hits per IP", async () => {
 	let sawLimited = false;
 	for (let i = 0; i < 80; i++) {
 		const res = await SELF.fetch(ORIGIN + "/github/authorize", {

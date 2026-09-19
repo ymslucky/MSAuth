@@ -29,18 +29,18 @@ describe("admin authentication flow", () => {
 		expect(html).not.toContain("type=\"password\"");
 	});
 
-	it("starts the OAuth flow at /login/start", async () => {
+	it("starts the OAuth flow at /login/start (single hop to GitHub)", async () => {
 		const res = await SELF.fetch(ORIGIN + "/login/start", { redirect: "manual" });
 		expect(res.status).toBe(302);
 		const location = new URL(res.headers.get("location")!);
-		expect(location.pathname).toBe("/authorize");
-		expect(location.searchParams.get("client_id")).toBe("admin-ui");
-		expect(location.searchParams.get("response_type")).toBe("code");
+		// The two internal hops are absorbed server-side: the browser is sent
+		// straight to GitHub.
+		expect(location.hostname).toBe("github.com");
+		expect(location.pathname).toBe("/login/oauth/authorize");
 		expect(location.searchParams.get("redirect_uri")).toBe(
-			ORIGIN + "/admin/callback",
+			ORIGIN + "/github/callback",
 		);
-		expect(location.searchParams.get("code_challenge_method")).toBe("S256");
-		expect(location.searchParams.get("code_challenge")).toBeTruthy();
+		expect(location.searchParams.get("scope")).toBe("user:email");
 		expect(location.searchParams.get("state")).toBeTruthy();
 		const setCookies = res.headers.getSetCookie?.() ?? [];
 		expect(setCookies.some((c) => c.startsWith("__Host-admin_oauth="))).toBe(true);

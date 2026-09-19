@@ -10,7 +10,6 @@ import {
 import apiApp from "./api/router";
 import { json, redirect } from "./http";
 import { renderHomePage } from "./home";
-import { ensureSchema } from "./db/ensure-schema";
 
 /**
  * Worker entry point. Request routing only — authentication flows live in
@@ -19,9 +18,6 @@ import { ensureSchema } from "./db/ensure-schema";
  */
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
-		// Self-healing schema: every cold start reconciles the database with
-		// the desired state in ./db/schema.ts (cached per isolate).
-		await ensureSchema(env.AUTH_DB, env.AUTH_STORAGE);
 
 		const url = new URL(request.url);
 
@@ -55,7 +51,7 @@ export default {
 			// Unified login entry for every role.
 			return await handleLoginPage(request, env);
 		} else if (url.pathname === "/login/start") {
-			return handleLoginStart(request);
+			return await handleLoginStart(request, env, ctx, app);
 		} else if (url.pathname === "/me") {
 			return handleMePage(request, env);
 		} else if (url.pathname === "/admin/login") {

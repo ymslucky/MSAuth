@@ -1,11 +1,33 @@
 import { env, SELF } from "cloudflare:test";
-import { runEnsureSchema } from "../src/db/ensure-schema";
+import migration0001 from "../migrations/0001_create_user_table.sql?raw";
+import migration0002 from "../migrations/0002_create_rbac.sql?raw";
+import migration0003 from "../migrations/0003_sessions_rbac_audit.sql?raw";
 import { hasAnyPermission } from "../src/authz";
 
 export const ORIGIN = "https://example.com";
 
+/** Strip SQL comment lines, then split into individual statements. */
+function toStatements(sql: string): string[] {
+	const withoutComments = sql
+		.split("\n")
+		.filter((line) => !line.trimStart().startsWith("--"))
+		.join("\n");
+	return withoutComments
+		.split(";")
+		.map((statement) => statement.trim())
+		.filter((statement) => statement.length > 0);
+}
+
+/** Applies every D1 migration to the test database. */
 export function applyMigrations(): Promise<void> {
-	return runEnsureSchema(env.AUTH_DB);
+	const migrations = [migration0001, migration0002, migration0003];
+	let statements: ReturnType<typeof env.AUTH_DB.prepare>[] = [];
+	for (const migration of migrations) {
+		statements = statements.concat(
+			toStatements(migration).map((statement) => env.AUTH_DB.prepare(statement)),
+		);
+	}
+	return env.AUTH_DB.batch(statements);
 }
 
 /** Collects Set-Cookie values and replays them on subsequent requests. */
@@ -38,10 +60,10 @@ export class CookieJar {
  * Creates a user with the given roles directly in D1 and an active admin
  * session row, returning a cookie jar that authenticates as that user.
  *
- * Used instead of driving the OAuth flow in tests: GitHub's outbound
- * endpoints cannot be mocked in this environment, so the session layer is
- * exercised directly (the flow itself is covered by flow-level assertions
- * on /login and error paths).
+ * Used instead of driving the real OAuth flow: GitHub's outbound endpoints
+ * cannot be mocked in this environment, so tests exercise the session layer
+ * directly. The flow itself is asserted separately (redirect shapes, error
+ * paths) without outbound calls.
  */
 export async function createTestSession(
 	email: string,
@@ -104,8 +126,7 @@ export function api(
 
 /** Where should a freshly signed-in user land? */
 export async function postLoginDestination(
-	db: D1Database,
 	userId: string,
 ): Promise<string> {
-	return (await hasAnyPermission(db, userId)) ? "/admin" : "/me";
+	return (await hasAnyPermission(env.AUTH_DB, userId)) ? "/admin" : "/me";
 }
