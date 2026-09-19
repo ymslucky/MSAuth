@@ -19,7 +19,7 @@ function toStatements(sql: string): string[] {
 }
 
 /** Applies every D1 migration to the test database. */
-export function applyMigrations(): Promise<void> {
+export async function applyMigrations(): Promise<void> {
 	const migrations = [migration0001, migration0002, migration0003];
 	let statements: ReturnType<typeof env.AUTH_DB.prepare>[] = [];
 	for (const migration of migrations) {
@@ -27,7 +27,7 @@ export function applyMigrations(): Promise<void> {
 			toStatements(migration).map((statement) => env.AUTH_DB.prepare(statement)),
 		);
 	}
-	return env.AUTH_DB.batch(statements);
+	await env.AUTH_DB.batch(statements);
 }
 
 /** Collects Set-Cookie values and replays them on subsequent requests. */
