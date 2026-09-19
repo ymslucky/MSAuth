@@ -62,8 +62,8 @@ export default {
 					}),
 				),
 			    github: GithubProvider({
-			      clientID: process.env.GITHUB_CLIENT_ID!,
-			      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+			      clientID: await env.GITHUB_CLIENT_ID.get(),
+			      clientSecret: await env.GITHUB_CLIENT_SECRET.get(),
 			      scopes: ["user:email"],
 			    }),
 			},
