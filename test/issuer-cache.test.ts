@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createIssuer } from "../src/issuer";
 
 describe("issuer caching", () => {
-	it("reads Secrets Store credentials once within the TTL window", async () => {
+	it("reads Secrets Store credentials once per isolate", async () => {
 		let githubIdCalls = 0;
 		let githubSecretCalls = 0;
 		const mockEnv = {

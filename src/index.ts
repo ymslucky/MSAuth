@@ -21,7 +21,7 @@ export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
 		// Self-healing schema: every cold start reconciles the database with
 		// the desired state in ./db/schema.ts (cached per isolate).
-		await ensureSchema(env.AUTH_DB);
+		await ensureSchema(env.AUTH_DB, env.AUTH_STORAGE);
 
 		const url = new URL(request.url);
 

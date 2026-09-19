@@ -17,15 +17,15 @@ type IssuerApp = Awaited<ReturnType<typeof buildIssuer>>;
 // Building the issuer resolves Secrets Store bindings and rebuilds the Hono
 // app; cache it briefly so per-request latency stays flat. Secrets rotations
 // take effect within a minute.
-let issuerCache: { app: Promise<IssuerApp>; expires: number } | null = null;
-const ISSUER_CACHE_TTL_MS = 60_000;
+let issuerCache: { app: Promise<IssuerApp> } | null = null;
+
 
 export async function createIssuer(env: Env): Promise<IssuerApp> {
-	if (issuerCache && Date.now() < issuerCache.expires) {
+	if (issuerCache) {
 		return issuerCache.app;
 	}
 	const app = buildIssuer(env);
-	issuerCache = { app, expires: Date.now() + ISSUER_CACHE_TTL_MS };
+	issuerCache = { app };
 	return app;
 }
 

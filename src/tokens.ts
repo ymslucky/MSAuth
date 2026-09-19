@@ -15,18 +15,17 @@ export interface AccessTokenPayload {
 }
 
 // Importing RSA/EC keys from KV on every request is expensive; cache the
-// imported key set briefly per isolate.
-let jwksCache: { jwks: ReturnType<typeof createLocalJWKSet>; expires: number } | null = null;
-const KEYS_CACHE_TTL_MS = 60_000;
+// imported key set for the lifetime of the isolate (deploys reset it).
+let jwksCache: { jwks: ReturnType<typeof createLocalJWKSet> } | null = null;
 
 async function getJwks(env: Env) {
-	if (jwksCache && Date.now() < jwksCache.expires) return jwksCache.jwks;
+	if (jwksCache) return jwksCache.jwks;
 	const storage = CloudflareStorage({ namespace: env.AUTH_STORAGE });
 	const keys = await signingKeys(storage);
 	const jwks = createLocalJWKSet({
 		keys: keys.map((k) => ({ ...k.jwk, alg: k.alg, use: "sig" })),
 	});
-	jwksCache = { jwks, expires: Date.now() + KEYS_CACHE_TTL_MS };
+	jwksCache = { jwks };
 	return jwks;
 }
 
