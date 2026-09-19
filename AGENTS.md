@@ -44,6 +44,13 @@ module, single-direction dependencies, no cycles):
 - `index.ts` — worker entry: rate limiting + top-level routing only
 - `http.ts` — pure HTTP helpers; `constants.ts` — shared constants
 - `storage.ts` — KV adapter wrapper (TTL clamp); `subjects.ts` — subject schema
+- `db/` — declarative schema management: `schema.sql` (desired structure,
+  TS string module) + `seed.sql` + `ensure-schema.ts`. `ensureSchema(db)`
+  runs once per cold start (structure -> column repairs -> seed) and
+  self-heals missing tables/columns/seed rows; tests drive it through
+  `applyMigrations()` in `test/helpers.ts`. Migrations 0001-0003 remain as
+  historical record for already-provisioned databases; new schema changes
+  ship by editing the declarative snapshot instead of adding migrations.
 - `github.ts` — GitHub API client
 - `secrets.ts` — secret reading (Secrets Store | string), ADMIN_EMAIL allowlist
 - `sessions.ts` / `tokens.ts` — admin session lifecycle / JWT verification

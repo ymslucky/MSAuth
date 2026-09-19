@@ -1,7 +1,5 @@
 import { env, SELF } from "cloudflare:test";
-import migration0001 from "../migrations/0001_create_user_table.sql?raw";
-import migration0002 from "../migrations/0002_create_rbac.sql?raw";
-import migration0003 from "../migrations/0003_sessions_rbac_audit.sql?raw";
+import { runEnsureSchema } from "../src/db/ensure-schema";
 
 export const ORIGIN = "https://example.com";
 
@@ -23,14 +21,9 @@ function toStatements(sql: string): string[] {
 		.filter((statement) => statement.length > 0);
 }
 
-/** Apply every D1 migration to the test database. */
-export async function applyMigrations(): Promise<void> {
-	for (const migration of [migration0001, migration0002, migration0003]) {
-		const statements = toStatements(migration).map((statement) =>
-			env.AUTH_DB.prepare(statement),
-		);
-		await env.AUTH_DB.batch(statements);
-	}
+/** Applies the desired database schema (same path as production boot). */
+export function applyMigrations(): Promise<void> {
+	return runEnsureSchema(env.AUTH_DB);
 }
 
 /** Collects Set-Cookie values and replays them on subsequent requests. */

@@ -5,6 +5,7 @@ import { registerUserRoutes } from "./users";
 import { registerRoleRoutes } from "./roles";
 import { registerPermissionRoutes } from "./permissions";
 import { registerAuditRoutes } from "./audit";
+import { getUserRoleNames } from "../users";
 
 import { requirePermission, type ApiEnv } from "./middleware";
 
@@ -37,16 +38,6 @@ api.get("/api/me", async (c) => {
 	});
 });
 
-async function getUserRoleNames(db: D1Database, userId: string): Promise<string[]> {
-	const result = await db
-		.prepare(
-			`SELECT r.name FROM role r JOIN user_role ur ON ur.role_id = r.id
-			WHERE ur.user_id = ?1 ORDER BY r.name`,
-		)
-		.bind(userId)
-		.all<{ name: string }>();
-	return result.results.map((r) => r.name);
-}
 
 api.route("/api/users", registerUserRoutes());
 api.route("/api/roles", registerRoleRoutes());

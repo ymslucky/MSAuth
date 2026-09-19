@@ -7,6 +7,7 @@ import {
 } from "./admin-flow";
 import apiApp from "./api/router";
 import { json } from "./http";
+import { ensureSchema } from "./db/ensure-schema";
 
 /**
  * Worker entry point. Request routing only — authentication flows live in
@@ -15,6 +16,10 @@ import { json } from "./http";
  */
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
+		// Self-healing schema: every cold start reconciles the database with
+		// the desired state in ./db/schema.sql (cached per isolate).
+		await ensureSchema(env.AUTH_DB);
+
 		const url = new URL(request.url);
 
 		// Brute-force protection: cap password endpoint POSTs per IP. The
