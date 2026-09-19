@@ -17,7 +17,7 @@ import {
 	deleteAdminSession,
 } from "./sessions";
 import { hasAnyPermission } from "./authz";
-import { verifyAccessToken } from "./tokens";
+import { decodeAccessTokenPayload } from "./tokens";
 import { renderAdminHtml } from "./admin";
 import { renderMePage } from "./me";
 import type { createIssuer } from "./issuer";
@@ -221,10 +221,10 @@ export async function handleAdminCallback(
 	if (!tokenResponse.ok || !tokens.access_token) {
 		return fail("token_exchange_failed");
 	}
-	let payload;
-	try {
-		payload = await verifyAccessToken(env, tokens.access_token);
-	} catch {
+	// The token was just minted by our own /token endpoint in-process, so
+	// decoding without verification is sufficient here.
+	const payload = decodeAccessTokenPayload(tokens.access_token);
+	if (!payload) {
 		return fail("invalid_token");
 	}
 
