@@ -1,6 +1,6 @@
 /**
  * Public homepage for the auth server. Fully static: no scripts, no query
- * parameter reflection, strict CSP.
+ * parameter reflection, strict CSP. Hand-drawn sketch design system.
  */
 export function renderHomePage(): string {
 	return `<!doctype html>
@@ -12,57 +12,93 @@ export function renderHomePage(): string {
 <title>MSAuth · 身份认证服务</title>
 <style>
   :root {
-    --bg: #f6f7f9; --card: #ffffff; --border: #e4e7ec; --text: #1a2233;
-    --muted: #667085; --primary: #0051c3; --primary-dark: #0043a4; --ok: #067647;
+    --paper: #fbf7ee;
+    --card: #fffdf6;
+    --ink: #33302a;
+    --ink-soft: #7a7062;
+    --line: #d9d2c0;
+    --primary: #2f5ac9;
+    --primary-dark: #2447a3;
+    --ok: #3f8f5f;
+    --highlight: #ffe98a;
+    --radius-sketch: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    --shadow-sketch: 4px 5px 0 rgba(51, 48, 42, 0.22);
+    --font-hand: "Segoe Print", "Comic Sans MS", "Kaiti SC", "楷体", "STKaiti", cursive;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-      "PingFang SC", "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text); min-height: 100vh;
+    font-family: var(--font-hand);
+    color: var(--ink);
+    background:
+      repeating-linear-gradient(transparent 0 30px, rgba(47, 90, 201, 0.05) 30px 31px),
+      var(--paper);
+    min-height: 100vh;
     display: flex; align-items: center; justify-content: center; padding: 24px;
   }
   .card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-    padding: 40px; max-width: 460px; width: 100%; text-align: center;
+    background: var(--card); border: 2px solid var(--ink);
+    border-radius: var(--radius-sketch); box-shadow: var(--shadow-sketch);
+    padding: 42px 44px; max-width: 480px; width: 100%; text-align: center;
+    transform: rotate(-0.5deg); position: relative;
+  }
+  .tape {
+    position: absolute; top: -12px; left: 50%; transform: translateX(-50%) rotate(2deg);
+    width: 110px; height: 26px; background: rgba(255, 233, 138, 0.75);
+    border-left: 1px dashed rgba(51,48,42,0.25); border-right: 1px dashed rgba(51,48,42,0.25);
   }
   .logo {
-    width: 52px; height: 52px; border-radius: 14px; background: var(--primary);
-    color: #fff; font-size: 26px; font-weight: 700; line-height: 52px; margin: 0 auto 18px;
+    width: 58px; height: 58px; margin: 6px auto 16px;
+    background: var(--highlight); border: 2px solid var(--ink);
+    border-radius: 50% 42% 55% 45% / 45% 55% 42% 50%;
+    font-size: 30px; font-weight: 700; line-height: 56px;
+    box-shadow: 2px 3px 0 rgba(51,48,42,0.25);
   }
-  h1 { font-size: 22px; margin-bottom: 6px; }
-  .sub { color: var(--muted); font-size: 14px; margin-bottom: 18px; }
+  h1 {
+    font-size: 34px; letter-spacing: 0.02em; display: inline-block;
+    border-bottom: 3px dashed var(--ink-soft); padding: 0 14px 6px; margin-bottom: 8px;
+    transform: rotate(-0.6deg);
+  }
+  .sub { color: var(--ink-soft); font-size: 15px; margin-bottom: 18px; }
   .status {
-    display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
-    color: var(--ok); background: #ecfdf3; border: 1px solid #abefc6;
-    border-radius: 20px; padding: 3px 12px; margin-bottom: 26px;
+    display: inline-flex; align-items: center; gap: 7px; font-size: 13px;
+    background: var(--highlight); border: 2px solid var(--ink);
+    border-radius: 30px 8px 26px 9px / 9px 26px 8px 30px;
+    padding: 4px 14px; margin-bottom: 28px; box-shadow: 2px 2px 0 rgba(51,48,42,0.2);
   }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
-  .links { display: flex; flex-direction: column; gap: 10px; }
+  .dot { width: 8px; height: 8px; border-radius: 50% 40% 55% 45%; background: var(--ok); border: 1.5px solid var(--ink); }
+  .links { display: flex; flex-direction: column; gap: 12px; margin-bottom: 26px; }
   a.btn {
-    display: block; padding: 11px 16px; border-radius: 9px; text-decoration: none;
-    font-size: 14px; border: 1px solid var(--border); color: var(--text); background: var(--card);
+    display: block; padding: 12px 16px; text-decoration: none;
+    font-size: 15px; font-family: var(--font-hand);
+    color: var(--ink); background: var(--card);
+    border: 2px solid var(--ink); border-radius: 12px 4px 14px 5px / 5px 14px 4px 12px;
+    box-shadow: 3px 3px 0 rgba(51,48,42,0.28);
   }
-  a.btn:hover { background: #f2f4f7; }
-  a.btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  a.btn:hover { transform: translate(-1px, -1px) rotate(-0.8deg); box-shadow: 4px 5px 0 rgba(51,48,42,0.28); }
+  a.btn.primary { background: var(--primary); border-color: var(--primary-dark); color: #fff; }
   a.btn.primary:hover { background: var(--primary-dark); }
-  .endpoints { margin-top: 26px; text-align: left; }
-  .endpoints h2 { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+  .endpoints { text-align: left; border-top: 2px dashed var(--line); padding-top: 18px; }
+  .endpoints h2 {
+    font-size: 12px; color: var(--ink-soft); font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px;
+  }
   .endpoints code {
     display: block; font-family: ui-monospace, Consolas, monospace; font-size: 12px;
-    background: #f2f4f7; border-radius: 6px; padding: 6px 10px; margin-bottom: 4px; color: #3a445c;
+    background: #f3eede; border: 1.5px solid var(--line); border-radius: 8px 3px 10px 4px / 4px 10px 3px 8px;
+    padding: 6px 10px; margin-bottom: 5px; color: var(--ink);
   }
-  footer { margin-top: 24px; font-size: 12px; color: var(--muted); }
+  footer { margin-top: 22px; font-size: 12px; color: var(--ink-soft); }
 </style>
 </head>
 <body>
 <main class="card">
+  <div class="tape"></div>
   <div class="logo">M</div>
   <h1>MSAuth</h1>
   <p class="sub">自托管身份认证服务</p>
   <span class="status"><span class="dot"></span>服务运行中</span>
   <nav class="links">
-    <a class="btn primary" href="/admin/login">管理控制台</a>
+    <a class="btn primary" href="/admin/login">进入管理控制台</a>
     <a class="btn" href="/.well-known/openid-configuration">OpenID 配置</a>
     <a class="btn" href="/.well-known/jwks.json">JWKS 公钥</a>
   </nav>
@@ -73,7 +109,7 @@ export function renderHomePage(): string {
     <code>GET /github/authorize</code>
     <code>GET /password/authorize</code>
   </div>
-  <footer>MSAuth · OpenAuth on Cloudflare Workers</footer>
+  <footer>MSAuth · 手绘风身份认证 · OpenAuth on Cloudflare Workers</footer>
 </main>
 </body>
 </html>`;

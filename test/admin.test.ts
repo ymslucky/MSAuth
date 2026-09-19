@@ -168,6 +168,9 @@ describe("admin authentication flow", () => {
 			headers: { cookie: jar.header() },
 		});
 		const html = await res.text();
+		// Workbench layout: fixed sidebar navigation beside the workspace.
+		expect(html).toContain("<aside");
+		expect(html).toContain(`id="nav"`);
 		// Inline onclick attributes are blocked by the nonce-based CSP, so
 		// the console must rely on delegated event listeners only.
 		expect(html).not.toContain("onclick=");
