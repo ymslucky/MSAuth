@@ -67,6 +67,16 @@ export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
 		const url = new URL(request.url);
 
+		// Brute-force protection: cap password endpoint POSTs per IP. The
+		// binding is configured for 60 requests per 60 second window.
+		if (url.pathname.startsWith("/password/") && request.method === "POST") {
+			const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
+			const outcome = await env.RATE_LIMITER.limit({ key: ip });
+			if (!outcome.success) {
+				return json({ error: "rate_limited" }, 429);
+			}
+		}
+
 		// The OpenAuth server.
 		const app = await createIssuer(env);
 
@@ -282,9 +292,11 @@ async function handleAdminCallback(
 		stored = JSON.parse(atob(getCookie(request, OAUTH_STATE_COOKIE) ?? ""));
 	} catch {}
 
-	const fail = redirect(new URL("/admin/login", url.origin), [
-		setCookieValue(OAUTH_STATE_COOKIE, "", 0),
-	]);
+	const fail = (reason: string) => {
+		const loginUrl = new URL("/admin/login", url.origin);
+		loginUrl.searchParams.set("error", reason);
+		return redirect(loginUrl, [setCookieValue(OAUTH_STATE_COOKIE, "", 0)]);
+	};
 	if (
 		oauthError ||
 		!code ||
@@ -293,7 +305,7 @@ async function handleAdminCallback(
 		!stored.verifier ||
 		state !== stored.state
 	) {
-		return fail;
+		return fail(oauthError ?? "invalid_state");
 	}
 
 	// Exchange the authorization code in-process against our own /token route.
@@ -317,12 +329,12 @@ async function handleAdminCallback(
 		expires_in?: number;
 	};
 	if (!tokenResponse.ok || !tokens.access_token) {
-		return fail;
+		return fail("token_exchange_failed");
 	}
 	try {
 		await verifyAccessToken(env, tokens.access_token);
 	} catch {
-		return fail;
+		return fail("invalid_token");
 	}
 
 	// The access token is only used to identify the user; the browser gets an
@@ -714,11 +726,21 @@ async function getUserPermissionCodes(env: Env, userId: string): Promise<string[
 
 async function getOrCreateUser(env: Env, email: string): Promise<string> {
 	const db = env.AUTH_DB;
+	const allowlist = await getAdminAllowlist(env);
 	let row = await db
 		.prepare("SELECT id FROM user WHERE email = ?1")
 		.bind(email)
 		.first<{ id: string }>();
 	if (!row) {
+		// Registration gate: new users can only sign up while enabled.
+		// Allowlisted admins are always allowed so the operator cannot be
+		// locked out.
+		if (!allowlist.includes(email.toLowerCase())) {
+			const flag = await env.AUTH_STORAGE.get("config:registration");
+			if (flag === "off") {
+				throw new Error("registration_disabled");
+			}
+		}
 		try {
 			row = await db
 				.prepare("INSERT INTO user (email) VALUES (?1) RETURNING id")
@@ -746,7 +768,6 @@ async function getOrCreateUser(env: Env, email: string): Promise<string> {
 	// The ADMIN_EMAIL allowlist is the single source of truth for admins.
 	// Membership is re-asserted on every login; removal from the list takes
 	// effect the next time the user signs in (or when the role is revoked).
-	const allowlist = await getAdminAllowlist(env);
 	if (allowlist.includes(email.toLowerCase())) {
 		await db
 			.prepare(

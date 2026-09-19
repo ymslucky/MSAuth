@@ -13,6 +13,9 @@ export default defineConfig({
 				compatibilityFlags: ["nodejs_compat"],
 				kvNamespaces: { AUTH_STORAGE: "auth-storage" },
 				d1Databases: { AUTH_DB: "auth-db" },
+				ratelimits: {
+					RATE_LIMITER: { namespace_id: "1001", simple: { limit: 60, period: 60 } },
+				},
 				bindings: {
 					GITHUB_CLIENT_ID: "test-client-id",
 					GITHUB_CLIENT_SECRET: "test-client-secret",

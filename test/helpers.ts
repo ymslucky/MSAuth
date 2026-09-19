@@ -140,7 +140,10 @@ export async function registerUserViaPassword(
 	});
 	jar.absorb(callbackRes);
 	if (!jar.has("__Host-admin_session")) {
-		throw new Error("admin_session cookie was not set after the callback");
+		throw new Error(
+		"admin_session cookie was not set after the callback; callback URL: " +
+		callbackUrl,
+	);
 	}
 	return jar;
 }

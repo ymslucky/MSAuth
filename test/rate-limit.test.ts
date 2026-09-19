@@ -1,0 +1,23 @@
+import { SELF } from "cloudflare:test";
+import { expect, it } from "vitest";
+import { ORIGIN } from "./helpers";
+
+it("rate limits password endpoint POSTs per IP", async () => {
+	let sawLimited = false;
+	for (let i = 0; i < 80; i++) {
+		const res = await SELF.fetch(ORIGIN + "/password/authorize", {
+			method: "POST",
+			redirect: "manual",
+			headers: {
+				"content-type": "application/x-www-form-urlencoded",
+				"cf-connecting-ip": "192.0.2.66",
+			},
+			body: new URLSearchParams({ email: "rl@example.com", password: "wrong" }),
+		});
+		if (res.status === 429) {
+			sawLimited = true;
+			break;
+		}
+	}
+	expect(sawLimited).toBe(true);
+});
