@@ -44,6 +44,19 @@ describe("admin authentication flow", () => {
 		expect(location.searchParams.get("state")).toBeTruthy();
 		const setCookies = res.headers.getSetCookie?.() ?? [];
 		expect(setCookies.some((c) => c.startsWith("__Host-admin_oauth="))).toBe(true);
+		// The issuer state cookies must be forwarded WITH path/attribute fixes,
+		// otherwise the browser scopes them to /login/* and drops them on the
+		// provider callback (this was the 400 "authentication error" bug).
+		expect(
+			setCookies.some(
+				(c) => c.startsWith("authorization=") && c.toLowerCase().includes("path=/"),
+			),
+		).toBe(true);
+		expect(
+			setCookies.some(
+				(c) => c.startsWith("provider=") && c.toLowerCase().includes("path=/"),
+			),
+		).toBe(true);
 	});
 
 	it("rejects /admin/callback with a mismatched state", async () => {
@@ -162,6 +175,30 @@ describe("admin authentication flow", () => {
 			headers: { cookie: stolen },
 		});
 		expect(after.status).toBe(401);
+	});
+
+	it("shows an error notice on /login after a failed flow", async () => {
+		const res = await SELF.fetch(ORIGIN + "/login?error=flow_failed", { redirect: "manual" });
+		expect(res.status).toBe(200);
+		const html = await res.text();
+		expect(html).toContain("登录失败");
+	});
+
+	it("serves the /me account page for regular users", async () => {
+		const jar = await createTestSession("regular@example.com", ["user"]);
+		const res = await SELF.fetch(ORIGIN + "/me", {
+			headers: { cookie: jar.header() },
+		});
+		expect(res.status).toBe(200);
+		const html = await res.text();
+		expect(html).toContain("regular@example.com");
+		expect(html).toContain("退出登录");
+	});
+
+	it("redirects /me to /login without a session", async () => {
+		const res = await SELF.fetch(ORIGIN + "/me", { redirect: "manual" });
+		expect(res.status).toBe(302);
+		expect(res.headers.get("location")).toContain("/login");
 	});
 
 	it("avoids inline event handlers (CSP nonce blocks them)", async () => {

@@ -22,11 +22,34 @@ import { renderAdminHtml } from "./admin";
 import { renderMePage } from "./me";
 import type { createIssuer } from "./issuer";
 
+/**
+ * Re-issues a Set-Cookie from the issuer so the browser will return it on
+ * the provider callback: the issuer relies on default cookie path scoping,
+ * but our merged single-redirect response comes from /login/start, and
+ * without an explicit Path=/ the state cookies get scoped to /login/* and
+ * are silently dropped on /github/callback (UnknownStateError -> 400).
+ */
+function normalizeSetCookie(raw: string): string {
+	const [pair, ...attrs] = raw.split(";");
+	const names = new Set(attrs.map((a) => a.trim().split("=")[0].toLowerCase()));
+	let out = raw;
+	if (!names.has("path")) out += "; Path=/";
+	if (!names.has("secure")) out += "; Secure";
+	if (!names.has("httponly")) out += "; HttpOnly";
+	if (!names.has("samesite")) out += "; SameSite=None";
+	console.log("[normalize] out =", JSON.stringify(out));
+	return out;
+}
+
 /** Public console page (admins only; others see an access-denied screen). */
 export async function handleAdminPage(
 	request: Request,
 	env: Env,
 ): Promise<Response> {
+	const flowError = new URL(request.url).searchParams.get("error");
+	const errorNotice = flowError
+		? '<div class="error">登录失败，请重试</div>'
+		: "";
 	const session = await authenticate(env.AUTH_DB, request);
 	if (!session) {
 		return redirect(new URL("/login", new URL(request.url).origin));
@@ -55,6 +78,10 @@ export async function handleLoginPage(
 	env: Env,
 ): Promise<Response> {
 	const origin = new URL(request.url).origin;
+	const flowError = new URL(request.url).searchParams.get("error");
+	const errorNotice = flowError
+		? '<div class="error">登录失败，请重试</div>'
+		: "";
 	const session = await authenticate(env.AUTH_DB, request);
 	if (session) {
 		const destination = (await hasAnyPermission(env.AUTH_DB, session.userId))
@@ -106,6 +133,7 @@ export async function handleLoginPage(
   }
   a.gh:hover { transform: translate(-1px, -1px) rotate(-0.6deg); box-shadow: 5px 6px 0 rgba(51,48,42,0.3); }
   a.gh svg { width: 22px; height: 22px; fill: #fff; }
+  .error { margin-top: 14px; font-size: 13px; color: #c94436; background: #fdecea; border: 1.5px solid #c94436; border-radius: 8px 3px 10px 4px / 4px 10px 3px 8px; padding: 8px 12px; }
   .hint { margin-top: 16px; font-size: 12px; color: var(--ink-soft); }
   a.home { display: inline-block; margin-top: 22px; font-size: 13px; color: var(--ink-soft); }
   a.home:hover { color: var(--ink); text-decoration: underline wavy; }
@@ -116,6 +144,7 @@ export async function handleLoginPage(
   <div class="tape"></div>
   <h1>登录 MSAuth</h1>
   <p class="sub">使用 GitHub 账号继续</p>
+  ${errorNotice}
   <a class="gh" href="/login/start">
     <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
     使用 GitHub 登录
@@ -177,7 +206,7 @@ export async function handleLoginStart(
 	// Hop 1: /authorize establishes the authorization state cookie and
 	// redirects to the GitHub provider entry.
 	let res = await app.fetch(new Request(location), env, ctx);
-	for (const c of res.headers.getSetCookie?.() ?? []) jar.push(c.split(";")[0]);
+	for (const c of res.headers.getSetCookie?.() ?? []) jar.push(normalizeSetCookie(c));
 	location = res.headers.get("location") ?? "";
 	if (!location) return redirect(new URL("/login?error=flow_failed", origin));
 	// Hop 2: the provider entry signs its own state cookie and redirects to
@@ -187,9 +216,10 @@ export async function handleLoginStart(
 		headers: { cookie: jar.join("; ") },
 		redirect: "manual",
 	});
-	for (const c of res.headers.getSetCookie?.() ?? []) jar.push(c.split(";")[0]);
+	for (const c of res.headers.getSetCookie?.() ?? []) jar.push(normalizeSetCookie(c));
 	const githubUrl = res.headers.get("location") ?? "";
 	if (!githubUrl.includes("github.com")) {
+		console.warn("[auth] login start failed");
 		return redirect(new URL("/login?error=flow_failed", origin));
 	}
 
