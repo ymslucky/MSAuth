@@ -1,6 +1,7 @@
-import type { ApiRoute } from "./router";
+import { Hono } from "hono";
 import { isUniqueError, json, readJson } from "../http";
 import { writeAudit } from "../audit";
+import { requirePermission, type ApiEnv } from "./middleware";
 
 interface PermissionRow {
 	id: string;
@@ -10,57 +11,47 @@ interface PermissionRow {
 
 const CODE_RE = /^[a-z][a-z0-9]*:[a-z][a-z0-9]*$/;
 
-export function registerPermissionRoutes(): ApiRoute[] {
-	return [
-		{
-			method: "GET",
-			pattern: /^\/api\/permissions$/,
-			permission: "permissions:read",
-			handler: async ({ db }) => {
-				const list = await db
-					.prepare("SELECT id, code, description FROM permission ORDER BY code ASC")
-					.all<PermissionRow>();
-				return json({ permissions: list.results });
-			},
-		},
-		{
-			method: "POST",
-			pattern: /^\/api\/permissions$/,
-			permission: "permissions:write",
-			handler: async (ctx) => {
-				const body = await readJson(ctx.request);
-				const code = typeof body?.code === "string" ? body.code.trim() : "";
-				const description =
-					typeof body?.description === "string" ? body.description.trim() : "";
-				if (!CODE_RE.test(code)) {
-					return json({ error: "invalid_code" }, 400);
-				}
-				try {
-					await ctx.db
-						.prepare("INSERT INTO permission (code, description) VALUES (?1, ?2)")
-						.bind(code, description)
-						.run();
-					await writeAudit(ctx.db, ctx.userId, "permission.create", "permission", code, JSON.stringify({ code, description }));
-					return json({ ok: true });
-				} catch (e) {
-					if (isUniqueError(e)) return json({ error: "permission_taken" }, 409);
-					throw e;
-				}
-			},
-		},
-		{
-			method: "DELETE",
-			pattern: /^\/api\/permissions\/([a-z0-9-]+)$/,
-			permission: "permissions:write",
-			handler: async (ctx) => {
-				const [id] = ctx.params;
-				await ctx.db.batch([
-					ctx.db.prepare("DELETE FROM role_permission WHERE permission_id = ?1").bind(id),
-					ctx.db.prepare("DELETE FROM permission WHERE id = ?1").bind(id),
-				]);
-				await writeAudit(ctx.db, ctx.userId, "permission.delete", "permission", id, "");
-				return json({ ok: true });
-			},
-		},
-	];
+export function registerPermissionRoutes(): Hono<ApiEnv> {
+	const routes = new Hono<ApiEnv>();
+
+	routes.get("/", requirePermission("permissions:read"), async (c) => {
+		const list = await c.env.AUTH_DB
+			.prepare("SELECT id, code, description FROM permission ORDER BY code ASC")
+			.all<PermissionRow>();
+		return json({ permissions: list.results });
+	});
+
+	routes.post("/", requirePermission("permissions:write"), async (c) => {
+		const body = await readJson(c.req.raw);
+		const code = typeof body?.code === "string" ? body.code.trim() : "";
+		const description =
+			typeof body?.description === "string" ? body.description.trim() : "";
+		if (!CODE_RE.test(code)) {
+			return json({ error: "invalid_code" }, 400);
+		}
+		try {
+			await c.env.AUTH_DB
+				.prepare("INSERT INTO permission (code, description) VALUES (?1, ?2)")
+				.bind(code, description)
+				.run();
+			await writeAudit(c.env.AUTH_DB, c.get("userId"), "permission.create", "permission", code, JSON.stringify({ code, description }));
+			return json({ ok: true });
+		} catch (e) {
+			if (isUniqueError(e)) return json({ error: "permission_taken" }, 409);
+			throw e;
+		}
+	});
+
+	routes.delete("/:id", requirePermission("permissions:write"), async (c) => {
+		const id = c.req.param("id");
+		const db = c.env.AUTH_DB;
+		await db.batch([
+			db.prepare("DELETE FROM role_permission WHERE permission_id = ?1").bind(id),
+			db.prepare("DELETE FROM permission WHERE id = ?1").bind(id),
+		]);
+		await writeAudit(db, c.get("userId"), "permission.delete", "permission", id, "");
+		return json({ ok: true });
+	});
+
+	return routes;
 }

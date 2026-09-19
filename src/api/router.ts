@@ -1,87 +1,43 @@
-import { json } from "../http";
+import { Hono, type MiddlewareHandler } from "hono";
 import { authenticate } from "../sessions";
-import { hasPermission, getUserPermissionCodes } from "../authz";
+import { getUserPermissionCodes } from "../authz";
 import { registerUserRoutes } from "./users";
 import { registerRoleRoutes } from "./roles";
 import { registerPermissionRoutes } from "./permissions";
 import { registerAuditRoutes } from "./audit";
 
-export interface ApiContext {
-	request: Request;
-	url: URL;
-	db: D1Database;
-	userId: string;
-	/** Regex capture groups from the matched route pattern. */
-	params: string[];
-}
+import { requirePermission, type ApiEnv } from "./middleware";
 
-export interface ApiRoute {
-	method: string;
-	pattern: RegExp;
-	/** Permission code required; omit for session-only endpoints. */
-	permission?: string;
-	handler: (ctx: ApiContext) => Promise<Response>;
-}
+/** Session middleware: resolves the admin session for every /api request. */
+const sessionMiddleware: MiddlewareHandler<ApiEnv> = async (c, next) => {
+	const session = await authenticate(c.env.AUTH_DB, c.req.raw);
+	if (!session) return c.json({ error: "unauthorized" }, 401);
+	c.set("userId", session.userId);
+	await next();
+};
 
-const routes: ApiRoute[] = [
-	...registerUserRoutes(),
-	...registerRoleRoutes(),
-	...registerPermissionRoutes(),
-	...registerAuditRoutes(),
-];
+/** The management API, mounted under /api in index.ts. */
+const api = new Hono<ApiEnv>();
 
-/**
- * Management API dispatcher: session authentication, permission checks and
- * routing live here; the handlers themselves only implement their resource.
- */
-export async function handleApi(request: Request, env: Env): Promise<Response> {
-	const url = new URL(request.url);
-	const path = url.pathname;
-	const method = request.method;
-	const db = env.AUTH_DB;
+api.use("/api/*", sessionMiddleware);
 
-	// Any signed-in user may inspect their own identity.
-	if (path === "/api/me" && method === "GET") {
-		const session = await authenticate(db, request);
-		if (!session) return json({ error: "unauthorized" }, 401);
-		const user = await db
-			.prepare("SELECT id, email, created_at FROM user WHERE id = ?")
-			.bind(session.userId)
-			.first<{ id: string; email: string; created_at: string }>();
-		if (!user) return json({ error: "unauthorized" }, 401);
-		return json({
-			user,
-			roles: await getUserRoles(db, session.userId),
-			permissions: await getUserPermissionCodes(db, session.userId),
-		});
-	}
+// Any signed-in user may inspect their own identity.
+api.get("/api/me", async (c) => {
+	const db = c.env.AUTH_DB;
+	const userId = c.get("userId");
+	const user = await db
+		.prepare("SELECT id, email, created_at FROM user WHERE id = ?")
+		.bind(userId)
+		.first<{ id: string; email: string; created_at: string }>();
+	if (!user) return c.json({ error: "unauthorized" }, 401);
+	return c.json({
+		user,
+		roles: await getUserRoleNames(db, userId),
+		permissions: await getUserPermissionCodes(db, userId),
+	});
+});
 
-	for (const route of routes) {
-		if (route.method !== method) continue;
-		const match = path.match(route.pattern);
-		if (!match) continue;
-
-		const session = await authenticate(db, request);
-		if (!session) return json({ error: "unauthorized" }, 401);
-		if (
-			route.permission &&
-			!(await hasPermission(db, session.userId, route.permission))
-		) {
-			return json({ error: "forbidden" }, 403);
-		}
-
-		return route.handler({
-			request,
-			url,
-			db,
-			userId: session.userId,
-			params: match.slice(1),
-		});
-	}
-	return json({ error: "not_found" }, 404);
-}
-
-async function getUserRoles(db: D1Database, userId: string): Promise<string[]> {
+async function getUserRoleNames(db: D1Database, userId: string): Promise<string[]> {
 	const result = await db
 		.prepare(
 			`SELECT r.name FROM role r JOIN user_role ur ON ur.role_id = r.id
@@ -91,3 +47,12 @@ async function getUserRoles(db: D1Database, userId: string): Promise<string[]> {
 		.all<{ name: string }>();
 	return result.results.map((r) => r.name);
 }
+
+api.route("/api/users", registerUserRoutes());
+api.route("/api/roles", registerRoleRoutes());
+api.route("/api/permissions", registerPermissionRoutes());
+api.route("/api/audit", registerAuditRoutes());
+
+api.notFound((c) => c.json({ error: "not_found" }, 404));
+
+export default api;

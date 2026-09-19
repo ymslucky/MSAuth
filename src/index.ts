@@ -5,7 +5,7 @@ import {
 	handleAdminLogout,
 	handleAdminPage,
 } from "./admin-flow";
-import { handleApi } from "./api/router";
+import apiApp from "./api/router";
 import { json } from "./http";
 
 /**
@@ -39,7 +39,7 @@ export default {
 		} else if (url.pathname === "/admin/logout") {
 			return handleAdminLogout(request, env);
 		} else if (url.pathname.startsWith("/api/")) {
-			return handleApi(request, env);
+			return apiApp.fetch(request, env, ctx);
 		}
 
 		return app.fetch(request, env, ctx);
