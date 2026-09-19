@@ -4,7 +4,7 @@ import {
 	api,
 	applyMigrations,
 	CookieJar,
-	registerUserViaPassword,
+	createTestSession,
 	ORIGIN,
 } from "./helpers";
 
@@ -13,8 +13,8 @@ let user: CookieJar;
 
 beforeAll(async () => {
 	await applyMigrations();
-	admin = await registerUserViaPassword("root@example.com", "password123");
-	user = await registerUserViaPassword("member@example.com", "password123");
+	admin = await createTestSession("root@example.com", ["admin", "user"]);
+	user = await createTestSession("member@example.com", ["user"]);
 	// Fixture used by role assignment tests; recreated per test file because
 	// storage is isolated between files.
 	const res = await api(admin, "/api/roles", {
@@ -163,7 +163,7 @@ describe("user management", () => {
 
 	it("deletes a regular user", async () => {
 		// Register a disposable user via the public flow, then delete it.
-		const temp = await registerUserViaPassword("temp@example.com", "password123");
+		const temp = await createTestSession("temp@example.com", ["user"]);
 		expect(temp.has("__Host-admin_session")).toBe(true);
 		const list = await api(admin, "/api/users?q=temp@");
 		const data = (await list.json()) as { users: { id: string }[] };

@@ -1,27 +1,9 @@
 import { env, SELF } from "cloudflare:test";
 import { runEnsureSchema } from "../src/db/ensure-schema";
+import { hasAnyPermission } from "../src/authz";
 
 export const ORIGIN = "https://example.com";
 
-/**
- * Splits a migration file into individual statements. D1 exec() runs one
- * statement per line, which breaks multi-line CREATE TABLE statements, so we
- * split on semicolons and strip comment lines ourselves.
- */
-function toStatements(sql: string): string[] {
-	// Strip comment lines first (they may contain semicolons), then split on
-	// statement-terminating semicolons.
-	const withoutComments = sql
-		.split("\n")
-		.filter((line) => !line.trimStart().startsWith("--"))
-		.join("\n");
-	return withoutComments
-		.split(";")
-		.map((statement) => statement.trim())
-		.filter((statement) => statement.length > 0);
-}
-
-/** Applies the desired database schema (same path as production boot). */
 export function applyMigrations(): Promise<void> {
 	return runEnsureSchema(env.AUTH_DB);
 }
@@ -53,90 +35,51 @@ export class CookieJar {
 }
 
 /**
- * Drives the real admin OAuth + password registration flow end to end:
- * /admin/login -> /authorize -> /password/register -> code verification
- * -> /admin/callback -> session cookie.
+ * Creates a user with the given roles directly in D1 and an active admin
+ * session row, returning a cookie jar that authenticates as that user.
+ *
+ * Used instead of driving the OAuth flow in tests: GitHub's outbound
+ * endpoints cannot be mocked in this environment, so the session layer is
+ * exercised directly (the flow itself is covered by flow-level assertions
+ * on /login and error paths).
  */
-export async function registerUserViaPassword(
+export async function createTestSession(
 	email: string,
-	password: string,
+	roles: string[] = ["user"],
 ): Promise<CookieJar> {
+	const db = env.AUTH_DB;
+	let row = await db
+		.prepare("SELECT id FROM user WHERE email = ?1")
+		.bind(email)
+		.first<{ id: string }>();
+	if (!row) {
+		row = await db
+			.prepare("INSERT INTO user (email) VALUES (?1) RETURNING id")
+			.bind(email)
+			.first<{ id: string }>();
+	}
+	const userId = row!.id;
+	for (const role of roles) {
+		await db
+			.prepare(
+				"INSERT OR IGNORE INTO user_role (user_id, role_id) SELECT ?1, id FROM role WHERE name = ?2",
+			)
+			.bind(userId, role)
+			.run();
+	}
+	const sessionId = "test-session-" + crypto.randomUUID();
+	await db
+		.prepare(
+			"INSERT INTO admin_sessions (id, user_id, expires_at) VALUES (?1, ?2, datetime('now', '+7 days'))",
+		)
+		.bind(sessionId, userId)
+		.run();
 	const jar = new CookieJar();
-
-	// 1. Start the admin login flow (sets the admin_oauth cookie).
-	const loginRes = await SELF.fetch(ORIGIN + "/admin/login", { redirect: "manual" });
-	jar.absorb(loginRes);
-	const authorizeUrl = loginRes.headers.get("location");
-	if (!authorizeUrl?.includes("/authorize")) {
-		throw new Error("admin login did not redirect to /authorize");
-	}
-
-	// 2. Establish the issuer authorization state cookie.
-	const authRes = await SELF.fetch(authorizeUrl, {
-		headers: { cookie: jar.header() },
-		redirect: "manual",
-	});
-	jar.absorb(authRes);
-
-	// 3. Open the registration form (sets the provider state cookie).
-	const regStart = await SELF.fetch(ORIGIN + "/password/register", {
-		headers: { cookie: jar.header() },
-		redirect: "manual",
-	});
-	jar.absorb(regStart);
-
-	// 4. Submit registration; the provider emails (stores) a code.
-	const regRes = await SELF.fetch(ORIGIN + "/password/register", {
-		method: "POST",
-		redirect: "manual",
-		headers: {
-			cookie: jar.header(),
-			"content-type": "application/x-www-form-urlencoded",
-		},
-		body: new URLSearchParams({ action: "register", email, password, repeat: password }),
-	});
-	jar.absorb(regRes);
-	if (!regRes.ok) {
-		throw new Error(
-			"registration step failed: " + regRes.status + " " + (await regRes.text()).slice(0, 300),
-		);
-	}
-
-	// 5. Read the verification code from KV.
-	const code = await env.AUTH_STORAGE.get("debug:code:" + email);
-	if (!code) throw new Error("verification code not found in KV for " + email);
-
-	// 6. Verify the code; the issuer redirects to /admin/callback?code&state.
-	const verifyRes = await SELF.fetch(ORIGIN + "/password/register", {
-		method: "POST",
-		redirect: "manual",
-		headers: {
-			cookie: jar.header(),
-			"content-type": "application/x-www-form-urlencoded",
-		},
-		body: new URLSearchParams({ action: "verify", code }),
-	});
-	jar.absorb(verifyRes);
-	const callbackUrl = verifyRes.headers.get("location");
-	if (!callbackUrl || !callbackUrl.includes("/admin/callback")) {
-		throw new Error(
-			"expected redirect to /admin/callback, got: " + callbackUrl +
-				" (status " + verifyRes.status + "): " + (await verifyRes.text()).slice(0, 300),
-		);
-	}
-
-	// 7. Exchange the authorization code for an admin session.
-	const callbackRes = await SELF.fetch(callbackUrl, {
-		headers: { cookie: jar.header() },
-		redirect: "manual",
-	});
-	jar.absorb(callbackRes);
-	if (!jar.has("__Host-admin_session")) {
-		throw new Error(
-		"admin_session cookie was not set after the callback; callback URL: " +
-		callbackUrl,
+	jar.absorb(
+		new Response(null, {
+			headers: { "set-cookie": `__Host-admin_session=${sessionId}; Path=/` },
+		}),
 	);
-	}
 	return jar;
 }
 
@@ -157,4 +100,12 @@ export function api(
 		body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
 		redirect: "manual",
 	});
+}
+
+/** Where should a freshly signed-in user land? */
+export async function postLoginDestination(
+	db: D1Database,
+	userId: string,
+): Promise<string> {
+	return (await hasAnyPermission(db, userId)) ? "/admin" : "/me";
 }

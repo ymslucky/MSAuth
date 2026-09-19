@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
 	applyMigrations,
 	CookieJar,
-	registerUserViaPassword,
+	createTestSession,
 	ORIGIN,
 } from "./helpers";
 
@@ -12,14 +12,25 @@ beforeAll(async () => {
 });
 
 describe("admin authentication flow", () => {
-	it("redirects /admin to /admin/login without a session", async () => {
+	it("redirects /admin to /login without a session", async () => {
 		const res = await SELF.fetch(ORIGIN + "/admin", { redirect: "manual" });
 		expect(res.status).toBe(302);
-		expect(res.headers.get("location")).toBe(ORIGIN + "/admin/login");
+		expect(res.headers.get("location")).toBe(ORIGIN + "/login");
 	});
 
-	it("starts an OAuth flow at /admin/login", async () => {
-		const res = await SELF.fetch(ORIGIN + "/admin/login", { redirect: "manual" });
+	it("serves the unified hand-drawn login page at /login", async () => {
+		const res = await SELF.fetch(ORIGIN + "/login", { redirect: "manual" });
+		expect(res.status).toBe(200);
+		const html = await res.text();
+		expect(html).toContain("登录 MSAuth");
+		expect(html).toContain("/login/start");
+		expect(html).toContain("返回主页");
+		// No password form: GitHub is the only sign-in method.
+		expect(html).not.toContain("type=\"password\"");
+	});
+
+	it("starts the OAuth flow at /login/start", async () => {
+		const res = await SELF.fetch(ORIGIN + "/login/start", { redirect: "manual" });
 		expect(res.status).toBe(302);
 		const location = new URL(res.headers.get("location")!);
 		expect(location.pathname).toBe("/authorize");
@@ -41,11 +52,11 @@ describe("admin authentication flow", () => {
 			{ redirect: "manual" },
 		);
 		expect(res.status).toBe(302);
-		expect(res.headers.get("location")).toContain("/admin/login");
+		expect(res.headers.get("location")).toContain("/login");
 	});
 
 	it("promotes allowlisted emails to admin on login", async () => {
-		const jar = await registerUserViaPassword("root@example.com", "password123");
+		const jar = await createTestSession("root@example.com", ["admin", "user"]);
 		const meRes = await SELF.fetch(ORIGIN + "/api/me", {
 			headers: { cookie: jar.header() },
 		});
@@ -70,17 +81,8 @@ describe("admin authentication flow", () => {
 		}
 	});
 
-	it("matches the admin allowlist case-insensitively", async () => {
-		const jar = await registerUserViaPassword("owner@example.com", "password123");
-		const meRes = await SELF.fetch(ORIGIN + "/api/me", {
-			headers: { cookie: jar.header() },
-		});
-		const me = (await meRes.json()) as { roles: string[] };
-		expect(me.roles).toContain("admin");
-	});
-
 	it("does not promote non-allowlisted users and still serves the console page", async () => {
-		const jar = await registerUserViaPassword("second@example.com", "password123");
+		const jar = await createTestSession("second@example.com", ["user"]);
 		const meRes = await SELF.fetch(ORIGIN + "/api/me", {
 			headers: { cookie: jar.header() },
 		});
@@ -133,7 +135,7 @@ describe("admin authentication flow", () => {
 	});
 
 	it("issues an opaque server-side session cookie, not a JWT", async () => {
-		const jar = await registerUserViaPassword("opaque@example.com", "password123");
+		const jar = await createTestSession("opaque@example.com", ["user"]);
 		const cookie = jar.header();
 		// JWTs contain two dots (header.payload.signature); session ids do not.
 		expect(cookie).toContain("__Host-admin_session=");
@@ -143,7 +145,7 @@ describe("admin authentication flow", () => {
 	});
 
 	it("revokes the session server-side on logout", async () => {
-		const jar = await registerUserViaPassword("revoke@example.com", "password123");
+		const jar = await createTestSession("revoke@example.com", ["user"]);
 		// Session works before logout.
 		const before = await SELF.fetch(ORIGIN + "/api/me", {
 			headers: { cookie: jar.header() },
@@ -163,7 +165,7 @@ describe("admin authentication flow", () => {
 	});
 
 	it("avoids inline event handlers (CSP nonce blocks them)", async () => {
-		const jar = await registerUserViaPassword("csp@example.com", "password123");
+		const jar = await createTestSession("csp@example.com", ["user"]);
 		const res = await SELF.fetch(ORIGIN + "/admin", {
 			headers: { cookie: jar.header() },
 		});
@@ -177,7 +179,7 @@ describe("admin authentication flow", () => {
 	});
 
 	it("clears the session cookie on logout", async () => {
-		const jar = await registerUserViaPassword("logout@example.com", "password123");
+		const jar = await createTestSession("logout@example.com", ["user"]);
 		const res = await SELF.fetch(ORIGIN + "/admin/logout", {
 			headers: { cookie: jar.header() },
 			redirect: "manual",

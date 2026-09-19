@@ -1,7 +1,5 @@
 import { issuer } from "@openauthjs/openauth";
-import { PasswordProvider } from "@openauthjs/openauth/provider/password";
 import { GithubProvider } from "@openauthjs/openauth/provider/github";
-import { PasswordUI } from "@openauthjs/openauth/ui/password";
 import { ADMIN_CLIENT_ID } from "./constants";
 import { getGithubEmail } from "./github";
 import { getAdminAllowlist, resolveGitHubCredentials } from "./secrets";
@@ -40,24 +38,8 @@ export async function createIssuer(env: Env) {
 			);
 		},
 		providers: {
-			password: PasswordProvider(
-				PasswordUI({
-					sendCode: async (email, code) => {
-						// This is where you would email the verification code to the
-						// user, e.g. using Resend:
-						// https://resend.com/docs/send-with-cloudflare-workers
-						console.log(`Sending code ${code} to ${email}`);
-						// Email delivery is not configured yet; expose the code through
-						// storage so integration tests and operators can retrieve it.
-						await env.AUTH_STORAGE.put(`debug:code:${email}`, code, {
-							expirationTtl: 600,
-						});
-					},
-					copy: {
-						input_code: "Code (check Worker logs)",
-					},
-				}),
-			),
+			// GitHub-only sign-in. Password login was removed: without an email
+			// provider the verification codes could never be delivered.
 			github: GithubProvider({
 				clientID,
 				clientSecret,
@@ -75,12 +57,9 @@ export async function createIssuer(env: Env) {
 			},
 		},
 		success: async (ctx, value) => {
-			// The GitHub provider resolves to { provider, clientID, tokenset },
-			// so the email has to be looked up via the GitHub API.
-			const email =
-				value.provider === "github"
-					? await getGithubEmail(value.tokenset.access)
-					: value.email;
+			// GitHub is the only provider: resolve the verified email via the
+			// GitHub API.
+			const email = await getGithubEmail(value.tokenset.access);
 			const id = await getOrCreateUser(env, email);
 			return ctx.subject("user", {
 				id,

@@ -8,7 +8,7 @@ it("serves a homepage at /", async () => {
 	expect(res.headers.get("content-type")).toContain("text/html");
 	const html = await res.text();
 	expect(html).toContain("MSAuth");
-	expect(html).toContain("/admin/login");
+	expect(html).toContain("/login");
 });
 
 it("sends security headers and a strict CSP without scripts", async () => {
@@ -27,4 +27,12 @@ it("never reflects query parameters (no legacy demo echo)", async () => {
 	const body = await res.text();
 	expect(body).not.toContain("SECRET");
 	expect(res.status).toBe(200);
+});it("stays minimal: no status badge, no developer endpoints, no echo", async () => {
+	const res = await SELF.fetch(ORIGIN + "/?code=SECRET");
+	const html = await res.text();
+	expect(html).not.toContain("服务运行中");
+	expect(html).not.toContain("OpenID 配置");
+	expect(html).not.toContain("JWKS");
+	expect(html).not.toContain("OAuth 2.0 / OIDC 端点");
+	expect(html).not.toContain("SECRET");
 });

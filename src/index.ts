@@ -1,12 +1,14 @@
 import { createIssuer } from "./issuer";
 import {
 	handleAdminCallback,
-	handleAdminLogin,
-	handleAdminLogout,
 	handleAdminPage,
+	handleLoginPage,
+	handleLoginStart,
+	handleAdminLogout,
+	handleMePage,
 } from "./admin-flow";
 import apiApp from "./api/router";
-import { json } from "./http";
+import { json, redirect } from "./http";
 import { renderHomePage } from "./home";
 import { ensureSchema } from "./db/ensure-schema";
 
@@ -18,14 +20,14 @@ import { ensureSchema } from "./db/ensure-schema";
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
 		// Self-healing schema: every cold start reconciles the database with
-		// the desired state in ./db/schema.sql (cached per isolate).
+		// the desired state in ./db/schema.ts (cached per isolate).
 		await ensureSchema(env.AUTH_DB);
 
 		const url = new URL(request.url);
 
-		// Brute-force protection: cap password endpoint POSTs per IP. The
+		// Abuse protection: cap GitHub authorization-endpoint hits per IP. The
 		// binding is configured for 60 requests per 60 second window.
-		if (url.pathname.startsWith("/password/") && request.method === "POST") {
+		if (url.pathname.startsWith("/github/")) {
 			const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
 			const outcome = await env.RATE_LIMITER.limit({ key: ip });
 			if (!outcome.success) {
@@ -33,7 +35,7 @@ export default {
 			}
 		}
 
-		// The OpenAuth server (also serves /authorize, /token, providers...).
+		// The OpenAuth server (also serves /authorize, /token, jwks...).
 		const app = await createIssuer(env);
 
 		// Public homepage: static, no scripts, no parameter reflection.
@@ -49,10 +51,18 @@ export default {
 						"default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
 				},
 			});
+		} else if (url.pathname === "/login") {
+			// Unified login entry for every role.
+			return await handleLoginPage(request, env);
+		} else if (url.pathname === "/login/start") {
+			return handleLoginStart(request);
+		} else if (url.pathname === "/me") {
+			return handleMePage(request, env);
+		} else if (url.pathname === "/admin/login") {
+			// Legacy alias: everything funnels through /login now.
+			return redirect("/login");
 		} else if (url.pathname === "/admin") {
 			return handleAdminPage(request, env);
-		} else if (url.pathname === "/admin/login") {
-			return await handleAdminLogin(request);
 		} else if (url.pathname === "/admin/callback") {
 			return handleAdminCallback(request, env, ctx, app);
 		} else if (url.pathname === "/admin/logout") {

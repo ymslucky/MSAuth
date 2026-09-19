@@ -95,21 +95,11 @@ export function renderHomePage(): string {
   <div class="tape"></div>
   <div class="logo">M</div>
   <h1>MSAuth</h1>
-  <p class="sub">自托管身份认证服务</p>
-  <span class="status"><span class="dot"></span>服务运行中</span>
+  <p class="sub">身份验证服务</p>
   <nav class="links">
-    <a class="btn primary" href="/admin/login">进入管理控制台</a>
-    <a class="btn" href="/.well-known/openid-configuration">OpenID 配置</a>
-    <a class="btn" href="/.well-known/jwks.json">JWKS 公钥</a>
+    <a class="btn primary" href="/login">登 录</a>
   </nav>
-  <div class="endpoints">
-    <h2>OAuth 2.0 / OIDC 端点</h2>
-    <code>GET /authorize</code>
-    <code>POST /token</code>
-    <code>GET /github/authorize</code>
-    <code>GET /password/authorize</code>
-  </div>
-  <footer>MSAuth · 手绘风身份认证 · OpenAuth on Cloudflare Workers</footer>
+  <footer>MSAuth</footer>
 </main>
 </body>
 </html>`;

@@ -18,6 +18,22 @@ export async function hasPermission(
 	return !!result;
 }
 
+/** True when the user holds at least one management permission. */
+export async function hasAnyPermission(
+	db: D1Database,
+	userId: string,
+): Promise<boolean> {
+	const result = await db
+		.prepare(
+			`SELECT 1 FROM user_role ur
+			JOIN role_permission rp ON rp.role_id = ur.role_id
+			WHERE ur.user_id = ?1
+			LIMIT 1`,
+		)
+		.bind(userId)
+		.first();
+	return !!result;
+}
 /** All permission codes the user holds through their roles. */
 export async function getUserPermissionCodes(
 	db: D1Database,

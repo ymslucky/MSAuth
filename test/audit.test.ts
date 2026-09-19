@@ -3,7 +3,7 @@ import {
 	api,
 	applyMigrations,
 	CookieJar,
-	registerUserViaPassword,
+	createTestSession,
 } from "./helpers";
 
 let admin: CookieJar;
@@ -11,8 +11,8 @@ let member: CookieJar;
 
 beforeAll(async () => {
 	await applyMigrations();
-	admin = await registerUserViaPassword("root@example.com", "password123");
-	member = await registerUserViaPassword("member@example.com", "password123");
+	admin = await createTestSession("root@example.com", ["admin", "user"]);
+	member = await createTestSession("member@example.com", ["user"]);
 });
 
 describe("audit log", () => {

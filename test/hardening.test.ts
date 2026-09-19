@@ -3,7 +3,7 @@ import { beforeAll, expect, it } from "vitest";
 import {
 	applyMigrations,
 	CookieJar,
-	registerUserViaPassword,
+	createTestSession,
 	ORIGIN,
 } from "./helpers";
 
@@ -11,7 +11,7 @@ let admin: CookieJar;
 
 beforeAll(async () => {
 	await applyMigrations();
-	admin = await registerUserViaPassword("root@example.com", "password123");
+	admin = await createTestSession("root@example.com", ["admin", "user"]);
 });
 
 it("serves the console with a nonce-based CSP", async () => {
@@ -28,25 +28,8 @@ it("serves the console with a nonce-based CSP", async () => {
 });
 
 it("rejects overlong search queries with 400", async () => {
-	const res = await SELF.fetch(
-		ORIGIN + "/api/users?q=" + "a".repeat(201),
-		{ headers: { cookie: admin.header() } },
-	);
-	expect(res.status).toBe(400);
-});
-
-it("returns generic error bodies from the issuer", async () => {
-	// A valid login outside of an authorization flow raises
-	// UnknownStateError inside the issuer; the response must not leak
-	// internals.
-	const res = await SELF.fetch(ORIGIN + "/password/authorize", {
-		method: "POST",
-		redirect: "manual",
-		headers: { "content-type": "application/x-www-form-urlencoded" },
-		body: new URLSearchParams({ email: "root@example.com", password: "password123" }),
+	const res = await SELF.fetch(ORIGIN + "/api/users?q=" + "a".repeat(201), {
+		headers: { cookie: admin.header() },
 	});
 	expect(res.status).toBe(400);
-	const body = await res.text();
-	expect(body.toLowerCase()).not.toContain("unknown state");
-	expect(body.toLowerCase()).not.toContain("cookie");
 });
