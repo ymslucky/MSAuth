@@ -127,10 +127,8 @@ describe("admin authentication flow", () => {
 		expect(res.headers.get("location")).toContain("error=unauthorized_client");
 	});
 
-	it("returns 404 for the removed demo routes", async () => {
-		const root = await SELF.fetch(ORIGIN + "/", { redirect: "manual" });
-		expect(root.status).toBe(404);
-		const callback = await SELF.fetch(ORIGIN + "/callback", { redirect: "manual" });
+	it("returns 404 for the removed /callback demo route", async () => {
+		const callback = await SELF.fetch(ORIGIN + "/callback?code=x", { redirect: "manual" });
 		expect(callback.status).toBe(404);
 	});
 

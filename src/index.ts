@@ -7,6 +7,7 @@ import {
 } from "./admin-flow";
 import apiApp from "./api/router";
 import { json } from "./http";
+import { renderHomePage } from "./home";
 import { ensureSchema } from "./db/ensure-schema";
 
 /**
@@ -35,7 +36,20 @@ export default {
 		// The OpenAuth server (also serves /authorize, /token, providers...).
 		const app = await createIssuer(env);
 
-		if (url.pathname === "/admin") {
+		// Public homepage: static, no scripts, no parameter reflection.
+		if (url.pathname === "/") {
+			return new Response(renderHomePage(), {
+				headers: {
+					"content-type": "text/html; charset=utf-8",
+					"cache-control": "no-store",
+					"x-frame-options": "DENY",
+					"x-content-type-options": "nosniff",
+					"referrer-policy": "no-referrer",
+					"content-security-policy":
+						"default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+				},
+			});
+		} else if (url.pathname === "/admin") {
 			return handleAdminPage(request, env);
 		} else if (url.pathname === "/admin/login") {
 			return await handleAdminLogin(request);
