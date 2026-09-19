@@ -1,9 +1,7 @@
 import { env, SELF } from "cloudflare:test";
 import migration0001 from "../migrations/0001_create_user_table.sql?raw";
 import migration0002 from "../migrations/0002_create_rbac.sql?raw";
-import migration0003 from "../migrations/0003_create_admin_sessions.sql?raw";
-import migration0004 from "../migrations/0004_rbac_hardening.sql?raw";
-import migration0005 from "../migrations/0005_create_audit_log.sql?raw";
+import migration0003 from "../migrations/0003_sessions_rbac_audit.sql?raw";
 
 export const ORIGIN = "https://example.com";
 
@@ -13,21 +11,21 @@ export const ORIGIN = "https://example.com";
  * split on semicolons and strip comment lines ourselves.
  */
 function toStatements(sql: string): string[] {
-	return sql
+	// Strip comment lines first (they may contain semicolons), then split on
+	// statement-terminating semicolons.
+	const withoutComments = sql
+		.split("\n")
+		.filter((line) => !line.trimStart().startsWith("--"))
+		.join("\n");
+	return withoutComments
 		.split(";")
-		.map((statement) =>
-			statement
-				.split("\n")
-				.filter((line) => !line.trimStart().startsWith("--"))
-				.join("\n")
-				.trim(),
-		)
+		.map((statement) => statement.trim())
 		.filter((statement) => statement.length > 0);
 }
 
 /** Apply every D1 migration to the test database. */
 export async function applyMigrations(): Promise<void> {
-	for (const migration of [migration0001, migration0002, migration0003, migration0004, migration0005]) {
+	for (const migration of [migration0001, migration0002, migration0003]) {
 		const statements = toStatements(migration).map((statement) =>
 			env.AUTH_DB.prepare(statement),
 		);
