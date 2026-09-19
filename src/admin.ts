@@ -390,7 +390,7 @@ export const ADMIN_HTML = `<!doctype html>
     if (!state.roles.length) rows = '<tr><td colspan="5" class="empty">暂无角色</td></tr>';
     for (var i = 0; i < state.roles.length; i++) {
       var r = state.roles[i];
-      var builtin = r.name === "admin" || r.name === "user";
+      var builtin = !!r.is_system;
       var permChips = r.permissions && r.permissions.length
         ? r.permissions.map(function (p) { return '<span class="chip mono">' + esc(p) + "</span>"; }).join("")
         : '<span class="muted">无</span>';

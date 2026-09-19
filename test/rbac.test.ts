@@ -246,6 +246,68 @@ describe("role management", () => {
 		expect(res.status).toBe(400);
 	});
 
+	it("rejects renaming built-in roles", async () => {
+		const list = await api(admin, "/api/roles");
+		const data = (await list.json()) as { roles: { id: string; name: string }[] };
+		const adminRole = data.roles.find((r) => r.name === "admin")!;
+
+		const res = await api(admin, "/api/roles/" + adminRole.id, {
+			method: "PATCH",
+			body: { name: "renamed-admin" },
+		});
+		expect(res.status).toBe(400);
+
+		const after = await api(admin, "/api/roles");
+		const afterData = (await after.json()) as { roles: { id: string; name: string }[] };
+		expect(afterData.roles.find((r) => r.id === adminRole.id)?.name).toBe("admin");
+	});
+
+	it("exposes is_system for roles", async () => {
+		const res = await api(admin, "/api/roles");
+		const data = (await res.json()) as {
+			roles: { name: string; is_system: number }[];
+		};
+		expect(data.roles.find((r) => r.name === "admin")?.is_system).toBe(1);
+		expect(data.roles.find((r) => r.name === "auditor")?.is_system).toBe(0);
+	});
+
+	it("requires users:assign_roles to assign roles", async () => {
+		// member@example.com has no management permissions at all.
+		const memberList = await api(admin, "/api/users?q=member");
+		const memberData = (await memberList.json()) as { users: { id: string }[] };
+		const memberId = memberData.users[0]!.id;
+
+		// Give member users:write only (not users:assign_roles).
+		const editorRole = await api(admin, "/api/roles", {
+			method: "POST",
+			body: { name: "user-editor", description: "", permissions: ["users:write"] },
+		});
+		expect(editorRole.status).toBe(200);
+
+		const put = await api(admin, "/api/users/" + memberId + "/roles", {
+			method: "PUT",
+			body: { roles: ["user", "user-editor"] },
+		});
+		expect(put.status).toBe(200);
+
+		// member now has users:write but must not be able to assign roles.
+		const escalation = await api(user, "/api/users/" + memberId + "/roles", {
+			method: "PUT",
+			body: { roles: ["user", "admin"] },
+		});
+		expect(escalation.status).toBe(403);
+
+		// Cleanup: restore member to just the user role.
+		await api(admin, "/api/users/" + memberId + "/roles", {
+			method: "PUT",
+			body: { roles: ["user"] },
+		});
+		const cleanup = await api(admin, "/api/roles");
+		const cleanupData = (await cleanup.json()) as { roles: { id: string; name: string }[] };
+		const userEditor = cleanupData.roles.find((r) => r.name === "user-editor")!;
+		await api(admin, "/api/roles/" + userEditor.id, { method: "DELETE" });
+	});
+
 	it("deletes a custom role", async () => {
 		const list = await api(admin, "/api/roles");
 		const data = (await list.json()) as { roles: { id: string; name: string }[] };

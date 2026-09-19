@@ -39,6 +39,7 @@ interface RoleRow {
 	id: string;
 	name: string;
 	description: string;
+	is_system: number;
 	created_at: string;
 	permissions?: string | null;
 	user_count?: number;
@@ -501,7 +502,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 	if (path === "/api/roles" && method === "GET") {
 		const list = await db
 			.prepare(
-				`SELECT r.id, r.name, r.description, r.created_at,
+				`SELECT r.id, r.name, r.description, r.is_system, r.created_at,
 					(SELECT GROUP_CONCAT(p.code, ',') FROM role_permission rp JOIN permission p ON p.id = rp.permission_id WHERE rp.role_id = r.id) AS permissions,
 					(SELECT COUNT(*) FROM user_role ur WHERE ur.role_id = r.id) AS user_count
 				FROM role r ORDER BY r.created_at ASC`,
@@ -540,9 +541,9 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 	if (match) {
 		const id = match[1];
 		const existing = await db
-			.prepare("SELECT id, name FROM role WHERE id = ?1")
+			.prepare("SELECT id, name, is_system FROM role WHERE id = ?1")
 			.bind(id)
-			.first<{ id: string; name: string }>();
+			.first<{ id: string; name: string; is_system: number }>();
 		if (!existing) return json({ error: "not_found" }, 404);
 		if (method === "PATCH") {
 			const body = await readJson(request);
@@ -550,6 +551,9 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 			const description = typeof body?.description === "string" ? body.description.trim() : undefined;
 			if (!/^[a-z][a-z0-9:_-]{1,63}$/i.test(name)) {
 				return json({ error: "invalid_name" }, 400);
+			}
+			if (existing.is_system && name !== existing.name) {
+				return json({ error: "builtin_role" }, 400);
 			}
 			try {
 				if (description === undefined) {
@@ -569,7 +573,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 			return json({ ok: true });
 		}
 		if (method === "DELETE") {
-			if (BUILTIN_ROLES.includes(existing.name)) {
+			if (existing.is_system) {
 				return json({ error: "builtin_role" }, 400);
 			}
 			await db.batch([
@@ -623,7 +627,12 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 }
 
 function routePermission(path: string, method: string): string | null {
-	if (path === "/api/users" || path.match(/^\/api\/users\/([a-z0-9-]+)(\/roles)?$/)) {
+	if (path.match(/^\/api\/users\/([a-z0-9-]+)\/roles$/)) {
+		// Assigning roles is authorization-granting and is governed by its own
+		// permission, separate from editing user attributes.
+		return "users:assign_roles";
+	}
+	if (path === "/api/users" || path.match(/^\/api\/users\/([a-z0-9-]+)$/)) {
 		return method === "GET" ? "users:read" : "users:write";
 	}
 	if (path === "/api/roles" || path.match(/^\/api\/roles\/([a-z0-9-]+)$/)) {
