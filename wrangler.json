@@ -3,6 +3,18 @@
 	"main": "src/index.ts",
 	"name": "openauth",
 	"upload_source_maps": true,
+	"secrets_store_secrets": [
+		{
+			"binding": "GITHUB_CLIENT_ID",
+			"store_id": "a60718ab09e44b49b77925e063df42dc",
+			"secret_name": "GITHUB_CLIENT_ID"
+		},
+		{
+			"binding": "GITHUB_CLIENT_SECRET",
+			"store_id": "a60718ab09e44b49b77925e063df42dc",
+			"secret_name": "GITHUB_CLIENT_SECRET"
+		}
+	],
 	"kv_namespaces": [
 		{
 			"binding": "AUTH_STORAGE",

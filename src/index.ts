@@ -19,7 +19,7 @@ const subjects = createSubjects({
 });
 
 export default {
-	fetch(request: Request, env: Env, ctx: ExecutionContext) {
+	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
 		// This top section is just for demo purposes. In a real setup another
 		// application would redirect the user to this Worker to be authenticated,
 		// and after signing in or registering the user would be redirected back to
@@ -41,6 +41,13 @@ export default {
 		}
 
 		// The real OpenAuth server code starts here:
+		// Secrets Store bindings return Promises; resolve them up front so the
+		// provider config receives plain strings.
+		const [clientID, clientSecret] = await Promise.all([
+			env.GITHUB_CLIENT_ID.get(),
+			env.GITHUB_CLIENT_SECRET.get(),
+		]);
+
 		return issuer({
 			storage: CloudflareStorage({
 				namespace: env.AUTH_STORAGE as CloudflareStorageOptions["namespace"],
@@ -61,11 +68,11 @@ export default {
 						},
 					}),
 				),
-			    github: GithubProvider({
-			      clientID: env.GITHUB_CLIENT_ID.get(),
-			      clientSecret: env.GITHUB_CLIENT_SECRET.get(),
-			      scopes: ["user:email"],
-			    }),
+				github: GithubProvider({
+					clientID,
+					clientSecret,
+					scopes: ["user:email"],
+				}),
 			},
 			theme: {
 				title: "myAuth",
@@ -78,13 +85,43 @@ export default {
 				},
 			},
 			success: async (ctx, value) => {
+				// The GitHub provider resolves to { provider, clientID, tokenset },
+				// so the email has to be looked up via the GitHub API.
+				const email =
+					value.provider === "github"
+						? await getGithubEmail(value.tokenset.access)
+						: value.email;
 				return ctx.subject("user", {
-					id: await getOrCreateUser(env, value.email),
+					id: await getOrCreateUser(env, email),
 				});
 			},
 		}).fetch(request, env, ctx);
 	},
 } satisfies ExportedHandler<Env>;
+
+async function getGithubEmail(accessToken: string): Promise<string> {
+	const response = await fetch("https://api.github.com/user/emails", {
+		headers: {
+			Authorization: `Bearer ${accessToken}`,
+			Accept: "application/vnd.github+json",
+			"User-Agent": "openauth-worker",
+		},
+	});
+	if (!response.ok) {
+		throw new Error(`Unable to fetch GitHub emails: ${response.status}`);
+	}
+	const emails = (await response.json()) as {
+		email: string;
+		primary: boolean;
+		verified: boolean;
+	}[];
+	// Prefer the primary verified email, then any verified email.
+	const primary = emails.find((e) => e.primary && e.verified) ?? emails.find((e) => e.verified);
+	if (!primary) {
+		throw new Error("No verified GitHub email available");
+	}
+	return primary.email;
+}
 
 async function getOrCreateUser(env: Env, email: string): Promise<string> {
 	const result = await env.AUTH_DB.prepare(
