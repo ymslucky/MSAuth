@@ -41,11 +41,27 @@ OpenAuth authentication server deployed on Cloudflare Workers (KV + D1 + Secrets
 - `src/index.ts` — Worker entry: OpenAuth issuer (password + GitHub providers),
   admin OAuth login flow (`/admin/login|callback|logout`), management API
   (`/api/users`, `/api/roles`, `/api/permissions`, `/api/me`).
-- `src/admin.ts` — Admin console single-page app served at `/admin`. Keep this
-  file free of backticks and `${}` (it is itself a template string).
+- `src/admin.ts` — Admin console single-page app served at `/admin` via
+  `renderAdminHtml(nonce)` (nonce-based CSP). Keep this file free of
+  backticks; the only template interpolation is the server-generated nonce.
 - RBAC model: `role`, `permission`, `user_role`, `role_permission` tables.
   Permissions are enforced per-request from the DB; the issued subject JWT
   carries a `roles` claim. The first user to sign in is bootstrapped as admin.
 - Secrets Store bindings (`SecretsStoreSecret`) resolve through
-  `resolveGitHubCredentials`, which degrades gracefully when the store is
-  unavailable so password login and the admin console keep working.
+  `readSecret`/`resolveGitHubCredentials`, which degrade gracefully when the
+  store is unavailable so password login and the admin console keep working.
+- Admin identity: `ADMIN_EMAIL` (comma-separated, case-insensitive) is the
+  single source of truth for the admin role, re-asserted on every login.
+  There is no first-user promotion.
+- Admin sessions: the browser holds an opaque `__Host-admin_session` id
+  backed by the `admin_sessions` D1 table (7 day absolute expiry, revocable
+  by row delete on logout). Access tokens are 1 hour.
+- `issuer({ allow })` whitelists only the admin-ui client and its exact
+  redirect URI; template demo routes are removed.
+- Brute force: /password/* POSTs are rate limited per IP via the
+  RATE_LIMITER binding (60/60s).
+- Registration: KV flag `config:registration` (default on). When off,
+  logins that would create a new user are rejected; existing users and
+  allowlisted admins keep working.
+- Audit: every management mutation writes `audit_log`; read via
+  `GET /api/audit` (audit:read permission).
