@@ -23,9 +23,10 @@ const subjects = createSubjects({
 });
 
 const ADMIN_CLIENT_ID = "admin-ui";
-const SESSION_COOKIE = "admin_session";
-const OAUTH_STATE_COOKIE = "admin_oauth";
+const SESSION_COOKIE = "__Host-admin_session";
+const OAUTH_STATE_COOKIE = "__Host-admin_oauth";
 const BUILTIN_ROLES = ["admin", "user"];
+const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 interface UserRow {
 	id: string;
@@ -76,7 +77,7 @@ export default {
 		} else if (url.pathname === "/admin/callback") {
 			return handleAdminCallback(request, env, ctx, app);
 		} else if (url.pathname === "/admin/logout") {
-			return handleAdminLogout(request);
+			return handleAdminLogout(request, env);
 		} else if (url.pathname.startsWith("/api/")) {
 			return handleApi(request, env);
 		}
@@ -153,6 +154,10 @@ async function createIssuer(env: Env) {
 	return issuer({
 		storage: createStorage(env),
 		subjects,
+		ttl: {
+			access: 60 * 60,
+			refresh: 30 * 24 * 60 * 60,
+		},
 		// Only pre-registered clients may start authorization flows, and only
 		// with their exact redirect URI.
 		allow: async (input, req) => {
@@ -319,14 +324,26 @@ async function handleAdminCallback(
 		return fail;
 	}
 
-	const maxAge = Math.min(Math.floor(tokens.expires_in ?? 86400), 7 * 86400);
+	// The access token is only used to identify the user; the browser gets an
+	// opaque server-side session id that can be revoked independently.
+	const payload = await verifyAccessToken(env, tokens.access_token);
+	const sessionId = randomToken();
+	await env.AUTH_DB.prepare(
+		"INSERT INTO admin_sessions (id, user_id, expires_at) VALUES (?1, ?2, datetime('now', ?3))",
+	)
+		.bind(sessionId, payload.properties.id, `+${SESSION_TTL_SECONDS} seconds`)
+		.run();
 	return redirect(new URL("/admin", url.origin), [
 		setCookieValue(OAUTH_STATE_COOKIE, "", 0),
-		setCookieValue(SESSION_COOKIE, tokens.access_token, maxAge),
+		setCookieValue(SESSION_COOKIE, sessionId, SESSION_TTL_SECONDS),
 	]);
 }
 
-function handleAdminLogout(request: Request): Response {
+function handleAdminLogout(request: Request, env: Env): Response {
+	const sessionId = getCookie(request, SESSION_COOKIE);
+	if (sessionId) {
+		env.AUTH_DB.prepare("DELETE FROM admin_sessions WHERE id = ?1").bind(sessionId).run();
+	}
 	return redirect(new URL("/admin/login", new URL(request.url).origin), [
 		setCookieValue(SESSION_COOKIE, "", 0),
 	]);
@@ -626,16 +643,15 @@ async function authenticate(
 	env: Env,
 	request: Request,
 ): Promise<{ userId: string } | null> {
-	const token = getCookie(request, SESSION_COOKIE);
-	if (!token) return null;
-	try {
-		const payload = await verifyAccessToken(env, token);
-		if (payload.mode !== "access" || payload.type !== "user") return null;
-		const id = payload.properties?.id;
-		return id ? { userId: id } : null;
-	} catch {
-		return null;
-	}
+	const sessionId = getCookie(request, SESSION_COOKIE);
+	if (!sessionId) return null;
+	const session = await env.AUTH_DB.prepare(
+		`SELECT user_id FROM admin_sessions
+		WHERE id = ?1 AND expires_at > CURRENT_TIMESTAMP`,
+	)
+		.bind(sessionId)
+		.first<{ user_id: string }>();
+	return session ? { userId: session.user_id } : null;
 }
 
 async function verifyAccessToken(

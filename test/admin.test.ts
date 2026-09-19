@@ -32,7 +32,7 @@ describe("admin authentication flow", () => {
 		expect(location.searchParams.get("code_challenge")).toBeTruthy();
 		expect(location.searchParams.get("state")).toBeTruthy();
 		const setCookies = res.headers.getSetCookie?.() ?? [];
-		expect(setCookies.some((c) => c.startsWith("admin_oauth="))).toBe(true);
+		expect(setCookies.some((c) => c.startsWith("__Host-admin_oauth="))).toBe(true);
 	});
 
 	it("rejects /admin/callback with a mismatched state", async () => {
@@ -134,6 +134,36 @@ describe("admin authentication flow", () => {
 		expect(callback.status).toBe(404);
 	});
 
+	it("issues an opaque server-side session cookie, not a JWT", async () => {
+		const jar = await registerUserViaPassword("opaque@example.com", "password123");
+		const cookie = jar.header();
+		// JWTs contain two dots (header.payload.signature); session ids do not.
+		expect(cookie).toContain("__Host-admin_session=");
+		const value = cookie.split("__Host-admin_session=")[1] ?? "";
+		expect(value).not.toContain(".");
+		expect(value.length).toBeGreaterThan(30);
+	});
+
+	it("revokes the session server-side on logout", async () => {
+		const jar = await registerUserViaPassword("revoke@example.com", "password123");
+		// Session works before logout.
+		const before = await SELF.fetch(ORIGIN + "/api/me", {
+			headers: { cookie: jar.header() },
+		});
+		expect(before.status).toBe(200);
+
+		// Simulate a stolen cookie: replay it after logout.
+		const stolen = jar.header();
+		await SELF.fetch(ORIGIN + "/admin/logout", {
+			headers: { cookie: jar.header() },
+			redirect: "manual",
+		});
+		const after = await SELF.fetch(ORIGIN + "/api/me", {
+			headers: { cookie: stolen },
+		});
+		expect(after.status).toBe(401);
+	});
+
 	it("clears the session cookie on logout", async () => {
 		const jar = await registerUserViaPassword("logout@example.com", "password123");
 		const res = await SELF.fetch(ORIGIN + "/admin/logout", {
@@ -143,7 +173,7 @@ describe("admin authentication flow", () => {
 		expect(res.status).toBe(302);
 		const cleared = res.headers
 			.getSetCookie?.()
-			.some((c) => c.startsWith("admin_session=;"));
+			.some((c) => c.startsWith("__Host-admin_session=;"));
 		expect(cleared).toBe(true);
 	});
 });

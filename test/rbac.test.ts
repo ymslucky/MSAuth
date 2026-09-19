@@ -164,7 +164,7 @@ describe("user management", () => {
 	it("deletes a regular user", async () => {
 		// Register a disposable user via the public flow, then delete it.
 		const temp = await registerUserViaPassword("temp@example.com", "password123");
-		expect(temp.has("admin_session")).toBe(true);
+		expect(temp.has("__Host-admin_session")).toBe(true);
 		const list = await api(admin, "/api/users?q=temp@");
 		const data = (await list.json()) as { users: { id: string }[] };
 		const id = data.users[0]!.id;

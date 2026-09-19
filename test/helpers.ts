@@ -1,6 +1,7 @@
 import { env, SELF } from "cloudflare:test";
 import migration0001 from "../migrations/0001_create_user_table.sql?raw";
 import migration0002 from "../migrations/0002_create_rbac.sql?raw";
+import migration0003 from "../migrations/0003_create_admin_sessions.sql?raw";
 
 export const ORIGIN = "https://example.com";
 
@@ -24,7 +25,7 @@ function toStatements(sql: string): string[] {
 
 /** Apply every D1 migration to the test database. */
 export async function applyMigrations(): Promise<void> {
-	for (const migration of [migration0001, migration0002]) {
+	for (const migration of [migration0001, migration0002, migration0003]) {
 		const statements = toStatements(migration).map((statement) =>
 			env.AUTH_DB.prepare(statement),
 		);
@@ -137,7 +138,7 @@ export async function registerUserViaPassword(
 		redirect: "manual",
 	});
 	jar.absorb(callbackRes);
-	if (!jar.has("admin_session")) {
+	if (!jar.has("__Host-admin_session")) {
 		throw new Error("admin_session cookie was not set after the callback");
 	}
 	return jar;
