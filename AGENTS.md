@@ -38,6 +38,25 @@ OpenAuth authentication server deployed on Cloudflare Workers (KV + D1 + Secrets
 
 ## Architecture
 
+Modular layout under `src/` (keep it that way — one responsibility per
+module, single-direction dependencies, no cycles):
+
+- `index.ts` — worker entry: rate limiting + top-level routing only
+- `http.ts` — pure HTTP helpers; `constants.ts` — shared constants
+- `storage.ts` — KV adapter wrapper (TTL clamp); `subjects.ts` — subject schema
+- `github.ts` — GitHub API client
+- `secrets.ts` — secret reading (Secrets Store | string), ADMIN_EMAIL allowlist
+- `sessions.ts` / `tokens.ts` — admin session lifecycle / JWT verification
+- `users.ts` — user domain logic (signup, roles, last-admin protection)
+- `authz.ts` — permission checks (hasPermission, permission codes)
+- `audit.ts` — audit writer
+- `issuer.ts` — OpenAuth issuer factory (allow whitelist, ttl, providers)
+- `admin-flow.ts` — admin OAuth browser flow handlers
+- `api/` — management API: `router.ts` (dispatch table + authz), one module
+  per resource (`users.ts`, `roles.ts`, `permissions.ts`, `audit.ts`); each
+  exports `register*Routes(): ApiRoute[]` — add endpoints by adding table
+  entries, not by editing the dispatcher
+
 - `src/index.ts` — Worker entry: OpenAuth issuer (password + GitHub providers),
   admin OAuth login flow (`/admin/login|callback|logout`), management API
   (`/api/users`, `/api/roles`, `/api/permissions`, `/api/me`).
