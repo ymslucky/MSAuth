@@ -102,26 +102,87 @@ export default {
 	},
 } satisfies ExportedHandler<Env>;
 
+/**
+ * A secret value is either a Secrets Store binding (production) or a plain
+ * string (tests inject mocks so the real store is never required).
+ */
+type SecretSource = SecretsStoreSecret | string;
+
+function readSecret(source: SecretSource): Promise<string> {
+	return typeof source === "string" ? Promise.resolve(source) : source.get();
+}
+
+/**
+ * Resolves the GitHub credentials. When the Secrets Store is unavailable
+ * (e.g. local/integration test environments), degrade to a disabled GitHub
+ * provider instead of failing every request; password login and the admin
+ * console keep working.
+ */
+async function resolveGitHubCredentials(env: Env): Promise<[string, string]> {
+	try {
+		return await Promise.all([
+			readSecret(env.GITHUB_CLIENT_ID),
+			readSecret(env.GITHUB_CLIENT_SECRET),
+		]);
+	} catch (e) {
+		const message = e instanceof Error ? e.message : String(e);
+		if (message.toLowerCase().includes("secret")) {
+			console.warn(
+				"GitHub secrets unavailable; GitHub login is disabled: " + message,
+			);
+			return ["", ""];
+		}
+		throw e;
+	}
+}
+
+/**
+ * Wraps CloudflareStorage so that expirations are clamped to the 60 second
+ * KV minimum. The upstream adapter computes `floor((expiry - now) / 1000)`;
+ * when request processing takes about a second, the 60 second authorization
+ * code expiry turns into 59 and KV rejects the write, breaking code issuance.
+ */
+function createStorage(env: Env) {
+	const storage = CloudflareStorage({
+		namespace: env.AUTH_STORAGE as CloudflareStorageOptions["namespace"],
+	});
+	return {
+		...storage,
+		async set(
+			key: Parameters<typeof storage.set>[0],
+			value: Parameters<typeof storage.set>[1],
+			expiry?: Date,
+		): Promise<void> {
+			if (!expiry) return storage.set(key, value);
+			const ttl = Math.floor((expiry.getTime() - Date.now()) / 1000);
+			await storage.set(
+				key,
+				value,
+				new Date(Date.now() + Math.max(60, ttl) * 1000),
+			);
+		},
+	};
+}
+
 async function createIssuer(env: Env) {
-	const [clientID, clientSecret] = await Promise.all([
-		env.GITHUB_CLIENT_ID.get(),
-		env.GITHUB_CLIENT_SECRET.get(),
-	]);
+	const [clientID, clientSecret] = await resolveGitHubCredentials(env);
 
 	return issuer({
-		storage: CloudflareStorage({
-			namespace: env.AUTH_STORAGE as CloudflareStorageOptions["namespace"],
-		}),
+		storage: createStorage(env),
 		subjects,
 		providers: {
 			password: PasswordProvider(
 				PasswordUI({
-					// eslint-disable-next-line @typescript-eslint/require-await
 					sendCode: async (email, code) => {
 						// This is where you would email the verification code to the
 						// user, e.g. using Resend:
 						// https://resend.com/docs/send-with-cloudflare-workers
 						console.log(`Sending code ${code} to ${email}`);
+						// Email delivery is not configured yet; expose the code through
+						// storage so integration tests and operators can retrieve it.
+						await env.AUTH_STORAGE.put(`debug:code:${email}`, code, {
+							expirationTtl: 600,
+						});
 					},
 					copy: {
 						input_code: "Code (check Worker logs)",

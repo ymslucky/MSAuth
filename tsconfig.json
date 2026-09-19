@@ -4,12 +4,12 @@
 		"lib": ["esnext"],
 		"module": "esnext",
 		"moduleResolution": "bundler",
-		"types": ["./worker-configuration.d.ts"],
+		"types": ["./worker-configuration.d.ts", "@cloudflare/vitest-pool-workers/types"],
 		"noEmit": true,
 		"isolatedModules": true,
 		"forceConsistentCasingInFileNames": true,
 		"skipLibCheck": true,
 		"strict": true
 	},
-	"include": ["src"]
+	"include": ["src", "test"]
 }

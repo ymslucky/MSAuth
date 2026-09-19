@@ -20,7 +20,9 @@
 		"valibot": "1.2.0"
 	},
 	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.22.0",
 		"typescript": "5.9.3",
+		"vitest": "^4.1.11",
 		"wrangler": "4.127.0"
 	},
 	"private": true,
@@ -30,5 +32,10 @@
 		"deploy": "wrangler deploy",
 		"dev": "wrangler dev",
 		"predeploy": "wrangler d1 migrations apply AUTH_DB --remote"
+	},
+	"allowScripts": {
+		"workerd@1.20260815.1": true,
+		"workerd@1.20260826.1": true,
+		"esbuild@0.28.1": true
 	}
 }
