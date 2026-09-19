@@ -1,53 +1,35 @@
-# OpenAuth Server
+# MSAuth
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/templates/tree/main/openauth-template)
+自托管身份认证服务（OpenAuth on Cloudflare Workers）。
 
-![OpenAuth Template Preview](https://imagedelivery.net/wSMYJvS3Xw-n339CbDyDIA/b2ff10c6-8f7c-419f-8757-e2ccf1c84500/public)
+基于 [OpenAuth](https://openauth.js.org/) 构建，部署于 Cloudflare Workers，
+为应用提供 OAuth 2.0 / OIDC 认证能力，并内置 RBAC 权限的管理控制台。
 
-<!-- dash-content-start -->
+## 功能
 
-[OpenAuth](https://openauth.js.org/) is a universal provider for managing user authentication. By deploying OpenAuth on Cloudflare Workers, you can add scalable authentication to your application. This demo showcases login, user registration, and password reset, with storage and state powered by [D1](https://developers.cloudflare.com/d1/) and [KV](https://developers.cloudflare.com/kv/). [Observability](https://developers.cloudflare.com/workers/observability/logs/workers-logs/#enable-workers-logs) is on by default.
+- **认证方式**：GitHub OAuth、邮箱密码（需自行接入邮件服务）
+- **RBAC 权限**：角色 / 权限 / 用户-角色 / 角色-权限 完整模型，管理界面可视化操作
+- **管理控制台**：`/admin`（通过本服务自身 OAuth 登录，`ADMIN_EMAIL` 白名单授予管理员）
+- **安全**：PKCE、服务端可吊销会话、按 IP 限速、nonce CSP、审计日志、声明式自愈 schema
+- **客户端集成**：subject JWT 携带 `roles` 声明；发现端点 `/.well-known/openid-configuration`
 
-> [!IMPORTANT]
-> When using C3 to create this project, select "no" when it asks if you want to deploy. You need to follow this project's [setup steps](https://github.com/cloudflare/templates/tree/main/openauth-template#setup-steps) before deploying.
+## 技术栈
 
-<!-- dash-content-end -->
+Cloudflare Workers · Hono · D1 · KV · Secrets Store · Vitest（workerd 集成测试）
 
-## Getting Started
+## 开发
 
-Outside of this repo, you can start a new project with this template using [C3](https://developers.cloudflare.com/pages/get-started/c3/) (the `create-cloudflare` CLI):
-
-```bash
-npm create cloudflare@latest -- --template=cloudflare/templates/openauth-template
+```powershell
+npm install
+npm test          # 55+ 集成测试
+npm run check     # tsc + wrangler deploy --dry-run
 ```
 
-A live public deployment of this template is available at [https://openauth-template.templates.workers.dev](https://openauth-template.templates.workers.dev)
+## 部署
 
-## Setup Steps
+Git 连接 Cloudflare Workers Builds，推送即自动部署
+（`predeploy` 应用 D1 迁移；Worker 冷启动时 `ensureSchema` 自动对账 schema）。
 
-1. Install the project dependencies with a package manager of your choice:
-   ```bash
-   npm install
-   ```
-2. Create a [D1 database](https://developers.cloudflare.com/d1/get-started/) with the name "openauth-template-auth-db":
-   ```bash
-   npx wrangler d1 create openauth-template-auth-db
-   ```
-   ...and update the `database_id` field in `wrangler.json` with the new database ID.
-3. Run the following db migration to initialize the database (notice the `migrations` directory in this project):
-   ```bash
-   npx wrangler d1 migrations apply --remote openauth-template-auth-db
-   ```
-4. Create a [kv namespace](https://developers.cloudflare.com/kv/get-started/) with a binding named "AUTH_STORAGE":
-   ```bash
-   npx wrangler kv namespace create AUTH_STORAGE
-   ```
-   ...and update the `kv_namespaces` -> `id` field in `wrangler.json` with the new namespace ID.
-5. Deploy the project!
-   ```bash
-   npx wrangler deploy
-   ```
-6. And monitor your worker
-   ```bash
-   npx wrangler tail
-   ```
+必需配置（Secrets Store）：`GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`、`ADMIN_EMAIL`。
+
+详细开发规范见 [AGENTS.md](AGENTS.md)。

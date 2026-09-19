@@ -1,4 +1,4 @@
-# MSAuth (openauth) — Development Guide
+# MSAuth — Development Guide
 
 OpenAuth authentication server deployed on Cloudflare Workers (KV + D1 + Secrets Store).
 

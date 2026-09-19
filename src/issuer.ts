@@ -65,7 +65,7 @@ export async function createIssuer(env: Env) {
 			}),
 		},
 		theme: {
-			title: "myAuth",
+			title: "MSAuth",
 			primary: "#0051c3",
 			favicon: "https://workers.cloudflare.com//favicon.ico",
 			logo: {

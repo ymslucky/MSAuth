@@ -162,6 +162,17 @@ describe("admin authentication flow", () => {
 		expect(after.status).toBe(401);
 	});
 
+	it("avoids inline event handlers (CSP nonce blocks them)", async () => {
+		const jar = await registerUserViaPassword("csp@example.com", "password123");
+		const res = await SELF.fetch(ORIGIN + "/admin", {
+			headers: { cookie: jar.header() },
+		});
+		const html = await res.text();
+		// Inline onclick attributes are blocked by the nonce-based CSP, so
+		// the console must rely on delegated event listeners only.
+		expect(html).not.toContain("onclick=");
+	});
+
 	it("clears the session cookie on logout", async () => {
 		const jar = await registerUserViaPassword("logout@example.com", "password123");
 		const res = await SELF.fetch(ORIGIN + "/admin/logout", {

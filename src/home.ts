@@ -9,7 +9,7 @@ export function renderHomePage(): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>myAuth · 身份认证服务</title>
+<title>MSAuth · 身份认证服务</title>
 <style>
   :root {
     --bg: #f6f7f9; --card: #ffffff; --border: #e4e7ec; --text: #1a2233;
@@ -58,7 +58,7 @@ export function renderHomePage(): string {
 <body>
 <main class="card">
   <div class="logo">M</div>
-  <h1>myAuth</h1>
+  <h1>MSAuth</h1>
   <p class="sub">自托管身份认证服务</p>
   <span class="status"><span class="dot"></span>服务运行中</span>
   <nav class="links">
@@ -73,7 +73,7 @@ export function renderHomePage(): string {
     <code>GET /github/authorize</code>
     <code>GET /password/authorize</code>
   </div>
-  <footer>myAuth · OpenAuth on Cloudflare Workers</footer>
+  <footer>MSAuth · OpenAuth on Cloudflare Workers</footer>
 </main>
 </body>
 </html>`;

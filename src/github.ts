@@ -5,7 +5,7 @@ export async function getGithubEmail(accessToken: string): Promise<string> {
 		headers: {
 			Authorization: `Bearer ${accessToken}`,
 			Accept: "application/vnd.github+json",
-			"User-Agent": "openauth-worker",
+			"User-Agent": "msauth-worker",
 		},
 	});
 	if (!response.ok) {

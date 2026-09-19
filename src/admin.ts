@@ -12,7 +12,7 @@ export function renderAdminHtml(nonce: string): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>管理控制台 · myAuth</title>
+<title>管理控制台 · MSAuth</title>
 <style>
   :root {
     --bg: #f6f7f9; --card: #ffffff; --border: #e4e7ec; --text: #1a2233;
@@ -111,8 +111,8 @@ export function renderAdminHtml(nonce: string): string {
 </head>
 <body>
 <header>
-  <div class="brand">myAuth <span>管理控制台</span></div>
-  <div class="whoami"><span id="whoami"></span><button class="btn small" onclick="logout()">退出登录</button></div>
+  <div class="brand">MSAuth <span>管理控制台</span></div>
+  <div class="whoami"><span id="whoami"></span><button class="btn small" data-action="logout">退出登录</button></div>
 </header>
 <nav id="nav">
   <button data-tab="users" class="active">用户</button>
@@ -192,7 +192,6 @@ export function renderAdminHtml(nonce: string): string {
   }
 
   function closeModal() { $("modal-root").innerHTML = ""; }
-  window.closeModal = closeModal;
 
   function openModal(html) {
     $("modal-root").innerHTML =
@@ -208,6 +207,29 @@ export function renderAdminHtml(nonce: string): string {
     var id = el.getAttribute("data-id") || "";
     if (action === "overlay-close" && e.target !== el) return;
     if (action === "overlay-close") { closeModal(); return; }
+    if (action === "close-modal") { closeModal(); return; }
+    if (action === "logout") { location.href = "/admin/logout"; return; }
+    if (action === "do-search") {
+      var q = $("search") ? $("search").value.trim() : "";
+      state.q = q; state.page = 1; loadUsers(); return;
+    }
+    if (action === "goto-page") {
+      var delta = parseInt(el.getAttribute("data-delta"), 10) || 0;
+      var next = state.page + delta;
+      if (next >= 1 && next <= totalPages()) { state.page = next; loadUsers(); }
+      return;
+    }
+    if (action === "add-permission") {
+      var body = {
+        code: $("perm-code").value.trim(),
+        description: $("perm-desc").value.trim()
+      };
+      if (!body.code) { toast("请输入权限码", true); return; }
+      api("/api/permissions", { method: "POST", body: JSON.stringify(body) })
+        .then(function () { toast("权限已新增"); loadPermissions(); })
+        .catch(fail);
+      return;
+    }
     if (action === "start-edit-email") { state.editId = id; renderUsers(); return; }
     if (action === "cancel-edit-email") { state.editId = null; renderUsers(); return; }
     if (action === "save-edit-email") {
@@ -332,28 +354,17 @@ export function renderAdminHtml(nonce: string): string {
       '<div class="card">' +
       '<div class="toolbar">' +
       '<input type="text" id="search" placeholder="按邮箱搜索" value="' + esc(state.q) + '">' +
-      '<button class="btn" onclick="doSearch()">搜索</button>' +
+      '<button class="btn" data-action="do-search">搜索</button>' +
       '<span class="count">共 ' + state.total + " 位用户</span>" +
       "</div>" +
       "<table><thead><tr><th>邮箱</th><th>角色</th><th>创建时间</th><th></th></tr></thead><tbody>" + rows + "</tbody></table>" +
       '<div class="pager">' +
-      '<button class="btn small" onclick="gotoPage(-1)"' + (state.page <= 1 ? " disabled" : "") + ">上一页</button>" +
+      '<button class="btn small" data-action="goto-page" data-delta="-1"' + (state.page <= 1 ? " disabled" : "") + ">上一页</button>" +
       '<span class="muted">第 ' + state.page + " / " + totalPages() + " 页</span>" +
-      '<button class="btn small" onclick="gotoPage(1)"' + (state.page >= totalPages() ? " disabled" : "") + ">下一页</button>" +
+      '<button class="btn small" data-action="goto-page" data-delta="1"' + (state.page >= totalPages() ? " disabled" : "") + ">下一页</button>" +
       "</div></div>";
   }
 
-  window.doSearch = function () {
-    state.q = $("search").value.trim();
-    state.page = 1;
-    loadUsers();
-  };
-  window.gotoPage = function (delta) {
-    var next = state.page + delta;
-    if (next < 1 || next > totalPages()) return;
-    state.page = next;
-    loadUsers();
-  };
 
   function openAssign(id) {
     var user = null;
@@ -369,7 +380,7 @@ export function renderAdminHtml(nonce: string): string {
       "<h3>分配角色</h3>" +
       '<p class="muted">' + esc(user.email) + "</p>" +
       '<div class="checklist">' + checks + "</div>" +
-      '<div class="footer"><button class="btn" onclick="closeModal()">取消</button>' +
+      '<div class="footer"><button class="btn" data-action="close-modal">取消</button>' +
       '<button class="btn primary" data-action="submit-assign" data-id="' + esc(id) + '">保存</button></div>'
     );
   }
@@ -434,7 +445,7 @@ export function renderAdminHtml(nonce: string): string {
       '<label>描述</label><input type="text" id="role-desc" value="' + esc(role ? role.description : "") + '">' +
       "<label>权限</label>" +
       '<div class="checklist">' + checks + "</div>" +
-      '<div class="footer"><button class="btn" onclick="closeModal()">取消</button>' +
+      '<div class="footer"><button class="btn" data-action="close-modal">取消</button>' +
       '<button class="btn primary" data-action="submit-role"' + (role ? ' data-id="' + esc(role.id) + '"' : "") + ">保存</button></div>"
     );
   }
@@ -463,23 +474,15 @@ export function renderAdminHtml(nonce: string): string {
       '<div class="inlineform">' +
       '<input type="text" id="perm-code" class="code" placeholder="resource:action">' +
       '<input type="text" id="perm-desc" placeholder="权限描述" style="flex:1">' +
-      '<button class="btn primary" onclick="addPermission()">新增权限</button>' +
+      '<button class="btn primary" data-action="add-permission">新增权限</button>' +
       "</div>" +
       "<table><thead><tr><th>权限码</th><th>描述</th><th></th></tr></thead><tbody>" + rows + "</tbody></table>" +
       "</div>";
   }
 
-  window.addPermission = function () {
-    var body = { code: $("perm-code").value.trim(), description: $("perm-desc").value.trim() };
-    if (!body.code) { toast("请输入权限码", true); return; }
-    api("/api/permissions", { method: "POST", body: JSON.stringify(body) })
-      .then(function () { toast("权限已新增"); loadPermissions(); })
-      .catch(fail);
-  };
 
   /* ---------------- boot ---------------- */
 
-  window.logout = function () { location.href = "/admin/logout"; };
 
   Promise.all([api("/api/me"), api("/api/roles"), api("/api/permissions")])
     .then(function (results) {
