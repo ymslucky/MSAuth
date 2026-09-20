@@ -1,3 +1,4 @@
+import { FAVICON_DATA_URI } from "./favicon";
 import {
 	randomToken,
 	redirect,
@@ -75,6 +76,7 @@ export async function handleLoginPage(
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>登录 · MSAuth</title>
+	<link rel="icon" href="${FAVICON_DATA_URI}">
 <style>
   :root {
     --paper: #fbf7ee; --card: #fffdf6; --ink: #33302a; --ink-soft: #7a7062;

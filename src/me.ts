@@ -1,3 +1,4 @@
+import { FAVICON_DATA_URI } from "./favicon";
 /**
  * Public "signed in" page for regular (non-admin) users: shows who they are
  * and lets them sign out. Hand-drawn sketch style, zero scripts.
@@ -21,6 +22,7 @@ export function renderMePage(opts: { email: string; roles: string[] }): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
+	<link rel="icon" href="${FAVICON_DATA_URI}">
 <title>我的账户 · MSAuth</title>
 <style>
   :root {

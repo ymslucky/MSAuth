@@ -1,3 +1,4 @@
+import { FAVICON_DATA_URI } from "./favicon";
 /**
  * Public homepage for the auth server. Fully static: no scripts, no query
  * parameter reflection, strict CSP. Hand-drawn sketch design system.
@@ -9,6 +10,7 @@ export function renderHomePage(): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
+	<link rel="icon" href="${FAVICON_DATA_URI}">
 <title>MSAuth · 身份认证服务</title>
 <style>
   :root {

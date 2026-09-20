@@ -11,6 +11,7 @@ import {
 import apiApp from "./api/router";
 import { json, redirect } from "./http";
 import { renderHomePage } from "./home";
+import { faviconResponse } from "./favicon";
 
 /**
  * Worker entry point. Request routing only — authentication flows live in
@@ -64,6 +65,9 @@ async function handleRequest(
 	const app = await createIssuer(env);
 
 	// Public homepage: static, no scripts, no parameter reflection.
+	if (url.pathname === "/favicon.ico") {
+		return faviconResponse();
+	}
 	if (url.pathname === "/") {
 		return new Response(renderHomePage(), {
 			headers: {

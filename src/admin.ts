@@ -1,3 +1,4 @@
+import { FAVICON_DATA_URI } from "./favicon";
 /**
  * Admin console single-page app served at /admin.
  * Plain HTML/CSS/JS with no build step; keep this file free of backticks and
@@ -12,6 +13,7 @@ export function renderAdminHtml(nonce: string): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
+	<link rel="icon" href="${FAVICON_DATA_URI}">
 <title>管理控制台 · MSAuth</title>
 <style>
   :root {
