@@ -150,7 +150,7 @@ export function renderAdminHtml(nonce: string): string {
       <button data-tab="roles"><span class="ico">🏷️</span>角色管理</button>
       <button data-tab="permissions"><span class="ico">🔑</span>权限管理</button>
   <button data-tab="keys"><span class="ico">🔑</span>API 密钥</button>
-  <button data-tab="keys"><span class="ico">🔑</span>API 密钥</button>
+  <button data-tab="audit"><span class="ico">📋</span>审计日志</button>
     </nav>
     <div class="side-foot">
       <div class="whoami" id="whoami"></div>
@@ -164,6 +164,7 @@ export function renderAdminHtml(nonce: string): string {
       <section id="tab-roles" hidden></section>
       <section id="tab-permissions" hidden></section>
     <section id="tab-keys" hidden></section>
+    <section id="tab-audit" hidden></section>
     </main>
   </div>
 </div>
@@ -348,6 +349,7 @@ export function renderAdminHtml(nonce: string): string {
     else if (tab === "roles") loadRoles();
     else if (tab === "permissions") loadPermissions();
     else if (tab === "keys") loadApiKeys();
+    else if (tab === "audit") loadAuditEntries();
   }
 
   $("nav").addEventListener("click", function (e) {
@@ -524,6 +526,27 @@ export function renderAdminHtml(nonce: string): string {
       "</div>";
   }
 
+
+  /* ---------------- audit log ---------------- */
+
+  function loadAuditEntries() {
+    api("/api/audit").then(function (data) {
+      renderAudit(data.entries);
+    }).catch(fail);
+  }
+
+  function renderAudit(entries) {
+    var rows = "";
+    if (!entries.length) { rows = "<tr><td colspan="4" class="empty">暂无审计记录</td></tr>"; }
+    for (var i = 0; i < entries.length; i++) {
+      var e = entries[i];
+      rows += "<tr><td>" + esc(e.actor_email) + "</td><td><span class="chip mono">" + esc(e.action) + "</span></td><td>" + esc(e.detail || "") + "</td><td class="muted">" + esc(e.created_at) + "</td></tr>";
+    }
+    $("tab-audit").innerHTML =
+      "<div class="card">" +
+      "<div class="toolbar"><span class="count">共 " + entries.length + " 条记录</span></div>" +
+      "<table><thead><tr><th>操作人</th><th>操作</th><th>详情</th><th></th></tr><thead><tbody>" + rows + "</tbody></table></div>";
+  }
 
   /* ---------------- boot ---------------- */
 
