@@ -149,6 +149,8 @@ export function renderAdminHtml(nonce: string): string {
       <button data-tab="users" class="active"><span class="ico">👤</span>用户管理</button>
       <button data-tab="roles"><span class="ico">🏷️</span>角色管理</button>
       <button data-tab="permissions"><span class="ico">🔑</span>权限管理</button>
+  <button data-tab="keys"><span class="ico">🔑</span>API 密钥</button>
+  <button data-tab="keys"><span class="ico">🔑</span>API 密钥</button>
     </nav>
     <div class="side-foot">
       <div class="whoami" id="whoami"></div>
@@ -161,6 +163,7 @@ export function renderAdminHtml(nonce: string): string {
       <section id="tab-users"></section>
       <section id="tab-roles" hidden></section>
       <section id="tab-permissions" hidden></section>
+    <section id="tab-keys" hidden></section>
     </main>
   </div>
 </div>
