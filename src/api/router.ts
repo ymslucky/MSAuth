@@ -2,11 +2,13 @@ import { json } from "../http";
 import { ApiError } from "../errors";
 import { authenticate } from "../sessions";
 import { hasPermission, getUserPermissionCodes } from "../authz";
+import { authenticateApiKey } from "../authz";
 import { getUserRoleNames } from "../users";
 import { registerUserRoutes } from "./users";
 import { registerRoleRoutes } from "./roles";
 import { registerPermissionRoutes } from "./permissions";
 import { registerAuditRoutes } from "./audit";
+import { registerApiKeyRoutes } from "./keys";
 
 export interface ApiContext {
 	request: Request;
@@ -30,6 +32,7 @@ const routes: ApiRoute[] = [
 	...registerRoleRoutes(),
 	...registerPermissionRoutes(),
 	...registerAuditRoutes(),
+	...registerApiKeyRoutes(),
 ];
 
 /**
@@ -43,33 +46,47 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
 	const method = request.method;
 	const db = env.AUTH_DB;
 
-	// Any signed-in user may inspect their own identity.
+	// Identity: session cookie first, then Bearer API key.
+	let userId: string;
+	let keyScopes: Set<string> | null = null;
+	const session = await authenticate(db, request);
+	if (session) {
+		userId = session.userId;
+	} else {
+		const authHeader = request.headers.get("Authorization") ?? '';
+		const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : '';
+		const key = await authenticateApiKey(db, bearerToken);
+		if (!key) return json({ error: "unauthorized" }, 401);
+		userId = key.userId;
+		keyScopes = key.scopes;
+	}
+
 	if (path === "/api/me" && method === "GET") {
-		const session = await authenticate(db, request);
-		if (!session) return json({ error: "unauthorized" }, 401);
 		const user = await db
 			.prepare("SELECT id, email, created_at FROM user WHERE id = ?")
-			.bind(session.userId)
+			.bind(userId)
 			.first<{ id: string; email: string; created_at: string }>();
 		if (!user) return json({ error: "unauthorized" }, 401);
 		return json({
 			user,
-			roles: await getUserRoleNames(db, session.userId),
-			permissions: await getUserPermissionCodes(db, session.userId),
+			roles: await getUserRoleNames(db, userId),
+			permissions: keyScopes
+				? [...keyScopes]
+				: await getUserPermissionCodes(db, userId),
 		});
 	}
 
 	const route = routes.find((r) => r.method === method && r.pattern.test(path));
 	if (!route) return json({ error: "not_found" }, 404);
-
-	const session = await authenticate(db, request);
-	if (!session) return json({ error: "unauthorized" }, 401);
-	if (route.permission && !(await hasPermission(db, session.userId, route.permission))) {
-		return json({ error: "forbidden" }, 403);
+	if (route.permission) {
+		const allowed = keyScopes
+			? keyScopes.has(route.permission)
+			: await hasPermission(db, userId, route.permission);
+		if (!allowed) return json({ error: "forbidden" }, 403);
 	}
 	const params = path.match(route.pattern)!.slice(1);
 	try {
-		return await route.handler({ request, url, db, userId: session.userId, params });
+		return await route.handler({ request, url, db, userId, params });
 	} catch (e) {
 		if (e instanceof ApiError) return json({ error: e.code }, e.status);
 		throw e;
