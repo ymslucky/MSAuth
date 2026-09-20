@@ -91,19 +91,20 @@ describe("/login/start (GitHub OAuth entry)", () => {
 describe("/login/github callback guard rails", () => {
 	it("rejects unknown state", async () => {
 		const res = await SELF.fetch(
-			ORIGIN + "/login/github?code=x&state=msa_unknown",
+			ORIGIN + "/github/callback?code=x&state=msa_unknown",
 			{ redirect: "manual" },
 		);
 		expect(res.status).toBe(302);
 		expect(res.headers.get("location")).toContain("error=invalid_state");
 	});
 
-	it("rejects missing state", async () => {
-		const res = await SELF.fetch(ORIGIN + "/login/github?code=x", {
+	it("re-authenticates when the state is missing", async () => {
+		// Without our state the issuer falls back to restarting the flow.
+		const res = await SELF.fetch(ORIGIN + "/github/callback?code=x", {
 			redirect: "manual",
 		});
 		expect(res.status).toBe(302);
-		expect(res.headers.get("location")).toContain("error=invalid_state");
+		expect(res.headers.get("location")).toContain("/github/authorize");
 	});
 });
 

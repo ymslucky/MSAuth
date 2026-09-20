@@ -31,17 +31,6 @@ export default {
 			return json({ error: "internal_error" }, 500);
 		}
 	},
-
-	// Keep-alive: a low-traffic site gets its isolate recycled, and every new
-	// isolate pays cold-start costs. Pinging the homepage every 5 minutes
-	// keeps the warm isolate resident.
-	async scheduled(
-		controller: ScheduledController,
-		env: Env,
-		ctx: ExecutionContext,
-	) {
-		ctx.waitUntil(fetch("https://auth.msxor.com/").catch(() => {}));
-	},
 } satisfies ExportedHandler<Env>;
 
 async function handleRequest(
@@ -65,9 +54,6 @@ async function handleRequest(
 	const app = await createIssuer(env);
 
 	// Public homepage: static, no scripts, no parameter reflection.
-	if (url.pathname === "/favicon.ico") {
-		return faviconResponse();
-	}
 	if (url.pathname === "/") {
 		return new Response(renderHomePage(), {
 			headers: {
@@ -77,9 +63,11 @@ async function handleRequest(
 				"x-content-type-options": "nosniff",
 				"referrer-policy": "no-referrer",
 				"content-security-policy":
-					"default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+					"default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
 			},
 		});
+	} else if (url.pathname === "/favicon.ico") {
+		return faviconResponse();
 	} else if (url.pathname === "/login") {
 		// Unified login entry for every role.
 		return await handleLoginPage(request, env);
@@ -90,8 +78,6 @@ async function handleRequest(
 	} else if (url.pathname === "/admin/login") {
 		// Legacy alias: everything funnels through /login now.
 		return handleAdminLoginRedirect(request);
-	} else if (url.pathname === "/login/github") {
-		return await handleAdminGithubCallback(request, env);
 	} else if (url.pathname === "/admin") {
 		return handleAdminPage(request, env);
 	} else if (url.pathname === "/github/callback") {
