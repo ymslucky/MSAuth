@@ -123,6 +123,14 @@ describe("management console", () => {
 		expect(await res.text()).toContain("没有访问权限");
 	});
 
+	it("allows data: images in the console CSP (favicon)", async () => {
+		const res = await SELF.fetch(ORIGIN + "/admin", {
+			headers: { cookie: member.header() },
+		});
+		const csp = res.headers.get("content-security-policy") ?? "";
+		expect(csp).toContain("img-src https: data:");
+	});
+
 	it("clears the session cookie on logout", async () => {
 		const disposable = await createTestSession("disposable@example.com", ["user"]);
 		const res = await SELF.fetch(ORIGIN + "/admin/logout", {

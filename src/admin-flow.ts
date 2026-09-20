@@ -40,7 +40,7 @@ export async function handleAdminPage(
 			"content-security-policy":
 				"default-src 'none'; script-src 'nonce-" +
 				nonce +
-				"'; style-src 'unsafe-inline'; img-src https:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+				"'; style-src 'unsafe-inline'; img-src https: data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
 		},
 	});
 }
