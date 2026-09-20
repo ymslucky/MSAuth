@@ -1,3 +1,4 @@
+import { TOKENS_CSS } from "./ui/tokens";
 import { FAVICON_DATA_URI } from "./favicon";
 /**
  * Public "signed in" page for regular (non-admin) users: shows who they are
@@ -25,13 +26,7 @@ export function renderMePage(opts: { email: string; roles: string[] }): string {
 	<link rel="icon" href="${FAVICON_DATA_URI}">
 <title>我的账户 · MSAuth</title>
 <style>
-  :root {
-    --paper: #fbf7ee; --card: #fffdf6; --ink: #33302a; --ink-soft: #7a7062;
-    --line: #d9d2c0; --primary: #2f5ac9; --primary-dark: #2447a3; --highlight: #ffe98a;
-    --radius-sketch: 255px 15px 225px 15px / 15px 225px 15px 255px;
-    --shadow-sketch: 4px 5px 0 rgba(51, 48, 42, 0.22);
-    --font-hand: "Segoe Print", "Comic Sans MS", "Kaiti SC", "楷体", "STKaiti", cursive;
-  }
+  ${TOKENS_CSS}
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: var(--font-hand); color: var(--ink);

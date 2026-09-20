@@ -1,3 +1,4 @@
+import { TOKENS_CSS } from "./ui/tokens";
 import { FAVICON_DATA_URI } from "./favicon";
 /**
  * Admin console single-page app served at /admin.
@@ -16,22 +17,7 @@ export function renderAdminHtml(nonce: string): string {
 	<link rel="icon" href="${FAVICON_DATA_URI}">
 <title>管理控制台 · MSAuth</title>
 <style>
-  :root {
-    --paper: #fbf7ee;
-    --card: #fffdf6;
-    --ink: #33302a;
-    --ink-soft: #7a7062;
-    --line: #d9d2c0;
-    --primary: #2f5ac9;
-    --primary-dark: #2447a3;
-    --danger: #c94436;
-    --ok: #3f8f5f;
-    --highlight: #ffe98a;
-    --chip: #f3eede;
-    --radius-sketch: 255px 15px 225px 15px / 15px 225px 15px 255px;
-    --shadow-sketch: 3px 4px 0 rgba(51, 48, 42, 0.22);
-    --font-hand: "Segoe Print", "Comic Sans MS", "Kaiti SC", "楷体", "STKaiti", cursive;
-  }
+  ${TOKENS_CSS}
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: var(--font-hand);
@@ -133,7 +119,7 @@ export function renderAdminHtml(nonce: string): string {
   }
   .modal input[type=text]:focus { outline: none; border-color: var(--primary); }
   .modal .checklist { margin-top: 4px; border: 2px dashed var(--line); border-radius: 10px; padding: 8px 12px; }
-  .modal .checklist label { display: flex; gap: 8px; align-items: center; margin: 6px 0; color: var(--text); font-size: 13px; }
+  .modal .checklist label { display: flex; gap: 8px; align-items: center; margin: 6px 0; color: var(--ink); font-size: 13px; }
   .modal .footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
   #toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) rotate(-0.5deg);

@@ -12,6 +12,7 @@ import apiApp from "./api/router";
 import { json, redirect } from "./http";
 import { renderHomePage } from "./home";
 import { faviconResponse } from "./favicon";
+import { renderNotFoundPage, renderErrorPage } from "./ui/pages";
 
 /**
  * Worker entry point. Request routing only — authentication flows live in
@@ -28,6 +29,20 @@ export default {
 				"[worker] unhandled error:",
 				e instanceof Error ? e.stack : e,
 			);
+			const accept = request.headers.get("accept") ?? "";
+			if (accept.includes("text/html")) {
+				return new Response(renderErrorPage(), {
+					status: 500,
+					headers: {
+						"content-type": "text/html; charset=utf-8",
+						"cache-control": "no-store",
+						"x-frame-options": "DENY",
+						"x-content-type-options": "nosniff",
+						"content-security-policy":
+							"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+					},
+				});
+			}
 			return json({ error: "internal_error" }, 500);
 		}
 	},
@@ -39,6 +54,16 @@ async function handleRequest(
 	ctx: ExecutionContext,
 ): Promise<Response> {
 	const url = new URL(request.url);
+
+	// Known top-level paths; anything else is a friendly 404 page instead of
+	// OpenAuth's bare text response.
+	const ISSUER_PREFIXES = [
+		"/authorize", "/token", "/github", "/password", "/.well-known",
+		"/login", "/login/github", "/login/start", "/me", "/admin", "/api", "/favicon.ico", "/",
+	];
+	const isKnownPath = ISSUER_PREFIXES.some(
+		(p) => url.pathname === p || url.pathname.startsWith(p + "/")
+	);
 
 	// Abuse protection: cap GitHub authorization-endpoint hits per IP. The
 	// binding is configured for 60 requests per 60 second window.
@@ -93,5 +118,18 @@ async function handleRequest(
 		return apiApp.fetch(request, env, ctx);
 	}
 
-	return app.fetch(request, env, ctx);
+	if (isKnownPath) {
+		return app.fetch(request, env, ctx);
+	}
+	return new Response(renderNotFoundPage(), {
+		status: 404,
+		headers: {
+			"content-type": "text/html; charset=utf-8",
+			"cache-control": "no-store",
+			"x-frame-options": "DENY",
+			"x-content-type-options": "nosniff",
+			"content-security-policy":
+				"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+		},
+	});
 }
