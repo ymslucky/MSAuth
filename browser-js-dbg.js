@@ -1,172 +1,4 @@
-import { TOKENS_CSS } from "./ui/tokens";
-import { FAVICON_DATA_URI } from "./favicon";
-/**
- * Admin console single-page app served at /admin.
- * Plain HTML/CSS/JS with no build step; keep this file free of backticks and
- * template literals so it can be embedded in a TypeScript template string.
- * Buttons pass ids via data-action/data-id attributes handled by a single
- * delegated click listener, so no inline string escaping is needed.
- */
-export function renderAdminHtml(nonce: string): string {
-	return `<!doctype html>
-<html lang="zh-CN">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex">
-	<link rel="icon" href="${FAVICON_DATA_URI}">
-<title>管理控制台 · MSAuth</title>
-<style>
-  ${TOKENS_CSS}
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: var(--font-hand);
-    color: var(--ink);
-    background:
-      repeating-linear-gradient(transparent 0 30px, rgba(47, 90, 201, 0.05) 30px 31px),
-      var(--paper);
-    min-height: 100vh; font-size: 14px;
-  }
-  .shell { display: flex; min-height: 100vh; }
-  .sidebar {
-    width: 220px; flex: 0 0 220px; background: var(--card);
-    border-right: 2px solid var(--ink);
-    border-radius: 0 18px 18px 0 / 0 24px 10px 0;
-    box-shadow: 4px 0 0 rgba(51,48,42,0.12);
-    display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh;
-  }
-  .brand { padding: 22px 18px 16px; font-size: 20px; font-weight: 700; }
-  .brand span { display: block; font-size: 12px; color: var(--ink-soft); font-weight: 400; margin-top: 2px; }
-  .sidebar nav { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; flex: 1; }
-  .sidebar nav button {
-    text-align: left; border: 2px solid transparent; background: none;
-    padding: 10px 12px; font-size: 15px; font-family: var(--font-hand);
-    color: var(--ink-soft); cursor: pointer; border-radius: 12px 4px 14px 5px / 5px 14px 4px 12px;
-  }
-  .sidebar nav button .ico { margin-right: 8px; }
-  .sidebar nav button:hover { border-color: var(--line); color: var(--ink); }
-  .sidebar nav button.active {
-    background: var(--highlight); border: 2px solid var(--ink);
-    box-shadow: 2px 3px 0 rgba(51,48,42,0.25); color: var(--ink); font-weight: 700;
-    transform: rotate(-0.6deg);
-  }
-  .side-foot { padding: 14px 16px 18px; border-top: 2px dashed var(--line); }
-  .side-foot .whoami { color: var(--ink-soft); font-size: 12px; margin-bottom: 8px; word-break: break-all; }
-  .workspace { flex: 1; padding: 26px 30px; }
-  .page-head { margin-bottom: 18px; }
-  .page-head h1 { font-size: 24px; display: inline-block; border-bottom: 3px dashed var(--ink-soft); padding-bottom: 4px; transform: rotate(-0.4deg); }
-  .card {
-    background: var(--card); border: 2px solid var(--ink);
-    border-radius: var(--radius-sketch); box-shadow: var(--shadow-sketch);
-    padding: 20px;
-  }
-  .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
-  .toolbar input[type=text] {
-    flex: 1; min-width: 200px; padding: 9px 12px; border: 2px solid var(--line);
-    border-radius: 10px 4px 12px 5px / 5px 12px 4px 10px; font-size: 14px; font-family: var(--font-hand);
-    background: #fffef9;
-  }
-  .toolbar input[type=text]:focus { outline: none; border-color: var(--primary); }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 10px 12px; border-bottom: 2px dashed var(--line); vertical-align: middle; }
-  th { color: var(--ink-soft); font-weight: 700; font-size: 13px; white-space: nowrap; }
-  tr:last-child td { border-bottom: 0; }
-  tbody tr:hover { background: rgba(255, 233, 138, 0.25); }
-  td.actions { text-align: right; white-space: nowrap; }
-  .btn {
-    border: 2px solid var(--ink); background: var(--card); color: var(--ink);
-    padding: 7px 14px; cursor: pointer; font-size: 13px; font-family: var(--font-hand);
-    border-radius: 12px 4px 14px 5px / 5px 14px 4px 12px; box-shadow: 2px 2px 0 rgba(51,48,42,0.3);
-  }
-  .btn:hover { transform: translate(-1px, -1px) rotate(-0.8deg); box-shadow: 3px 4px 0 rgba(51,48,42,0.3); }
-  .btn:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 rgba(51,48,42,0.3); }
-  .btn.primary { background: var(--primary); border-color: var(--primary-dark); color: #fff; }
-  .btn.primary:hover { background: var(--primary-dark); }
-  .btn.danger { color: var(--danger); border-color: var(--danger); }
-  .btn.danger:hover { background: #fdecea; }
-  .btn.small { padding: 4px 10px; font-size: 12px; }
-  .btn:disabled { opacity: 0.45; cursor: default; }
-  .btn:disabled:hover { transform: none; box-shadow: 2px 2px 0 rgba(51,48,42,0.3); }
-  .chip {
-    display: inline-block; background: var(--chip); border: 1.5px solid var(--ink-soft);
-    border-radius: 30px 8px 26px 9px / 9px 26px 8px 30px;
-    padding: 2px 10px; font-size: 12px; margin: 1px 3px 1px 0; color: var(--ink);
-  }
-  .chip.admin { background: var(--highlight); border-color: var(--ink); font-weight: 700; }
-  .muted { color: var(--ink-soft); }
-  .mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
-  .empty { text-align: center; color: var(--ink-soft); padding: 32px 0; }
-  .pager { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding-top: 14px; }
-  .editbox {
-    padding: 6px 10px; border: 2px solid var(--primary); border-radius: 8px 3px 10px 4px / 4px 10px 3px 8px;
-    font-size: 13px; width: 240px; font-family: var(--font-hand); background: #fffef9;
-  }
-  .editbox:focus { outline: none; }
-  #modal-root .overlay {
-    position: fixed; inset: 0; background: rgba(51, 48, 42, 0.45);
-    display: flex; align-items: center; justify-content: center; z-index: 50;
-  }
-  .modal {
-    background: var(--card); border: 2px solid var(--ink); border-radius: var(--radius-sketch);
-    box-shadow: 5px 6px 0 rgba(51,48,42,0.35); padding: 24px; width: 440px;
-    max-width: calc(100vw - 32px); max-height: 80vh; overflow: auto; transform: rotate(-0.4deg);
-  }
-  .modal h3 { margin-bottom: 16px; }
-  .modal label { display: block; margin: 12px 0 4px; color: var(--ink-soft); font-size: 13px; }
-  .modal input[type=text] {
-    width: 100%; padding: 8px 12px; border: 2px solid var(--line);
-    border-radius: 8px 3px 10px 4px / 4px 10px 3px 8px; font-size: 14px; font-family: var(--font-hand);
-  }
-  .modal input[type=text]:focus { outline: none; border-color: var(--primary); }
-  .modal .checklist { margin-top: 4px; border: 2px dashed var(--line); border-radius: 10px; padding: 8px 12px; }
-  .modal .checklist label { display: flex; gap: 8px; align-items: center; margin: 6px 0; color: var(--ink); font-size: 13px; }
-  .modal .footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
-  #toast {
-    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) rotate(-0.5deg);
-    background: var(--card); color: var(--ink); border: 2px solid var(--ink);
-    box-shadow: 3px 4px 0 rgba(51,48,42,0.3); padding: 10px 20px; border-radius: 12px 4px 14px 5px / 5px 14px 4px 12px;
-    font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 99;
-  }
-  #toast.show { opacity: 1; background: var(--highlight); }
-  #toast.error { background: #fdecea; border-color: var(--danger); color: var(--danger); }
-  .forbidden { text-align: center; padding: 80px 0; }
-  .forbidden h2 { margin-bottom: 8px; }
-  .count { color: var(--ink-soft); font-size: 13px; }
-  .inlineform { display: flex; gap: 8px; margin-bottom: 16px; }
-  .inlineform input {
-    padding: 8px 12px; border: 2px solid var(--line); border-radius: 8px 3px 10px 4px / 4px 10px 3px 8px;
-    font-size: 14px; font-family: var(--font-hand); background: #fffef9;
-  }
-  .inlineform input:focus { outline: none; border-color: var(--primary); }
-  .inlineform input.code { width: 200px; }
-</style>
-</head>
-<body>
-<div class="shell">
-  <aside class="sidebar">
-    <div class="brand">MSAuth<span>管理控制台</span></div>
-    <nav id="nav">
-      <button data-tab="users" class="active"><span class="ico">👤</span>用户管理</button>
-      <button data-tab="roles"><span class="ico">🏷️</span>角色管理</button>
-      <button data-tab="permissions"><span class="ico">🔑</span>权限管理</button>
-    </nav>
-    <div class="side-foot">
-      <div class="whoami" id="whoami"></div>
-      <button class="btn small" data-action="logout" style="width:100%">退出登录</button>
-    </div>
-  </aside>
-  <div class="workspace">
-    <div class="page-head"><h1 id="page-title">用户管理</h1></div>
-    <main>
-      <section id="tab-users"></section>
-      <section id="tab-roles" hidden></section>
-      <section id="tab-permissions" hidden></section>
-    </main>
-  </div>
-</div>
-<div id="modal-root"></div>
-<div id="toast"></div>
-<script nonce="${nonce}">
+
 (function () {
   var state = { tab: "users", page: 1, pageSize: 20, q: "", total: 0, editId: null,
     users: [], roles: [], permissions: [], me: null };
@@ -345,6 +177,7 @@ export function renderAdminHtml(nonce: string): string {
     else if (tab === "roles") loadRoles();
     else if (tab === "permissions") loadPermissions();
     else if (tab === "keys") loadApiKeys();
+    else if (tab === "audit") loadAuditEntries();
   }
 
   $("nav").addEventListener("click", function (e) {
@@ -360,7 +193,6 @@ export function renderAdminHtml(nonce: string): string {
         state.total = data.total;
         state.users = data.users;
         renderUsers();
-      })
       .catch(fail);
   }
 
@@ -522,6 +354,27 @@ export function renderAdminHtml(nonce: string): string {
   }
 
 
+  /* ---------------- audit log ---------------- */
+
+  function loadAuditEntries() {
+    api("/api/audit").then(function (data) {
+      renderAudit(data.entries);
+    }).catch(fail);
+  }
+
+  function renderAudit(entries) {
+    var rows = "";
+	if (!entries.length) { rows = '<tr><td colspan='4' class='empty'>暂无审计记录</td></tr>'; }
+    for (var i = 0; i < entries.length; i++) {
+      var e = entries[i];
+      rows += "<tr><td>" + esc(e.actor_email) + "</td><td><span class="chip mono">" + esc(e.action) + "</span></td><td>" + esc(e.detail || "") + "</td><td class="muted">" + esc(e.created_at) + "</td></tr>";
+    }
+    $("tab-audit").innerHTML =
+      "<div class="card">" +
+      "<div class="toolbar"><span class="count">共 " + entries.length + " 条记录</span></div>" +
+      "<table><thead><tr><th>操作人</th><th>操作</th><th>详情</th><th></th></tr><thead><tbody>" + rows + "</tbody></table></div>";
+  }
+
   /* ---------------- boot ---------------- */
 
 
@@ -552,7 +405,3 @@ export function renderAdminHtml(nonce: string): string {
       $("nav").style.display = "none";
     });
 })();
-</script>
-</body>
-</html>`;
-}
