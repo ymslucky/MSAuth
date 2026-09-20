@@ -1,5 +1,7 @@
 import { SESSION_COOKIE } from "./constants";
-import { getCookie, randomToken } from "./http";
+import { getCookie } from "./http";
+import { randomToken } from "./http";
+import { createSession, deleteSession, findSession } from "./repositories/sessions";
 
 export interface AdminSession {
 	userId: string;
@@ -12,13 +14,7 @@ export async function authenticate(
 ): Promise<AdminSession | null> {
 	const sessionId = getCookie(request, SESSION_COOKIE);
 	if (!sessionId) return null;
-	const session = await db
-		.prepare(
-			`SELECT user_id FROM admin_sessions
-			WHERE id = ?1 AND expires_at > CURRENT_TIMESTAMP`,
-		)
-		.bind(sessionId)
-		.first<{ user_id: string }>();
+	const session = await findSession(db, sessionId);
 	return session ? { userId: session.user_id } : null;
 }
 
@@ -29,19 +25,11 @@ export async function createAdminSession(
 	ttlSeconds: number,
 ): Promise<string> {
 	const sessionId = randomToken();
-	await db
-		.prepare(
-			"INSERT INTO admin_sessions (id, user_id, expires_at) VALUES (?1, ?2, datetime('now', ?3))",
-		)
-		.bind(sessionId, userId, `+${ttlSeconds} seconds`)
-		.run();
+	await createSession(db, sessionId, userId, ttlSeconds);
 	return sessionId;
 }
 
 /** Deletes a session row; the cookie becomes useless immediately. */
-export async function deleteAdminSession(
-	db: D1Database,
-	sessionId: string,
-): Promise<void> {
-	await db.prepare("DELETE FROM admin_sessions WHERE id = ?1").bind(sessionId).run();
+export async function deleteAdminSession(db: D1Database, sessionId: string): Promise<void> {
+	await deleteSession(db, sessionId);
 }

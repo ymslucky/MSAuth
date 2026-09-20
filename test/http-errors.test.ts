@@ -15,7 +15,7 @@ it("serves a sketch 404 page for unknown top-level paths", async () => {
 	expect(html).toContain("返回主页");
 });
 
-it("returns 401 for unknown api paths without auth (no path probing)", async () => {
+it("returns 404 for unknown api paths without auth", async () => {
 	const res = await SELF.fetch(ORIGIN + "/api/unknown", { redirect: "manual" });
-	expect(res.status).toBe(401);
+	expect(res.status).toBe(404);
 });

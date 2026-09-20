@@ -8,17 +8,27 @@ import {
 	handleAdminLogout,
 	handleMePage,
 } from "./admin-flow";
-import apiApp from "./api/router";
+import { handleApi } from "./api/router";
 import { json, redirect } from "./http";
 import { renderHomePage } from "./home";
 import { faviconResponse } from "./favicon";
 import { renderNotFoundPage, renderErrorPage } from "./ui/pages";
 
-/**
- * Worker entry point. Request routing only — authentication flows live in
- * ./admin-flow, the OpenAuth server in ./issuer and the management API in
- * ./api/router.
- */
+/** Known top-level paths; anything else gets a friendly 404 page. */
+const KNOWN_PREFIXES = [
+	"/authorize",
+	"/token",
+	"/github",
+	"/password",
+	"/.well-known",
+	"/login",
+	"/me",
+	"/admin",
+	"/api",
+	"/favicon.ico",
+	"/",
+];
+
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
 		try {
@@ -46,6 +56,17 @@ export default {
 			return json({ error: "internal_error" }, 500);
 		}
 	},
+
+	// Keep-alive: a low-traffic site gets its isolate recycled, and every new
+	// isolate pays cold-start costs. Pinging the homepage every 5 minutes
+	// keeps the warm isolate resident.
+	async scheduled(
+		controller: ScheduledController,
+		env: Env,
+		ctx: ExecutionContext,
+	) {
+		ctx.waitUntil(fetch("https://auth.msxor.com/").catch(() => {}));
+	},
 } satisfies ExportedHandler<Env>;
 
 async function handleRequest(
@@ -55,13 +76,14 @@ async function handleRequest(
 ): Promise<Response> {
 	const url = new URL(request.url);
 
-	// Known top-level paths; anything else is a friendly 404 page instead of
-	// OpenAuth's bare text response.
-	const ISSUER_PREFIXES = [
+	// Known top-level paths; anything else gets a friendly 404 page instead
+	// of OpenAuth's bare text response.
+	const KNOWN_PREFIXES = [
 		"/authorize", "/token", "/github", "/password", "/.well-known",
-		"/login", "/login/github", "/login/start", "/me", "/admin", "/api", "/favicon.ico", "/",
+		"/login", "/login/github", "/login/start", "/me", "/admin", "/api",
+		"/favicon.ico", "/",
 	];
-	const isKnownPath = ISSUER_PREFIXES.some(
+	const isKnownPath = KNOWN_PREFIXES.some(
 		(p) => url.pathname === p || url.pathname.startsWith(p + "/")
 	);
 
@@ -98,6 +120,9 @@ async function handleRequest(
 		return await handleLoginPage(request, env);
 	} else if (url.pathname === "/login/start") {
 		return await handleLoginStart(request, env);
+	} else if (url.pathname === "/login/github") {
+		// Alias so the login flow can live under /login/*.
+		return await handleAdminGithubCallback(request, env);
 	} else if (url.pathname === "/me") {
 		return handleMePage(request, env);
 	} else if (url.pathname === "/admin/login") {
@@ -115,7 +140,7 @@ async function handleRequest(
 	} else if (url.pathname === "/admin/logout") {
 		return handleAdminLogout(request, env);
 	} else if (url.pathname.startsWith("/api/")) {
-		return apiApp.fetch(request, env, ctx);
+		return handleApi(request, env);
 	}
 
 	if (isKnownPath) {
