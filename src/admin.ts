@@ -343,7 +343,8 @@ export function renderAdminHtml(nonce: string): string {
     $("tab-permissions").hidden = tab !== "permissions";
     if (tab === "users") loadUsers();
     else if (tab === "roles") loadRoles();
-    else loadPermissions();
+    else if (tab === "permissions") loadPermissions();
+    else if (tab === "keys") loadApiKeys();
   }
 
   $("nav").addEventListener("click", function (e) {
