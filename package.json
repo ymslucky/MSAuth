@@ -31,7 +31,7 @@
 		"check": "tsc && wrangler deploy --dry-run",
 		"deploy": "wrangler deploy",
 		"dev": "wrangler dev",
-		"predeploy": "wrangler d1 migrations apply AUTH_DB --remote"
+		"predeploy": "node scripts/prepare-db.js && wrangler d1 migrations apply AUTH_DB --remote"
 	},
 	"allowScripts": {
 		"workerd@1.20260815.1": true,

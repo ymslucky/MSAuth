@@ -1,7 +1,6 @@
 import { env, SELF } from "cloudflare:test";
-import migration0001 from "../migrations/0001_create_user_table.sql?raw";
-import migration0002 from "../migrations/0002_create_rbac.sql?raw";
-import migration0003 from "../migrations/0003_sessions_rbac_audit.sql?raw";
+import migration0001 from "../migrations/0001_schema.sql?raw";
+import migration0002 from "../migrations/0002_seed.sql?raw";
 import { hasAnyPermission } from "../src/authz";
 
 export const ORIGIN = "https://example.com";
@@ -20,7 +19,7 @@ function toStatements(sql: string): string[] {
 
 /** Applies every D1 migration to the test database. */
 export async function applyMigrations(): Promise<void> {
-	const migrations = [migration0001, migration0002, migration0003];
+	const migrations = [migration0001, migration0002];
 	let statements: ReturnType<typeof env.AUTH_DB.prepare>[] = [];
 	for (const migration of migrations) {
 		statements = statements.concat(

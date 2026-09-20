@@ -44,13 +44,13 @@ module, single-direction dependencies, no cycles):
 - `index.ts` — worker entry: rate limiting + top-level routing only
 - `http.ts` — pure HTTP helpers; `constants.ts` — shared constants
 - `storage.ts` — KV adapter wrapper (TTL clamp); `subjects.ts` — subject schema
-- `db/` — declarative schema management: `schema.sql` (desired structure,
-  TS string module) + `seed.sql` + `ensure-schema.ts`. `ensureSchema(db)`
-  runs once per cold start (structure -> column repairs -> seed) and
-  self-heals missing tables/columns/seed rows; tests drive it through
-  `applyMigrations()` in `test/helpers.ts`. Migrations 0001-0003 remain as
-  historical record for already-provisioned databases; new schema changes
-  ship by editing the declarative snapshot instead of adding migrations.
+- Database schema lives in `migrations/` as exactly two files:
+  `0001_schema.sql` (DDL) and `0002_seed.sql` (DML, idempotent). Schema
+  changes = edit these files; there is no incremental migration chain.
+- `scripts/prepare-db.js` (wired into `predeploy`) auto-creates the D1
+  database if missing (e.g. after a full teardown) and syncs its id into
+  `wrangler.json`, then migrations are applied remotely. Tests apply the
+  same files via `applyMigrations()` in `test/helpers.ts`.
 - `github.ts` — GitHub API client
 - `secrets.ts` — secret reading (Secrets Store | string), ADMIN_EMAIL allowlist
 - `sessions.ts` / `tokens.ts` — admin session lifecycle / JWT verification

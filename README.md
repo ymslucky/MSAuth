@@ -27,9 +27,15 @@ npm run check     # tsc + wrangler deploy --dry-run
 
 ## 部署
 
-Git 连接 Cloudflare Workers Builds，推送即自动部署
-（`predeploy` 应用 D1 迁移；Worker 冷启动时 `ensureSchema` 自动对账 schema）。
+Git 连接 Cloudflare Workers Builds，推送即自动部署：
+`predeploy` 自动确保 D1 数据库存在（删除后也会自动重建）、应用迁移，随后部署 Worker。
 
 必需配置（Secrets Store）：`GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`、`ADMIN_EMAIL`。
+
+### 完全重建
+
+删除 D1 数据库（或换环境）后重新部署即可：构建会自动重建同名数据库
+`openauth-db`、应用全部迁移（`migrations/0001_schema.sql` + `0002_seed.sql`）。
+Secrets（Secrets Store）与 KV 命名空间不受删除数据库影响。
 
 详细开发规范见 [AGENTS.md](AGENTS.md)。
