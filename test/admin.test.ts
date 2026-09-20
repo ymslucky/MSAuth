@@ -47,6 +47,9 @@ describe("unified /login entry", () => {
 		expect(html).toContain("返回主页");
 		// GitHub-only sign-in: no password form.
 		expect(html).not.toContain("type=\"password\"");
+		// favicon data: URI must be allowed by the login CSP
+		const loginCsp = res.headers.get("content-security-policy") ?? "";
+		expect(loginCsp).toContain("img-src 'self' data:");
 	});
 
 	it("shows an error notice on /login after a failed flow", async () => {
@@ -121,6 +124,14 @@ describe("management console", () => {
 		});
 		expect(res.status).toBe(200);
 		expect(await res.text()).toContain("没有访问权限");
+	});
+
+	it("allows data: images in the /me CSP", async () => {
+		const res = await SELF.fetch(ORIGIN + "/me", {
+			headers: { cookie: member.header() },
+		});
+		const csp = res.headers.get("content-security-policy") ?? "";
+		expect(csp).toContain("img-src 'self' data:");
 	});
 
 	it("allows data: images in the console CSP (favicon)", async () => {

@@ -143,7 +143,7 @@ export async function handleLoginPage(
 			"x-content-type-options": "nosniff",
 			"referrer-policy": "no-referrer",
 			"content-security-policy":
-				"default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https://github.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+				"default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data: https://github.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
 		},
 	});
 }
@@ -261,7 +261,7 @@ export async function handleMePage(
 				"x-content-type-options": "nosniff",
 				"referrer-policy": "no-referrer",
 				"content-security-policy":
-					"default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+					"default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
 			},
 		},
 	);
