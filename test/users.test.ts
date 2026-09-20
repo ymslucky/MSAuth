@@ -35,7 +35,21 @@ describe("user provisioning (allowlist + registration gate)", () => {
 		await env.AUTH_STORAGE.delete("config:registration");
 	});
 
-	it("still admits allowlisted users while registration is disabled", async () => {
+	
+it("normalizes email casing on signup", async () => {
+	const id = await getOrCreateUser(env, 'ROOT@Example.COM');
+	const row = await env.AUTH_DB.prepare('SELECT email FROM user WHERE id = ?1').bind(id).first();
+	expect(row?.email).toBe('root@example.com');
+});
+
+it("treats case variants as the same account", async () => {
+	const a = await getOrCreateUser(env, 'dup@example.com');
+	const b = await getOrCreateUser(env, 'DUP@Example.COM');
+	expect(b).toBe(a);
+	const count = await env.AUTH_DB.prepare('SELECT COUNT(*) AS n FROM user WHERE email = ?1').bind('dup@example.com').first();
+	expect(count?.n).toBe(1);
+});
+it("still admits allowlisted users while registration is disabled", async () => {
 		await env.AUTH_STORAGE.put("config:registration", "off");
 		const id = await getOrCreateUser(env, "root@example.com");
 		const roles = await getUserRoleNames(env.AUTH_DB, id);

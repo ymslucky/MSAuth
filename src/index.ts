@@ -89,7 +89,10 @@ async function handleRequest(
 
 	// Abuse protection: cap GitHub authorization-endpoint hits per IP. The
 	// binding is configured for 60 requests per 60 second window.
-	if (url.pathname.startsWith("/github/")) {
+	if (
+		url.pathname.startsWith("/github/") ||
+		url.pathname.startsWith("/login/")
+	) {
 		const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
 		const outcome = await env.RATE_LIMITER.limit({ key: ip });
 		if (!outcome.success) {

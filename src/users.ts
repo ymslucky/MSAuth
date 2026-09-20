@@ -9,7 +9,10 @@ export interface UserRow {
 	roles?: string | null;
 }
 
-export async function getOrCreateUser(env: Env, email: string): Promise<string> {
+export async function getOrCreateUser(env: Env, rawEmail: string): Promise<string> {
+	// Normalize once so lookups, storage and allowlist checks all agree on
+	// the canonical (lowercase) form - SQLite UNIQUE is case-sensitive.
+	const email = rawEmail.trim().toLowerCase();
 	const db = env.AUTH_DB;
 	const allowlist = await getAdminAllowlist(env);
 	let row = await db
