@@ -1,55 +1,30 @@
 import {
 	randomToken,
-	base64UrlEncode,
 	redirect,
 	getCookie,
 	setCookieValue,
-} from "./http";
+} from './http';
 import {
-	ADMIN_CLIENT_ID,
-	OAUTH_STATE_COOKIE,
 	SESSION_COOKIE,
 	SESSION_TTL_SECONDS,
-} from "./constants";
-import {
-	authenticate,
-	createAdminSession,
-	deleteAdminSession,
-} from "./sessions";
-import { hasAnyPermission } from "./authz";
-import { decodeAccessTokenPayload } from "./tokens";
-import { renderAdminHtml } from "./admin";
-import { renderMePage } from "./me";
-import type { createIssuer } from "./issuer";
+} from './constants';
+import { authenticate, createAdminSession, deleteAdminSession } from './sessions';
+import { hasAnyPermission } from './authz';
+import { exchangeGithubCode, getGithubEmail } from './github';
+import { readSecret } from './secrets';
+import { renderAdminHtml } from './admin';
+import { renderMePage } from './me';
+import { getOrCreateUser } from './users';
 
-/**
- * Re-issues a Set-Cookie from the issuer so the browser will return it on
- * the provider callback: the issuer relies on default cookie path scoping,
- * but our merged single-redirect response comes from /login/start, and
- * without an explicit Path=/ the state cookies get scoped to /login/* and
- * are silently dropped on /github/callback (UnknownStateError -> 400).
- */
-function normalizeSetCookie(raw: string): string {
-	const [pair, ...attrs] = raw.split(";");
-	const names = new Set(attrs.map((a) => a.trim().split("=")[0].toLowerCase()));
-	let out = raw;
-	if (!names.has("path")) out += "; Path=/";
-	if (!names.has("secure")) out += "; Secure";
-	if (!names.has("httponly")) out += "; HttpOnly";
-	if (!names.has("samesite")) out += "; SameSite=None";
-	console.log("[normalize] out =", JSON.stringify(out));
-	return out;
-}
+/** One-time login state KV key prefix (10 minute TTL). */
+const LOGIN_STATE_PREFIX = 'login:';
+const GITHUB_STATE_PREFIX = 'msa_';
 
 /** Public console page (admins only; others see an access-denied screen). */
 export async function handleAdminPage(
 	request: Request,
 	env: Env,
 ): Promise<Response> {
-	const flowError = new URL(request.url).searchParams.get("error");
-	const errorNotice = flowError
-		? '<div class="error">登录失败，请重试</div>'
-		: "";
 	const session = await authenticate(env.AUTH_DB, request);
 	if (!session) {
 		return redirect(new URL("/login", new URL(request.url).origin));
@@ -69,9 +44,13 @@ export async function handleAdminPage(
 	});
 }
 
+export function handleAdminLoginRedirect(request: Request): Response {
+	return redirect(new URL("/login", new URL(request.url).origin));
+}
+
 /**
- * Unified login landing page: a hand-drawn card with a single
- * "Sign in with GitHub" button and a way back to the homepage.
+ * Unified login landing page: hand-drawn card with a GitHub button and a
+ * way back to the homepage. Already-signed-in users are routed by role.
  */
 export async function handleLoginPage(
 	request: Request,
@@ -125,6 +104,7 @@ export async function handleLoginPage(
   }
   h1 { font-size: 26px; margin-bottom: 6px; transform: rotate(-0.5deg); }
   .sub { color: var(--ink-soft); font-size: 14px; margin-bottom: 26px; }
+  .error { margin-top: 14px; font-size: 13px; color: #c94436; background: #fdecea; border: 1.5px solid #c94436; border-radius: 8px 3px 10px 4px / 4px 10px 3px 8px; padding: 8px 12px; }
   a.gh {
     display: flex; align-items: center; justify-content: center; gap: 12px;
     padding: 13px 16px; text-decoration: none; font-size: 16px; font-family: var(--font-hand);
@@ -133,7 +113,6 @@ export async function handleLoginPage(
   }
   a.gh:hover { transform: translate(-1px, -1px) rotate(-0.6deg); box-shadow: 5px 6px 0 rgba(51,48,42,0.3); }
   a.gh svg { width: 22px; height: 22px; fill: #fff; }
-  .error { margin-top: 14px; font-size: 13px; color: #c94436; background: #fdecea; border: 1.5px solid #c94436; border-radius: 8px 3px 10px 4px / 4px 10px 3px 8px; padding: 8px 12px; }
   .hint { margin-top: 16px; font-size: 12px; color: var(--ink-soft); }
   a.home { display: inline-block; margin-top: 22px; font-size: 13px; color: var(--ink-soft); }
   a.home:hover { color: var(--ink); text-decoration: underline wavy; }
@@ -168,156 +147,82 @@ export async function handleLoginPage(
 }
 
 /**
- * Starts the OAuth authorization-code flow (PKCE) and resolves the issuer's
- * two internal redirects (/authorize, /github/authorize) in-process, so the
- * browser gets a single redirect straight to GitHub instead of paying for
- * two extra worker round trips (each with an RSA cookie-encryption pass).
+ * GitHub-only login entry: persists a one-time state in KV and redirects
+ * straight to GitHub. No PKCE (GitHub does not support it) - CSRF is
+ * covered by the one-time state.
  */
-export async function handleLoginStart(
-	request: Request,
-	env: Env,
-	ctx: ExecutionContext,
-	app: Awaited<ReturnType<typeof createIssuer>>,
-): Promise<Response> {
+export async function handleLoginStart(request: Request, env: Env): Promise<Response> {
 	const origin = new URL(request.url).origin;
-	const state = randomToken();
-	const verifier = randomToken();
-	const challenge = base64UrlEncode(
-		new Uint8Array(
-			await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)),
-		),
-	);
-	const authorizeUrl =
-		origin +
-		"/authorize?" +
-		new URLSearchParams({
-			client_id: ADMIN_CLIENT_ID,
-			redirect_uri: `${origin}/admin/callback`,
-			response_type: "code",
-			state,
-			scope: "openid",
-			code_challenge: challenge,
-			code_challenge_method: "S256",
-			provider: "github",
-		});
-
-	const jar: string[] = [];
-	let location = authorizeUrl;
-	// Hop 1: /authorize establishes the authorization state cookie and
-	// redirects to the GitHub provider entry.
-	let res = await app.fetch(new Request(location), env, ctx);
-	for (const c of res.headers.getSetCookie?.() ?? []) jar.push(normalizeSetCookie(c));
-	location = res.headers.get("location") ?? "";
-	if (!location) return redirect(new URL("/login?error=flow_failed", origin));
-	// Hop 2: the provider entry signs its own state cookie and redirects to
-	// github.com. The issuer may emit a relative Location; absolutize it.
-	if (location.startsWith("/")) location = origin + location;
-	res = await app.fetch(new Request(location), {
-		headers: { cookie: jar.join("; ") },
-		redirect: "manual",
+	const state = GITHUB_STATE_PREFIX + randomToken();
+	// One-time login state persisted for the callback (10 minute TTL).
+	await env.AUTH_STORAGE.put(LOGIN_STATE_PREFIX + state, '1', {
+		expirationTtl: 600,
 	});
-	for (const c of res.headers.getSetCookie?.() ?? []) jar.push(normalizeSetCookie(c));
-	const githubUrl = res.headers.get("location") ?? "";
-	if (!githubUrl.includes("github.com")) {
-		console.warn("[auth] login start failed");
-		return redirect(new URL("/login?error=flow_failed", origin));
-	}
-
-	return redirect(githubUrl, [
-		setCookieValue(
-			OAUTH_STATE_COOKIE,
-			btoa(JSON.stringify({ state, verifier })),
-			600,
-		),
-		...jar,
-	]);
+	const clientId = await readSecret(env.GITHUB_CLIENT_ID);
+	return redirect(
+		'https://github.com/login/oauth/authorize?' +
+			new URLSearchParams({
+				client_id: clientId,
+				redirect_uri: origin + '/github/callback',
+				response_type: 'code',
+				state,
+				scope: 'user:email',
+			}),
+	);
 }
-
-export async function handleAdminCallback(
+export async function handleAdminGithubCallback(
 	request: Request,
 	env: Env,
-	ctx: ExecutionContext,
-	app: Awaited<ReturnType<typeof createIssuer>>,
 ): Promise<Response> {
 	const url = new URL(request.url);
+	const origin = url.origin;
+	const fail = (reason: string) =>
+		redirect(new URL("/login?error=" + reason, origin), []);
+
+	if (url.searchParams.get("error")) return fail("github_error");
 	const code = url.searchParams.get("code");
-	const state = url.searchParams.get("state");
-	const oauthError = url.searchParams.get("error");
-	let stored: { state?: string; verifier?: string } = {};
+	const state = url.searchParams.get("state") ?? "";
+	if (!code || !state.startsWith(GITHUB_STATE_PREFIX)) return fail("invalid_state");
+
+	// One-time consumption of the login state (anti-replay).
+	const stateKey = LOGIN_STATE_PREFIX + state;
+	if ((await env.AUTH_STORAGE.get(stateKey)) !== "1") return fail("invalid_state");
+	await env.AUTH_STORAGE.delete(stateKey);
+
 	try {
-		stored = JSON.parse(atob(getCookie(request, OAUTH_STATE_COOKIE) ?? ""));
-	} catch {}
-
-	const fail = (reason: string) => {
-		const loginUrl = new URL("/login", url.origin);
-		loginUrl.searchParams.set("error", reason);
-		return redirect(loginUrl, [setCookieValue(OAUTH_STATE_COOKIE, "", 0)]);
-	};
-	if (
-		oauthError ||
-		!code ||
-		!state ||
-		!stored.state ||
-		!stored.verifier ||
-		state !== stored.state
-	) {
-		return fail(oauthError ?? "invalid_state");
+		const accessToken = await exchangeGithubCode(
+			env,
+			code,
+			origin + "/github/callback",
+		);
+		const email = await getGithubEmail(accessToken);
+		const userId = await getOrCreateUser(env, email);
+		const sessionId = await createAdminSession(
+			env.AUTH_DB,
+			userId,
+			SESSION_TTL_SECONDS,
+		);
+		console.log("[auth] admin login ok for", email);
+		const destination = (await hasAnyPermission(env.AUTH_DB, userId))
+			? "/admin"
+			: "/me";
+		return redirect(new URL(destination, origin), [
+			setCookieValue(SESSION_COOKIE, sessionId, SESSION_TTL_SECONDS),
+		]);
+	} catch (e) {
+		const message = e instanceof Error ? e.message : String(e);
+		console.error("[auth] admin login failed:", message);
+		if (message.includes("registration_disabled")) return fail("registration_disabled");
+		return fail("github_exchange");
 	}
-
-	// Exchange the authorization code in-process against our own /token route.
-	const tokenResponse = await app.fetch(
-		new Request(new URL("/token", url.origin), {
-			method: "POST",
-			headers: { "content-type": "application/x-www-form-urlencoded" },
-			body: new URLSearchParams({
-				grant_type: "authorization_code",
-				code,
-				redirect_uri: new URL("/admin/callback", url.origin).toString(),
-				client_id: ADMIN_CLIENT_ID,
-				code_verifier: stored.verifier,
-			}),
-		}),
-		env,
-		ctx,
-	);
-	const tokens = (await tokenResponse.json()) as {
-		access_token?: string;
-	};
-	if (!tokenResponse.ok || !tokens.access_token) {
-		return fail("token_exchange_failed");
-	}
-	// The token was just minted by our own /token endpoint in-process, so
-	// decoding without verification is sufficient here.
-	const payload = decodeAccessTokenPayload(tokens.access_token);
-	if (!payload) {
-		return fail("invalid_token");
-	}
-
-	// The access token is only used to identify the user; the browser gets an
-	// opaque server-side session id that can be revoked independently.
-	const userId = payload.properties.id;
-	const sessionId = await createAdminSession(
-		env.AUTH_DB,
-		userId,
-		SESSION_TTL_SECONDS,
-	);
-	// Admins land in the console; regular users land on their account page.
-	const destination = (await hasAnyPermission(env.AUTH_DB, userId))
-		? "/admin"
-		: "/me";
-	return redirect(new URL(destination, url.origin), [
-		setCookieValue(OAUTH_STATE_COOKIE, "", 0),
-		setCookieValue(SESSION_COOKIE, sessionId, SESSION_TTL_SECONDS),
-	]);
 }
-
 export function handleAdminLogout(request: Request, env: Env): Response {
 	const sessionId = getCookie(request, SESSION_COOKIE);
 	if (sessionId) {
-		env.AUTH_DB.prepare("DELETE FROM admin_sessions WHERE id = ?1").bind(sessionId).run();
+		env.AUTH_DB.prepare('DELETE FROM admin_sessions WHERE id = ?1').bind(sessionId).run();
 	}
-	return redirect(new URL("/login", new URL(request.url).origin), [
-		setCookieValue(SESSION_COOKIE, "", 0),
+	return redirect(new URL('/login', new URL(request.url).origin), [
+		setCookieValue(SESSION_COOKIE, '', 0),
 	]);
 }
 

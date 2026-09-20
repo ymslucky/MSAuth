@@ -1,6 +1,7 @@
 import { createIssuer } from "./issuer";
 import {
-	handleAdminCallback,
+	handleAdminGithubCallback,
+	handleAdminLoginRedirect,
 	handleAdminPage,
 	handleLoginPage,
 	handleLoginStart,
@@ -79,16 +80,23 @@ async function handleRequest(
 		// Unified login entry for every role.
 		return await handleLoginPage(request, env);
 	} else if (url.pathname === "/login/start") {
-		return await handleLoginStart(request, env, ctx, app);
+		return await handleLoginStart(request, env);
 	} else if (url.pathname === "/me") {
 		return handleMePage(request, env);
 	} else if (url.pathname === "/admin/login") {
 		// Legacy alias: everything funnels through /login now.
-		return redirect("/login");
+		return handleAdminLoginRedirect(request);
+	} else if (url.pathname === "/login/github") {
+		return await handleAdminGithubCallback(request, env);
 	} else if (url.pathname === "/admin") {
 		return handleAdminPage(request, env);
-	} else if (url.pathname === "/admin/callback") {
-		return handleAdminCallback(request, env, ctx, app);
+	} else if (url.pathname === "/github/callback") {
+		// Management sign-in callbacks carry our msa_ state prefix; downstream
+		// OAuth client callbacks fall through to the issuer.
+		if ((url.searchParams.get("state") ?? "").startsWith("msa_")) {
+			return await handleAdminGithubCallback(request, env);
+		}
+		return app.fetch(request, env, ctx);
 	} else if (url.pathname === "/admin/logout") {
 		return handleAdminLogout(request, env);
 	} else if (url.pathname.startsWith("/api/")) {
