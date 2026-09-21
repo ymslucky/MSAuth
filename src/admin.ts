@@ -148,7 +148,11 @@ export function renderAdminHtml(nonce: string): string {
     <nav id="nav">
       <button data-tab="users" class="active"><span class="ico">👤</span>用户管理</button>
       <button data-tab="roles"><span class="ico">🏷️</span>角色管理</button>
-      <button data-tab="permissions"><span class="ico">🔑</span>权限管理</button>
+      <button data-tab="permissions">
+  <button data-tab="keys"><span class="ico">🔑</span>API 密钥</button>
+  <button data-tab="audit"><span class="ico">📋</span>审计日志</button><span class="ico">🔑</span>权限管理</button>
+  <button data-tab="keys"><span class="ico">🔐</span>API 密钥</button>
+  <button data-tab="audit"><span class="ico">📋</span>审计日志</button>
     </nav>
     <div class="side-foot">
       <div class="whoami" id="whoami"></div>
@@ -161,6 +165,10 @@ export function renderAdminHtml(nonce: string): string {
       <section id="tab-users"></section>
       <section id="tab-roles" hidden></section>
       <section id="tab-permissions" hidden></section>
+    <section id="tab-keys" hidden></section>
+    <section id="tab-audit" hidden></section>
+    <section id="tab-keys" hidden></section>
+    <section id="tab-audit" hidden></section>
     </main>
   </div>
 </div>
@@ -342,8 +350,12 @@ export function renderAdminHtml(nonce: string): string {
     $("tab-roles").hidden = tab !== "roles";
     $("tab-permissions").hidden = tab !== "permissions";
     if (tab === "users") loadUsers();
+    else if (tab === "keys") loadApiKeys();
+    else if (tab === "audit") loadAuditEntries();
     else if (tab === "roles") loadRoles();
     else if (tab === "permissions") loadPermissions();
+    else if (tab === "keys") loadApiKeys();
+    else if (tab === "audit") loadAuditEntries();
     else if (tab === "keys") loadApiKeys();
   }
 
@@ -521,6 +533,86 @@ export function renderAdminHtml(nonce: string): string {
       "</div>";
   }
 
+
+  /* ---------------- api keys + audit ---------------- */
+
+  var apiKeys = [];
+  var auditEntries = [];
+
+  function loadApiKeys() {
+    api("/api/keys").then(function(data) {
+      state.apiKeys = data.keys;
+      renderApiKeys();
+    }).catch(fail);
+  }
+
+  function renderApiKeys() {
+    var rows = '';
+    if (!state.apiKeys.length) rows = '<tr><td colspan="4" class="empty">暂无密钥</td></tr>';
+    for (var i = 0; i < state.apiKeys.length; i++) {
+      var k = state.apiKeys[i];
+      var chips = k.scopes ? k.scopes.split(',').map(function(s) { return '<span class="chip mono">' + esc(s) + '</span>'; }).join('') : '<span class="muted">无</span>';
+      rows += "<tr><td>" + esc(k.name) + "</td><td class="mono">" + esc(k.key_prefix) + "</td><td>" + chips + "</td><td class="muted">" + esc(k.created_at || '') + "</td><td class="actions"><button class="btn small danger" data-action="revoke-key" data-id="" + esc(k.id) + "">吊销</button></td></tr>";
+    }
+    .innerHTML =
+      "<div class='card'>" +
+      "<div class='toolbar'><span class='count'>共 ' + state.apiKeys.length + ' 个密钥</span><span style='flex:1'></span>' +
+      "<button class='btn primary' data-action="create-key-btn">创建 API 密钥</button></div>" +
+      "<table><thead><tr><th>名称</th><th前缀</th><th权限</th><th创建时间</th><th></tr></thead><tbody>" + rows + "</tbody></table>" +
+      "</div>";
+  }
+
+  function openCreateKeyModal() {
+    var checks = '';
+    for (var i = 0; i < state.permissions.length; i++) {
+      var p = state.permissions[i];
+      checks += '<label><input type="checkbox" value="' + esc(p.code) + '" name="key-scope"> <span class="mono">' + esc(p.code) + '</span></label>';
+    }
+    openModal(
+      "<h3>创建 API 密钥</h3>" +
+      "<label>名称</label><input type="text" id="key-name">" +
+      "<label>Scopes</label>" +
+      "<div class="checklist">" + checks + "</div>" +
+      "<div class="footer"><button class="btn" data-action="overlay-close">取消</button>" +
+      "<button class="btn primary" data-action="submit-create-key">创建</button></div>"
+    );
+  }
+
+  function submitCreateKey() {
+    var name = .value.trim();
+    var boxes = document.querySelectorAll('input[name="key-scope"]');
+    var scopes = [];
+    for (var i = 0; i < boxes.length; i++) if (boxes[i].checked) scopes.push(boxes[i].value);
+    api('/api/keys', { method: 'POST', body: JSON.stringify({ name: name, scopes: scopes }) })
+      .then(function() { closeModal(); toast('密钥已创建'); loadApiKeys(); })
+      .catch(fail);
+  }
+
+  function revokeKeyFn(id) {
+    if (!confirm('确定吊销该 API 密钥？')) return;
+    api('/api/keys/' + id, { method: 'DELETE' })
+      .then(function() { toast('密钥已吊销'); loadApiKeys(); })
+      .catch(fail);
+  }
+
+  function loadAuditEntries() {
+    api('/api/audit').then(function(data) {
+      renderAudit(data.entries);
+    }).catch(fail);
+  }
+
+  function renderAudit(entries) {
+    var rows = '';
+    if (!entries.length) { rows = '<tr><td colspan="3" class="empty">暂无审计记录</td></tr>'; }
+    for (var i = 0; i < entries.length; i++) {
+      var e = entries[i];
+      rows += "<tr><td>" + esc(e.actor_email) + "</td><td><span class="chip mono">" + esc(e.action) + "</span></td><td>" + esc(e.detail || "") + "</td><td class="muted">" + esc(e.created_at) + "</td></tr>";
+    }
+    .innerHTML =
+      "<div class="card">" +
+      "<div class="toolbar"><span class="count">共 ' + entries.length + " 条记录</span></div>" +
+      "<table><thead><tr><th>操作人</th><th操作</th><th详情</th><th时间</th></tr><thead><tbody>" + rows + "</tbody></table></div>";
+  }
 
   /* ---------------- boot ---------------- */
 
