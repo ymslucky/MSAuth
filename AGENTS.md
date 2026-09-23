@@ -2,7 +2,7 @@
 
 IAM platform for individuals, indie hackers and one-person companies, with
 native AI-Agent / MCP authorization. Deployed on Cloudflare Workers
-(D1 + KV + Secrets Store). Stack: **Hono** (routing/middleware) +
+(D1 + Secrets Store). Stack: **Hono** (routing/middleware) +
 **Better Auth** (auth engine + plugins). No legacy OpenAuth code.
 
 ## Development workflow (mandatory)
@@ -17,8 +17,9 @@ native AI-Agent / MCP authorization. Deployed on Cloudflare Workers
    npm run check     # tsc + wrangler deploy --dry-run
    ```
 
-3. **Commit automatically once tests pass.** Do not wait for the user to ask;
-   a green suite is the commit signal. Keep commits focused on one change.
+3. **Commit and push automatically once tests pass.** Do not wait for the user
+   to ask; a green suite is the commit signal. Push right after committing —
+   the push triggers the CI deploy. Keep commits focused on one change.
 
 ## Architecture
 
