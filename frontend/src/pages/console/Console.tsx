@@ -1,13 +1,17 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
-	AppWindow, BellRing, Bot, Earth, KeyRound, LayoutDashboard, LogOut, MonitorSmartphone,
-	ScrollText, Share2, SlidersHorizontal, Users, Globe,
+	AppWindow, BellRing, Bot, Copy, Earth, GitBranch, KeyRound, Languages, LayoutDashboard,
+	LogOut, MonitorSmartphone, Moon, ScrollText, Search, Share2, SlidersHorizontal, Sun,
+	SunMoon, Users, Globe,
 } from "lucide-react";
 import { api } from "../../api";
-import { LangSegmented, useT } from "../../i18n";
-import { ThemeToggle } from "../../theme";
-import { Link, usePath } from "../../router";
-import { Card, Skeleton, SkeletonStats, SkeletonTable, useNotice } from "../../ui";
+import { LangSegmented, useLang, useT } from "../../i18n";
+import { ThemeToggle, themeChoices, useTheme, type ThemeChoice } from "../../theme";
+import { Link, navigate, usePath } from "../../router";
+import {
+	Card, GITHUB_REPO_URL, PaletteEntry, PaletteProvider, Skeleton, SkeletonStats, SkeletonTable,
+	useNotice, usePalette, palettePlatformKey,
+} from "../../ui";
 import type { OverviewResponse } from "./Overview";
 
 /* Route-level code splitting: the entry bundle carries only the shell; each
@@ -75,8 +79,68 @@ const NAV = [
 const OPERATOR_ONLY = ["/users", "/settings"];
 
 export interface ConsoleContext {
-	user: { name: string; email: string; image: string | null };
+	user: { id: string; name: string; email: string; image: string | null };
 	operator: boolean;
+}
+
+const THEME_ICONS: Record<ThemeChoice, typeof Sun> = { auto: SunMoon, light: Sun, dark: Moon };
+const THEME_LABELS: Record<ThemeChoice, string> = { auto: "Auto", light: "Light", dark: "Dark" };
+
+/** Static palette entries: navigation, account + preference actions. */
+function useConsolePaletteEntries(userId: string): PaletteEntry[] {
+	const t = useT();
+	const notice = useNotice();
+	const { setChoice } = useTheme();
+	const { lang, setLang } = useLang();
+	return useMemo<PaletteEntry[]>(() => [
+		...NAV.flatMap(section => section.items.map(item => ({
+			id: `nav:${item.to}`,
+			group: "navigate" as const,
+			label: t(item.label),
+			keywords: item.to,
+			icon: <item.icon size={15} strokeWidth={1.75} aria-hidden />,
+			perform: () => navigate(item.to),
+		}))),
+		{
+			id: "action:copy-user-id",
+			group: "action",
+			label: t("Copy user ID"),
+			keywords: "user id copy",
+			icon: <Copy size={15} strokeWidth={1.75} aria-hidden />,
+			perform: () => {
+				navigator.clipboard.writeText(userId)
+					.then(() => notice.toast("info", t("Copied")))
+					.catch(() => undefined);
+			},
+		},
+		{
+			id: "action:github",
+			group: "action",
+			label: t("Open GitHub repository"),
+			keywords: "github source repo code",
+			icon: <GitBranch size={15} strokeWidth={1.75} aria-hidden />,
+			perform: () => window.open(GITHUB_REPO_URL, "_blank", "noopener"),
+		},
+		...themeChoices.map(choice => {
+			const Icon = THEME_ICONS[choice];
+			return {
+				id: `action:theme-${choice}`,
+				group: "action" as const,
+				label: `${t("Theme")}: ${t(THEME_LABELS[choice])}`,
+				keywords: `theme ${choice}`,
+				icon: <Icon size={15} strokeWidth={1.75} aria-hidden />,
+				perform: () => setChoice(choice),
+			};
+		}),
+		{
+			id: "action:lang",
+			group: "action",
+			label: t("Switch language"),
+			keywords: `language ${lang === "zh" ? "english en" : "chinese zhongwen"}`,
+			icon: <Languages size={15} strokeWidth={1.75} aria-hidden />,
+			perform: () => setLang(lang === "zh" ? "en" : "zh"),
+		},
+	], [t, notice, userId, setChoice, lang, setLang]);
 }
 
 export default function Console() {
@@ -85,6 +149,9 @@ export default function Console() {
 	const [context, setContext] = useState<ConsoleContext | null>(null);
 	const [gone, setGone] = useState(false);
 	const notice = useNotice();
+	// Unconditional: the hook count must not differ between the loading and
+	// loaded renders (userId is just an empty placeholder until it arrives).
+	const paletteEntries = useConsolePaletteEntries(context?.user.id ?? "");
 
 	useEffect(() => {
 		api<OverviewResponse>("/api/v1/overview")
@@ -113,12 +180,30 @@ export default function Console() {
 		return <div className="auth-shell"><p className="muted">{t("Platform administrator access required.")}</p></div>;
 	}
 
+	return (
+		<PaletteProvider entries={paletteEntries}>
+			<ConsoleShell path={path} context={context} />
+		</PaletteProvider>
+	);
+}
+
+function ConsoleShell(props: { path: string; context: ConsoleContext }) {
+	const t = useT();
+	const notice = useNotice();
+	const { setOpen } = usePalette();
+	const path = props.path;
+	const context = props.context;
 	const page = renderPage(path, context, t);
 
 	return (
 		<div className="shell">
 			<aside className="side">
 				<div className="brand"><img src="/favicon.svg" alt="" />MSAuth</div>
+				<button type="button" className="palette-chip" onClick={() => setOpen(true)} aria-label={t("Command palette")}>
+					<Search size={13} strokeWidth={1.75} aria-hidden />
+					{t("Search")}
+					<kbd aria-hidden="true">{palettePlatformKey()}</kbd>
+				</button>
 				<nav>
 					{NAV.map(section => (
 						<div key={section.group}>

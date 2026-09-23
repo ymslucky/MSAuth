@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
-import { ShieldOff } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Bot, Share2, ShieldOff } from "lucide-react";
 import { api, del, fmtDate, fullTimestamp, isValidExpiry, post } from "../../api";
 import { useT } from "../../i18n";
+import { navigate } from "../../router";
+import { useOptimisticList } from "../../optimistic";
 import {
 	Badge, Button, Card, Empty, ErrorNote, ErrorState, Field,
 	Modal, MonoId, PageHeader, SkeletonTable, Table, useNotice,
+	usePaletteSource, type PaletteEntry,
 } from "../../ui";
 
 const AGENT_SCOPES = ["mcp:invoke", "agent:delegate"];
@@ -39,7 +42,7 @@ export function Agents() {
 	const [error, setError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
 	const [creating, setCreating] = useState(false);
-	const [revoking, setRevoking] = useState(false);
+	const optimistic = useOptimisticList<AgentRow>(items, setItems);
 
 	const reload = () => api<{ items: AgentRow[] }>("/api/v1/agents")
 		.then(result => { setItems(result.items ?? []); setError(null); })
@@ -61,19 +64,30 @@ export function Agents() {
 	}
 
 	async function revoke(id: string) {
-		setError(null);
 		if (!(await notice.confirm({ title: t("Revoke this agent, its delegations and tokens?"), confirmLabel: t("Revoke") }))) return;
-		setRevoking(true);
+		// Optimistic: the badge flips to revoked instantly; failure rolls back + toasts.
 		try {
-			await del(`/api/v1/agents/${id}`);
+			await optimistic.run(
+				list => list.map(row => row.id === id ? { ...row, status: "revoked" as const } : row),
+				() => del(`/api/v1/agents/${id}`),
+			);
 			notice.toast("success", t("Agent revoked."));
-			await reload();
+			void reload();
 		} catch (cause) {
-			setError(cause instanceof Error ? cause.message : String(cause));
-		} finally {
-			setRevoking(false);
+			notice.toast("error", cause instanceof Error ? cause.message : String(cause));
 		}
 	}
+
+	// Palette: search loaded agents by name / description / client id.
+	const paletteEntries = useMemo<PaletteEntry[] | null>(() => items === null ? null : items.map(row => ({
+		id: `agent:${row.id}`,
+		group: "resource",
+		label: row.name,
+		keywords: `${row.name} ${row.description} ${row.clientId ?? ""}`,
+		icon: <Bot size={15} strokeWidth={1.75} aria-hidden />,
+		perform: () => navigate("/agents"),
+	})), [items]);
+	usePaletteSource("agents", paletteEntries);
 
 	return (
 		<>
@@ -103,7 +117,7 @@ export function Agents() {
 								<td className="muted"><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
 								<td className="right">
 										{row.status === "active" && (
-											<Button kind="danger" disabled={revoking} onClick={() => void revoke(row.id)}><ShieldOff size={14} strokeWidth={1.75} aria-hidden />{t("Revoke")}</Button>
+											<Button kind="danger" onClick={() => void revoke(row.id)}><ShieldOff size={14} strokeWidth={1.75} aria-hidden />{t("Revoke")}</Button>
 										)}
 									</td>
 							</tr>
@@ -186,7 +200,7 @@ export function Delegations() {
 	const [error, setError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
 	const [creating, setCreating] = useState(false);
-	const [revoking, setRevoking] = useState(false);
+	const optimistic = useOptimisticList<DelegationRow>(items, setItems);
 
 	const reload = () => api<{ items: DelegationRow[] }>("/api/v1/delegations")
 		.then(result => { setItems(result.items ?? []); setError(null); })
@@ -209,19 +223,31 @@ export function Delegations() {
 	}
 
 	async function revoke(id: string) {
-		setError(null);
 		if (!(await notice.confirm({ title: t("Revoke this delegation (and any children)?"), confirmLabel: t("Revoke") }))) return;
-		setRevoking(true);
+		// Optimistic flip; children may cascade server-side, so reload on success
+		// to reconcile with the authoritative rows.
 		try {
-			await del(`/api/v1/delegations/${id}`);
+			await optimistic.run(
+				list => list.map(row => row.id === id ? { ...row, revokedAt: Date.now() } : row),
+				() => del(`/api/v1/delegations/${id}`),
+			);
 			notice.toast("success", t("Delegation revoked."));
-			await reload();
+			void reload();
 		} catch (cause) {
-			setError(cause instanceof Error ? cause.message : String(cause));
-		} finally {
-			setRevoking(false);
+			notice.toast("error", cause instanceof Error ? cause.message : String(cause));
 		}
 	}
+
+	// Palette: search loaded delegations by agent name / resource.
+	const paletteEntries = useMemo<PaletteEntry[] | null>(() => items === null ? null : items.map(row => ({
+		id: `delegation:${row.id}`,
+		group: "resource",
+		label: row.agentName,
+		keywords: `${row.agentName} ${row.resource} ${row.scopes.join(" ")}`,
+		icon: <Share2 size={15} strokeWidth={1.75} aria-hidden />,
+		perform: () => navigate("/delegations"),
+	})), [items]);
+	usePaletteSource("delegations", paletteEntries);
 
 	return (
 		<>
@@ -252,7 +278,7 @@ export function Delegations() {
 								<td>{row.revokedAt ? <Badge tone="bad">{t("revoked")}</Badge> : row.expiresAt < Date.now() ? <Badge tone="warn">{t("expired")}</Badge> : <Badge tone="ok">{t("live")}</Badge>}</td>
 								<td className="right">
 										{!row.revokedAt && (
-											<Button kind="danger" disabled={revoking} onClick={() => void revoke(row.id)}><ShieldOff size={14} strokeWidth={1.75} aria-hidden />{t("Revoke")}</Button>
+											<Button kind="danger" onClick={() => void revoke(row.id)}><ShieldOff size={14} strokeWidth={1.75} aria-hidden />{t("Revoke")}</Button>
 										)}
 									</td>
 							</tr>

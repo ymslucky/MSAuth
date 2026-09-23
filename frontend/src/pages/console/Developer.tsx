@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
-import { ExternalLink, ShieldOff, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AppWindow, ExternalLink, Globe, KeyRound, ShieldOff, Trash2 } from "lucide-react";
 import { api, del, fmtDate, fullTimestamp, patch, post } from "../../api";
 import { useT } from "../../i18n";
+import { navigate } from "../../router";
+import { useOptimisticList } from "../../optimistic";
 import {
 	Badge, Button, Card, CopyButton, Empty, ErrorNote, ErrorState, Field,
 	Modal, MonoId, PageHeader, SkeletonTable, Table, useNotice,
+	usePaletteSource, type PaletteEntry,
 } from "../../ui";
 interface AppRow {
 	client_id: string;
@@ -60,6 +63,7 @@ export function Applications() {
 	const [editing, setEditing] = useState<AppRow | null>(null);
 	const [secret, setSecret] = useState<string | null>(null);
 	const [saving, setSaving] = useState(false);
+	const optimistic = useOptimisticList<AppRow>(items, setItems);
 
 	const reload = () => api<{ items: AppRow[] }>("/api/v1/applications")
 		.then(result => { setItems(result.items ?? []); setError(null); })
@@ -80,12 +84,33 @@ export function Applications() {
 		}
 	}
 
+	/** Optimistic delete/rename: UI lands instantly; failure rolls back + error toast. */
+	async function runOptimistic(mutate: (list: AppRow[]) => AppRow[], apiCall: () => Promise<unknown>, successMessage: string) {
+		try {
+			await optimistic.run(mutate, apiCall);
+			notice.toast("success", successMessage);
+		} catch (cause) {
+			notice.toast("error", cause instanceof Error ? cause.message : String(cause));
+		}
+	}
+
 	const guardedRun = (title: string, action: () => Promise<unknown>, successMessage?: string) => {
 		void (async () => {
 			if (!(await notice.confirm({ title, confirmLabel: t("Confirm") }))) return;
 			await run(action, successMessage);
 		})();
 	};
+
+	// Palette: search loaded applications by name / client id.
+	const paletteEntries = useMemo<PaletteEntry[] | null>(() => items === null ? null : items.map(row => ({
+		id: `app:${row.client_id}`,
+		group: "resource",
+		label: row.client_name || row.client_id,
+		keywords: `${row.client_name ?? ""} ${row.client_id}`,
+		icon: <AppWindow size={15} strokeWidth={1.75} aria-hidden />,
+		perform: () => navigate("/applications"),
+	})), [items]);
+	usePaletteSource("applications", paletteEntries);
 
 	return (
 		<>
@@ -121,8 +146,13 @@ export function Applications() {
 											notice.toast("success", t("Client secret rotated."));
 										})}>{t("Rotate")}</Button>
 										<Button kind="danger" onClick={() => guardedRun(t("Delete this application and all its tokens?"), async () => {
-											await del(`/api/v1/applications/${row.client_id}`);
-											notice.toast("success", t("Application deleted."));
+											const target = row;
+											await runOptimistic(
+												list => list.filter(item => item.client_id !== target.client_id),
+												() => del(`/api/v1/applications/${target.client_id}`),
+												t("Application deleted."),
+											);
+											void reload();
 										})}><Trash2 size={14} strokeWidth={1.75} aria-hidden />{t("Delete")}</Button>
 									</div>
 								</td>
@@ -153,11 +183,17 @@ export function Applications() {
 					onClose={() => setEditing(null)}
 					onSave={input => {
 						setSaving(true);
-						void run(async () => {
-							await patch(`/api/v1/applications/${editing.client_id}`, input);
+						const target = editing;
+						void runOptimistic(
+							list => list.map(item => item.client_id === target.client_id
+								? { ...item, client_name: input.name, redirect_uris: input.redirectUris }
+								: item),
+							() => patch(`/api/v1/applications/${target.client_id}`, input),
+							t("Application updated."),
+						).finally(() => {
+							setSaving(false);
 							setEditing(null);
-							notice.toast("success", t("Application updated."));
-						}).finally(() => setSaving(false));
+						});
 					}}
 				/>
 			)}
@@ -216,7 +252,7 @@ export function Keys() {
 	const [creating, setCreating] = useState(false);
 	const [secret, setSecret] = useState<string | null>(null);
 	const [saving, setSaving] = useState(false);
-	const [revoking, setRevoking] = useState(false);
+	const optimistic = useOptimisticList<KeyRow>(items, setItems);
 
 	const reload = () => api<{ apiKeys: KeyRow[] }>("/api/v1/keys")
 		.then(result => { setItems(result.apiKeys ?? []); setError(null); })
@@ -238,19 +274,26 @@ export function Keys() {
 	}
 
 	async function revoke(id: string) {
-		setError(null);
 		if (!(await notice.confirm({ title: t("Revoke this key?"), confirmLabel: t("Revoke") }))) return;
-		setRevoking(true);
+		// Optimistic: the row disappears immediately; failure rolls back + toasts.
 		try {
-			await del(`/api/v1/keys/${id}`);
+			await optimistic.run(list => list.filter(row => row.id !== id), () => del(`/api/v1/keys/${id}`));
 			notice.toast("success", t("API key revoked."));
-			await reload();
 		} catch (cause) {
-			setError(cause instanceof Error ? cause.message : String(cause));
-		} finally {
-			setRevoking(false);
+			notice.toast("error", cause instanceof Error ? cause.message : String(cause));
 		}
 	}
+
+	// Palette: search loaded keys by name / key prefix.
+	const paletteEntries = useMemo<PaletteEntry[] | null>(() => items === null ? null : items.map(row => ({
+		id: `key:${row.id}`,
+		group: "resource",
+		label: row.name || row.start || row.id,
+		keywords: `${row.name ?? ""} ${row.start ?? ""} ${row.id}`,
+		icon: <KeyRound size={15} strokeWidth={1.75} aria-hidden />,
+		perform: () => navigate("/keys"),
+	})), [items]);
+	usePaletteSource("keys", paletteEntries);
 
 	return (
 		<>
@@ -278,7 +321,7 @@ export function Keys() {
 								<td className="muted"><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
 								<td className="muted"><time title={fullTimestamp(row.expiresAt)}>{fmtDate(row.expiresAt)}</time></td>
 								<td className="muted"><time title={fullTimestamp(row.lastRequestAt)}>{fmtDate(row.lastRequestAt)}</time></td>
-								<td className="right"><Button kind="danger" disabled={revoking} onClick={() => void revoke(row.id)}><ShieldOff size={14} strokeWidth={1.75} aria-hidden />{t("Revoke")}</Button></td>
+								<td className="right"><Button kind="danger" onClick={() => void revoke(row.id)}><ShieldOff size={14} strokeWidth={1.75} aria-hidden />{t("Revoke")}</Button></td>
 							</tr>
 						))}
 					</Table>
@@ -327,6 +370,17 @@ export function Resources(props: { operator: boolean }) {
 	const [name, setName] = useState("");
 	const [linkTarget, setLinkTarget] = useState({ identifier: "", clientId: "" });
 	const [saving, setSaving] = useState(false);
+
+	// Palette: search loaded resources by name / identifier.
+	const paletteEntries = useMemo<PaletteEntry[] | null>(() => items === null ? null : items.map(row => ({
+		id: `resource:${row.id}`,
+		group: "resource",
+		label: row.name,
+		keywords: `${row.name} ${row.identifier}`,
+		icon: <Globe size={15} strokeWidth={1.75} aria-hidden />,
+		perform: () => navigate("/resources"),
+	})), [items]);
+	usePaletteSource("resources", paletteEntries);
 
 	const reload = () => api<{ items: ResourceRow[] }>("/api/v1/resources")
 		.then(result => { setItems(result.items ?? []); setError(null); })

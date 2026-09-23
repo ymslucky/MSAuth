@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ShieldOff } from "lucide-react";
 import { api, del, fmtDate, fullTimestamp, post, summarizeAuditDetail } from "../../api";
 import { useT } from "../../i18n";
+import { useTableState } from "../../table";
 import {
-	ActionTag, Badge, Button, Card, Empty, ErrorNote, ErrorState, Field,
-	MonoId, PageHeader, ResourceTag, SkeletonTable, Table, useNotice,
+	ActionTag, Badge, Button, Card, Empty, ErrorNote, ErrorState, Field, FilterChips,
+	MonoId, PageHeader, RESOURCE_TONES, ResourceTag, resourceTone, SkeletonTable, Table,
+	TablePager, useNotice,
 } from "../../ui";
 
 interface AuditRow {
@@ -17,6 +19,8 @@ interface AuditRow {
 	createdAt: number;
 }
 
+const AUDIT_PAGE_SIZE = 30;
+
 export function Audit(props: { operator: boolean }) {
 	const t = useT();
 	const [items, setItems] = useState<AuditRow[]>([]);
@@ -24,6 +28,7 @@ export function Audit(props: { operator: boolean }) {
 	const [page, setPage] = useState(1);
 	const [actor, setActor] = useState("");
 	const [resource, setResource] = useState("");
+	const [types, setTypes] = useState<ReadonlySet<string>>(new Set());
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [attempt, setAttempt] = useState(0);
@@ -37,7 +42,36 @@ export function Audit(props: { operator: boolean }) {
 			.finally(() => setLoading(false));
 	}, [page, actor, resource, attempt]);
 
-	const pages = Math.max(1, Math.ceil(total / 30));
+	const accessors = useMemo(() => ({
+		createdAt: (row: AuditRow) => row.createdAt,
+		actorId: (row: AuditRow) => row.actorId,
+		action: (row: AuditRow) => row.action,
+		resourceType: (row: AuditRow) => row.resourceType,
+	}), []);
+	const filterKey = `${actor}|${resource}|${page}|${[...types].sort().join(",")}`;
+	const table = useTableState(items, {
+		accessors,
+		// Server pages at 30; the hook owns sort + type chips within the page.
+		pageSize: AUDIT_PAGE_SIZE * 10,
+		initialSort: { key: "createdAt", dir: "desc" },
+		active: types,
+		match: (row, key) => row.resourceType === key,
+		filterKey,
+	});
+
+	const typeChips = useMemo(() => {
+		const present = [...new Set(items.map(row => row.resourceType))];
+		const rank = (type: string) => RESOURCE_TONES.indexOf(resourceTone(type));
+		return present.sort((a, b) => rank(a) - rank(b)).map(type => ({ key: type, label: type, tone: resourceTone(type) }));
+	}, [items]);
+	const toggleType = (key: string) => setTypes(current => {
+		const next = new Set(current);
+		if (next.has(key)) next.delete(key);
+		else next.add(key);
+		return next;
+	});
+
+	const pages = Math.max(1, Math.ceil(total / AUDIT_PAGE_SIZE));
 	return (
 		<>
 			<PageHeader
@@ -59,8 +93,21 @@ export function Audit(props: { operator: boolean }) {
 							<Empty glyph="¶">{t("Nothing recorded for this filter.")}</Empty>
 						) : (
 							<>
-								<Table className="audit-table" head={[t("When"), t("Actor"), t("Action"), t("Resource"), t("Detail")]}>
-									{items.map(row => {
+								{typeChips.length > 1 && (
+									<FilterChips ariaLabel={t("Filter by type")} chips={typeChips} active={types} onToggle={toggleType} />
+								)}
+								<Table
+									className="audit-table"
+									sort={{ spec: table.sort, onToggle: table.toggleSort }}
+									head={[
+										{ label: t("When"), sortKey: "createdAt" },
+										{ label: t("Actor"), sortKey: "actorId" },
+										{ label: t("Action"), sortKey: "action" },
+										{ label: t("Resource"), sortKey: "resourceType" },
+										t("Detail"),
+									]}
+								>
+									{table.rows.map(row => {
 										const summary = summarizeAuditDetail(row.detail);
 										return (
 											<tr key={row.id}>
@@ -81,11 +128,14 @@ export function Audit(props: { operator: boolean }) {
 									})}
 								</Table>
 								{pages > 1 && (
-									<div className="btn-row" style={{ marginTop: 14 }}>
-										<Button kind="ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>{t("← Prev")}</Button>
-										<span className="muted mono">{page} / {pages}</span>
-										<Button kind="ghost" disabled={page >= pages} onClick={() => setPage(page + 1)}>{t("Next →")}</Button>
-									</div>
+									<TablePager
+										page={page}
+										pages={pages}
+										start={(page - 1) * AUDIT_PAGE_SIZE + 1}
+										end={(page - 1) * AUDIT_PAGE_SIZE + items.length}
+										total={total}
+										onPage={setPage}
+									/>
 								)}
 							</>
 						)}

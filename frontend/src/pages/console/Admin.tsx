@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Ban } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Ban, Users as UsersIcon } from "lucide-react";
 import { api, del, fmtDate, fullTimestamp, patch, post } from "../../api";
 import { useT } from "../../i18n";
+import { useTableState } from "../../table";
 import { navigate } from "../../router";
 import {
-	Badge, Button, Card, CopyButton, Empty, ErrorNote, ErrorState, Field,
-	Modal, MonoId, PageHeader, SkeletonTable, SkeletonStats, Table, useNotice,
+	Badge, Button, Card, CopyButton, Empty, ErrorNote, ErrorState, Field, FilterChips,
+	Modal, MonoId, PageHeader, SkeletonProfile, SkeletonTable, SkeletonStats, Table,
+	TablePager, useNotice, usePaletteSource, type PaletteEntry,
 } from "../../ui";
 
 interface UserRow {
@@ -24,6 +26,8 @@ interface UserDetailData {
 	accounts: { id: string; providerId: string; accountId: string; createdAt: number }[];
 }
 
+const USERS_PAGE_SIZE = 30;
+
 export function Users() {
 	const t = useT();
 	const notice = useNotice();
@@ -31,6 +35,7 @@ export function Users() {
 	const [total, setTotal] = useState(0);
 	const [page, setPage] = useState(1);
 	const [query, setQuery] = useState("");
+	const [status, setStatus] = useState<ReadonlySet<string>>(new Set());
 	const [error, setError] = useState<string | null>(null);
 	const [banTarget, setBanTarget] = useState<UserRow | null>(null);
 	const [banReason, setBanReason] = useState("");
@@ -58,7 +63,46 @@ export function Users() {
 		}
 	}
 
-	const pages = Math.max(1, Math.ceil(total / 30));
+	const accessors = useMemo(() => ({
+		name: (row: UserRow) => row.name,
+		emailVerified: (row: UserRow) => row.emailVerified ?? 0,
+		twoFactorEnabled: (row: UserRow) => (row.twoFactorEnabled ? 1 : 0),
+		createdAt: (row: UserRow) => row.createdAt,
+		banned: (row: UserRow) => (row.banned ? 1 : 0),
+	}), []);
+	const filterKey = `${query}|${page}|${[...status].sort().join(",")}`;
+	const table = useTableState(items ?? [], {
+		accessors,
+		// Server pages at 30; the hook owns sort + status chips within the page.
+		pageSize: USERS_PAGE_SIZE * 10,
+		initialSort: { key: "createdAt", dir: "desc" },
+		active: status,
+		match: (row, key) => key === "suspended" ? Boolean(row.banned) : !row.banned,
+		filterKey,
+	});
+	const statusChips = useMemo(() => [
+		{ key: "active", label: t("active") },
+		{ key: "suspended", label: t("suspended") },
+	], [t]);
+	const toggleStatus = (key: string) => setStatus(current => {
+		const next = new Set(current);
+		if (next.has(key)) next.delete(key);
+		else next.add(key);
+		return next;
+	});
+
+	// Palette: search loaded users by name / email / id → user detail.
+	const paletteEntries = useMemo<PaletteEntry[] | null>(() => items === null ? null : items.map(row => ({
+		id: `user:${row.id}`,
+		group: "resource",
+		label: row.name || row.email,
+		keywords: `${row.name} ${row.email} ${row.id}`,
+		icon: <UsersIcon size={15} strokeWidth={1.75} aria-hidden />,
+		perform: () => navigate(`/users/${encodeURIComponent(row.id)}`),
+	})), [items]);
+	usePaletteSource("users", paletteEntries);
+
+	const pages = Math.max(1, Math.ceil(total / USERS_PAGE_SIZE));
 	return (
 		<>
 			<PageHeader
@@ -78,8 +122,20 @@ export function Users() {
 					<Empty glyph="?">{t("No matching users.")}</Empty>
 				) : (
 					<>
-						<Table head={[t("User"), t("Verified"), t("2FA"), t("Created"), t("Status"), ""]} rightCols={[5]}>
-							{items.map(row => (
+						<FilterChips ariaLabel={t("Filter by status")} chips={statusChips} active={status} onToggle={toggleStatus} />
+						<Table
+							sort={{ spec: table.sort, onToggle: table.toggleSort }}
+							rightCols={[5]}
+							head={[
+								{ label: t("User"), sortKey: "name" },
+								{ label: t("Verified"), sortKey: "emailVerified" },
+								{ label: t("2FA"), sortKey: "twoFactorEnabled" },
+								{ label: t("Created"), sortKey: "createdAt" },
+								{ label: t("Status"), sortKey: "banned" },
+								"",
+							]}
+						>
+							{table.rows.map(row => (
 								<tr key={row.id}>
 									<td>{row.name}<div className="cell-sub">{row.email}</div></td>
 									<td>{row.emailVerified ? <Badge tone="ok">{t("yes")}</Badge> : <Badge tone="warn">{t("no")}</Badge>}</td>
@@ -100,11 +156,14 @@ export function Users() {
 							))}
 						</Table>
 						{pages > 1 && (
-							<div className="btn-row" style={{ marginTop: 14 }}>
-								<Button kind="ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>{t("← Prev")}</Button>
-								<span className="muted mono">{page} / {pages}</span>
-								<Button kind="ghost" disabled={page >= pages} onClick={() => setPage(page + 1)}>{t("Next →")}</Button>
-							</div>
+							<TablePager
+								page={page}
+								pages={pages}
+								start={(page - 1) * USERS_PAGE_SIZE + 1}
+								end={(page - 1) * USERS_PAGE_SIZE + items.length}
+								total={total}
+								onPage={setPage}
+							/>
 						)}
 					</>
 				)}
@@ -187,7 +246,12 @@ export function UserDetail(props: { id: string }) {
 			<ErrorNote message={detail && error ? error : null} />
 			{detail === null ? (error
 				? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
-				: <SkeletonTable rows={4} />
+				// Skeleton mirrors the final three-card geometry: profile grid + two tables.
+				: <>
+					<Card title={t("Profile")}><SkeletonProfile /></Card>
+					<Card title={t("Sessions")}><SkeletonTable rows={3} /></Card>
+					<Card title={t("Linked accounts")}><SkeletonTable rows={2} /></Card>
+				</>
 			) : (
 				<>
 					<Card title={t("Profile")}>

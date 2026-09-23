@@ -73,7 +73,20 @@ const nav = {
 	"Dismiss": "知道了",
 	"Breadcrumb": "面包屑",
 	"Language": "语言",
+	"Switch language": "切换语言",
 	"Open resource": "打开资源",
+	"Navigate": "导航",
+	"Actions": "操作",
+	"Command palette": "命令面板",
+	"Search or jump to…": "搜索或跳转…",
+	"Search": "搜索",
+	"No matching results.": "没有匹配的结果。",
+	"Previous page": "上一页",
+	"Next page": "下一页",
+	"Filter by status": "按状态筛选",
+	"Filter by type": "按类型筛选",
+	"Copy user ID": "复制用户 ID",
+	"Open GitHub repository": "打开 GitHub 仓库",
 	"Admin": "管理",
 	"Profile": "资料",
 	"Theme": "主题",
@@ -392,6 +405,11 @@ export function useT() {
 			text,
 		);
 	}, [lang]);
+}
+
+/** Lang + setter for language-switch affordances outside the segmented control. */
+export function useLang(): { lang: Lang; setLang: (lang: Lang) => void } {
+	return useContext(LangContext);
 }
 
 /**

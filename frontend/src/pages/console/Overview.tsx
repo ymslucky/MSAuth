@@ -9,7 +9,7 @@ export interface OverviewResponse {
 	counts: { applications: number; agents: number; delegations: number; keys: number };
 	activity: { id: string; action: string; resourceType: string; resourceId: string; createdAt: number }[];
 	usage: { day: string; count: number }[];
-	user: { name: string; email: string; image: string | null };
+	user: { id: string; name: string; email: string; image: string | null };
 	operator: boolean;
 }
 
