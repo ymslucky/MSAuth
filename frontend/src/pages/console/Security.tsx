@@ -155,7 +155,7 @@ export function Sessions() {
 						{items.map(row => (
 							<tr key={row.id}>
 								<td className="muted"><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
-								<td><MonoId value={row.ipAddress ?? "—"} /></td>
+								<td><MonoId value={row.ipAddress ?? "—"} mask={false} /></td>
 								<td className="muted"><span title={row.userAgent ?? ""}>{(row.userAgent ?? "").slice(0, 60)}</span></td>
 								<td className="muted"><time title={fullTimestamp(row.expiresAt)}>{fmtDate(row.expiresAt)}</time></td>
 								<td className="right">

@@ -32,6 +32,16 @@ export function fmtDate(value: number | string | undefined | null): string {
 	return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
 }
 
+/**
+ * Display mask for opaque identifiers/secrets: keep the first `keep`
+ * characters, then an ellipsis. Short values (≤ keep + 4) pass through
+ * untouched — masking only pays off once it hides something. The full
+ * value stays reachable via the adjacent copy button / title attribute.
+ */
+export function maskId(value: string, keep = 8): string {
+	return value.length <= keep + 4 ? value : `${value.slice(0, keep)}…`;
+}
+
 /** Full-precision ISO-8601 stamp for `<title>`/`<time>` attributes; "" when unparseable. */
 export function fullTimestamp(value: number | string | undefined | null): string {
 	if (value === undefined || value === null || value === "") return "";

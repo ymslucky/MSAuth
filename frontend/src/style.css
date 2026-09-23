@@ -408,7 +408,7 @@ tbody tr:nth-child(8) { animation-delay: 112ms; }
 tbody tr:nth-child(n+9) { animation-delay: 128ms; }
 
 /* mono identifiers: truncated with ellipsis + copy */
-.mono-id { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; }
+.mono-id { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; min-width: 0; }
 .mono-id > span {
 	font-family: var(--font-mono);
 	font-size: 12.5px;
@@ -444,10 +444,14 @@ tbody tr:nth-child(n+9) { animation-delay: 128ms; }
 	letter-spacing: 0;
 	padding: 2px 8px;
 }
+/* The resource cell is width-clamped, so its content must shrink instead of
+   overflowing into the detail column: flex row + min-width:0 lets the id
+   ellipsize while the icon button stays intact (flex:none). */
 .audit-table .col-resource { max-width: 330px; }
-.audit-table .col-resource .cell-res { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; }
+.audit-table .col-resource .cell-res { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
 .audit-table .col-resource .res-type { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink); flex: none; }
-.audit-table .col-resource .mono-id > span { max-width: 200px; }
+.audit-table .col-resource .mono-id { flex: 0 1 auto; min-width: 0; }
+.audit-table .col-resource .mono-id > span { max-width: none; }
 .audit-table .col-detail {
 	white-space: normal;
 	min-width: 240px;
@@ -673,22 +677,22 @@ tbody tr:nth-child(n+9) { animation-delay: 128ms; }
 }
 .secret-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 
-/* ---------- copy button ---------- */
+/* ---------- copy button (icon-only: 14px glyph, state via title/colour) ---------- */
 .copy-btn {
 	display: inline-flex;
 	align-items: center;
-	gap: 5px;
+	justify-content: center;
+	flex: none;
 	font: 500 11px/1.2 var(--font-mono);
-	letter-spacing: 0.02em;
 	color: var(--muted);
 	background: var(--surface);
 	border: 1px solid var(--line);
 	border-radius: 6px;
-	padding: 3px 8px;
+	padding: 4px 5px;
 	cursor: pointer;
 	transition: color 140ms ease-out, border-color 140ms ease-out, background 140ms ease-out;
-	white-space: nowrap;
 }
+.copy-btn svg { display: block; }
 .copy-btn:hover { color: var(--accent-deep); border-color: var(--accent); }
 .copy-btn.copied { color: var(--ok); border-color: var(--ok); background: var(--ok-tint); }
 

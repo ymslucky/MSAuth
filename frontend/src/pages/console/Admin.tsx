@@ -230,7 +230,7 @@ export function UserDetail(props: { id: string }) {
 								{detail.sessions.map(session => (
 									<tr key={session.id}>
 										<td className="muted"><time title={fullTimestamp(session.createdAt)}>{fmtDate(session.createdAt)}</time></td>
-										<td><MonoId value={session.ipAddress ?? "—"} /></td>
+										<td><MonoId value={session.ipAddress ?? "—"} mask={false} /></td>
 										<td className="muted"><span title={session.userAgent ?? ""}>{(session.userAgent ?? "").slice(0, 60)}</span></td>
 										<td className="muted"><time title={fullTimestamp(session.expiresAt)}>{fmtDate(session.expiresAt)}</time></td>
 									</tr>
@@ -412,7 +412,7 @@ export function Domains() {
 						{items.map(row => (
 							<tr key={row.id}>
 								<td>{row.hostname}</td>
-								<td><MonoId value={`_msauth.${row.hostname}`} /></td>
+								<td><MonoId value={`_msauth.${row.hostname}`} mask={false} /></td>
 								<td><MonoId value={row.challenge} wide /></td>
 								<td>{row.verifiedAt ? <Badge tone="ok">{t("verified")}</Badge> : <Badge tone="warn">{t("pending")}</Badge>}</td>
 								<td className="right">

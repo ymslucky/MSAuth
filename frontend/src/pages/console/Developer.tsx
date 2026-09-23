@@ -368,7 +368,7 @@ export function Resources(props: { operator: boolean }) {
 								<td>{row.name}</td>
 								<td>
 									<span className="cell-res">
-										<MonoId value={row.identifier} wide />
+										<MonoId value={row.identifier} wide mask={false} />
 										<a className="ext-link" href={row.identifier} target="_blank" rel="noreferrer" aria-label={`${t("Open resource")}: ${row.identifier}`}>
 											<ExternalLink size={12} strokeWidth={1.75} aria-hidden />
 										</a>

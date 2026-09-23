@@ -245,7 +245,7 @@ export function Delegations() {
 						{items.map(row => (
 							<tr key={row.id}>
 								<td>{row.agentName}</td>
-								<td><MonoId value={row.resource} wide /></td>
+								<td><MonoId value={row.resource} wide mask={false} /></td>
 								<td>{row.scopes.join(", ")}<div className="cell-sub mono">{JSON.stringify(row.authorizationDetails)}</div></td>
 								<td>{row.depth}{row.depth > 0 && <div className="cell-sub">{t("chain")}</div>}</td>
 								<td className="muted"><time title={fullTimestamp(row.expiresAt)}>{fmtDate(row.expiresAt)}</time></td>

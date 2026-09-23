@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Check, CheckCircle2, CircleAlert, Copy, Info, X } from "lucide-react";
 import { useT } from "./i18n";
+import { maskId } from "./api";
 import { Link } from "./router";
 import { capVisibleToasts, noticeTtl, type NoticeTone } from "./notice";
 
@@ -271,13 +272,14 @@ export function SkeletonTable(props: { rows?: number }) {
 
 /* ---------- copy affordances ---------- */
 
+/** Icon-only copy affordance: 14px glyph that flips to a check for ~1.2s. */
 export function CopyButton(props: { value: string; label?: string }) {
 	const t = useT();
 	const [copied, setCopied] = useState(false);
 	const copy = () => {
 		void navigator.clipboard.writeText(props.value).then(() => {
 			setCopied(true);
-			window.setTimeout(() => setCopied(false), 1600);
+			window.setTimeout(() => setCopied(false), 1200);
 		}).catch(() => undefined);
 	};
 	return (
@@ -285,19 +287,24 @@ export function CopyButton(props: { value: string; label?: string }) {
 			type="button"
 			className={`copy-btn ${copied ? "copied" : ""}`}
 			onClick={copy}
-			aria-label={props.label ?? `${t("Copy")}: ${props.value}`}
+			aria-label={props.label ?? t("Copy")}
+			title={copied ? t("Copied") : t("Copy")}
 		>
-			{copied ? <Check size={13} strokeWidth={2.25} aria-hidden /> : <Copy size={13} strokeWidth={2} aria-hidden />}
-			<span aria-hidden="true">{copied ? t("Copied") : t("Copy")}</span>
+			{copied ? <Check size={14} strokeWidth={2.25} aria-hidden /> : <Copy size={14} strokeWidth={2} aria-hidden />}
 		</button>
 	);
 }
 
-/** Truncated JetBrains Mono identifier with a `<title>` and a CopyButton. */
-export function MonoId(props: { value: string; wide?: boolean }) {
+/**
+ * JetBrains Mono identifier with a `<title>`, a CopyButton (which carries the
+ * full value) and — by default — a masked display via `maskId`, since these
+ * are opaque machine identifiers. Pass `mask={false}` for values a human may
+ * want to read in full (URLs, hostnames, IPs); those still truncate via CSS.
+ */
+export function MonoId(props: { value: string; wide?: boolean; mask?: boolean }) {
 	return (
 		<span className={`mono-id ${props.wide ? "wide" : ""}`}>
-			<span title={props.value}>{props.value}</span>
+			<span title={props.value}>{props.mask === false ? props.value : maskId(props.value)}</span>
 			<CopyButton value={props.value} />
 		</span>
 	);
