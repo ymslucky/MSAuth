@@ -60,6 +60,7 @@ export default function Console() {
 	const path = usePath();
 	const [context, setContext] = useState<ConsoleContext | null>(null);
 	const [gone, setGone] = useState(false);
+	const [logoutError, setLogoutError] = useState(false);
 
 	useEffect(() => {
 		api<OverviewResponse>("/api/v1/overview")
@@ -112,9 +113,12 @@ export default function Console() {
 					{context.operator && <> · <strong>{t("operator")}</strong></>}
 					<br />
 					<a href="/api/auth/sign-out" onClick={event => {
-						event.preventDefault();
-						void api("/api/auth/sign-out", { method: "POST" }).finally(() => { window.location.href = "/login"; });
-					}}>{t("Sign out")}</a>
+					event.preventDefault();
+					api("/api/auth/sign-out", { method: "POST" })
+						.then(() => { window.location.href = "/login"; })
+						.catch(() => setLogoutError(true));
+				}}>{t("Sign out")}</a>
+				{logoutError && <p className="error-note" role="alert">{t("Sign out failed — please retry")}</p>}
 					<div style={{ marginTop: 10 }}>
 						<LanguageToggle />
 					</div>

@@ -17,6 +17,9 @@ export default defineConfig({
         GITHUB_CLIENT_ID: "test-client",
         GITHUB_CLIENT_SECRET: "test-secret",
         ADMIN_EMAIL: "root@example.com",
+        // Keep Better Auth's internal DB limiter out of tests; the platform
+        // RATE_LIMITER above still exercises the 429 path.
+        RATE_LIMIT_DISABLED: "1",
       },
     },
   })],

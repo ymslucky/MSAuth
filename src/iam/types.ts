@@ -9,6 +9,8 @@ export interface Bindings {
   GITHUB_CLIENT_ID: string | SecretsStoreSecret;
   GITHUB_CLIENT_SECRET: string | SecretsStoreSecret;
   ADMIN_EMAIL: string | SecretsStoreSecret;
+  /** Test-only: set to "1" to disable Better Auth's internal rate limiter. */
+  RATE_LIMIT_DISABLED?: string;
 }
 
 export type Auth = Awaited<ReturnType<typeof createAuth>>;

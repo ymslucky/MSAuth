@@ -27,6 +27,7 @@ export const zh: Record<string, string> = {
 	"Platform administrator access required.": "需要平台管理员权限。",
 	"operator": "管理员",
 	"Sign out": "退出登录",
+	"Sign out failed — please retry": "退出登录失败，请重试",
 	"Unknown page.": "未知页面。",
 
 	// login

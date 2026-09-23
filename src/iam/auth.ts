@@ -70,7 +70,7 @@ export async function createAuth(env: Bindings) {
       useSecureCookies: baseURL.startsWith("https:"),
       ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
     },
-    rateLimit: { enabled: true, storage: "database", window: 60, max: 60 },
+    rateLimit: { enabled: env.RATE_LIMIT_DISABLED !== "1", storage: "database", window: 60, max: 60 },
     disabledPaths: ["/token"],
     databaseHooks: {
       user: { create: { before: async (user) => {

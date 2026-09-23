@@ -270,3 +270,41 @@ describe("OAuth and Agent integration", () => {
     expect((await token({ ...fields, delegation_id: child.id, subject_token: delegated.access_token }, await proof())).status).toBe(400);
   });
 });
+
+describe("Session lifecycle (SPA auth gate contract)", () => {
+  it("exposes get-session as the SPA auth gate contract", async () => {
+    const authed = await request("/api/auth/get-session", ownerCookie);
+    expect(authed.status).toBe(200);
+    expect(((await authed.json()) as { user?: { id?: string } }).user?.id).toBe(ownerId);
+    const anon = await request("/api/auth/get-session", "");
+    expect(anon.status).toBe(200);
+    expect(await anon.text()).toBe("null");
+  });
+
+  it("sign-out clears the session cookie and invalidates the session server-side", async () => {
+    const disposable = await login("session-lifecycle@example.com");
+    const res = await request("/api/auth/sign-out", disposable.cookie, "POST", {});
+    expect(res.status, await res.clone().text()).toBe(200);
+    const cleared = res.headers.getSetCookie().some(value =>
+      /^(?:__Secure-)?better-auth\.session_token=/.test(value) && /Max-Age=0|expires=Thu, 01 Jan 1970/i.test(value));
+    expect(cleared, res.headers.getSetCookie().join(" | ")).toBe(true);
+    const session = await request("/api/auth/get-session", disposable.cookie);
+    expect(((await session.json()) as { user?: unknown } | null)?.user).toBeUndefined();
+    expect((await request("/api/v1/overview", disposable.cookie)).status).toBe(401);
+  });
+
+  it("never revokes via GET sign-out — POST-only", async () => {
+    const disposable = await login("get-logout@example.com");
+    const res = await request("/api/auth/sign-out", disposable.cookie, "GET");
+    expect([404, 405]).toContain(res.status);
+    const session = await request("/api/auth/get-session", disposable.cookie);
+    expect(((await session.json()) as { user?: unknown }).user).toBeDefined();
+  });
+
+  it("sign-out is idempotent — a session-less call succeeds and leaves no state", async () => {
+    const res = await request("/api/auth/sign-out", "", "POST", {});
+    expect(res.status).toBe(200);
+    const anon = await (await request("/api/auth/get-session", "")).json();
+    expect((anon as { user?: unknown } | null)?.user).toBeUndefined();
+  });
+});
