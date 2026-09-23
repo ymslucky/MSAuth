@@ -343,6 +343,10 @@ const docsArea = {
 	"Integration guide": "接入指南",
 	"Four ways to connect third parties to MSAuth — pick the one that matches your caller.":
 		"四类第三方接入 MSAuth 的方式——按你的调用方选择对应路径。",
+	"On this page": "本页目录",
+	"Documentation": "文档",
+	"Markdown": "Markdown",
+	"Copy markdown": "复制 Markdown",
 	// section titles
 	"Web & SPA applications": "Web 与 SPA 应用",
 	"MCP servers & protected resources": "MCP 服务器与受保护资源",

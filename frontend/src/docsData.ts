@@ -9,7 +9,7 @@ export interface DocsSection {
 	title: string;
 	audience: string;
 	steps: string[];
-	code?: { label: string; content: string };
+	code?: { label: string; content: string; lang?: string };
 }
 
 export interface DocsConstraint {
@@ -30,6 +30,7 @@ export const docsSections: DocsSection[] = [
 		],
 		code: {
 			label: "Authorization request",
+			lang: "http",
 			content: `GET /api/auth/oauth2/authorize?response_type=code
   &client_id=msa_...
   &redirect_uri=https%3A%2F%2Fapp.example.com%2Fcallback

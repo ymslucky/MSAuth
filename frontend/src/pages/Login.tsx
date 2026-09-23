@@ -4,6 +4,7 @@ import { oauthQueryFromLocation } from "../oauthQuery";
 import { LangSegmented, useT } from "../i18n";
 import { ThemeToggle, scenePalette, useTheme } from "../theme";
 import { Button } from "../ui";
+import { Link } from "../router";
 import { mountLoginScene } from "../scene";
 
 export default function Login() {
@@ -100,6 +101,9 @@ export default function Login() {
 					</button>
 					{error && <p className="error-note" role="alert">{error}</p>}
 				</form>
+				<p className="login-docs-row">
+					<Link to="/docs" className="login-docs-link">{t("Integration guide")}</Link>
+				</p>
 			</div>
 		</div>
 	);

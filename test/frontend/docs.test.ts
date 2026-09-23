@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { docsConstraints, docsSections } from "../../frontend/src/docsData";
+import { toMarkdown } from "../../frontend/src/docsMarkdown";
 
 /** Flatten every prose string and code block into one searchable corpus. */
 function corpus(): string {
@@ -44,5 +45,33 @@ describe("docsData — public integration guide contract", () => {
 			expect(constraint.rule.trim().length).toBeGreaterThan(0);
 			expect(constraint.detail.trim().length).toBeGreaterThan(0);
 		}
+	});
+});
+
+describe("toMarkdown — exportable source view", () => {
+	const md = toMarkdown(docsSections, docsConstraints, key => `<${key}>`);
+
+	it("runs every prose string through the translate function", () => {
+		expect(md).toContain("# <Integration guide>");
+		expect(md).toContain("## <Web & SPA applications>");
+		expect(md).toContain("<Create an OAuth application in the console, or register dynamically through RFC 7591 DCR (public by default, kill-switchable).>");
+	});
+
+	it("renders steps as an ordered list and constraints as definition bullets", () => {
+		expect(md).toContain("2. <Start the authorization-code flow with PKCE (S256), a state parameter and an exact resource identifier.>");
+		expect(md).toContain("- **<Management API is browser-only>**: <All Authorization and x-api-key headers are stripped before session lookup; third-party tokens are never accepted there.>");
+	});
+
+	it("fences code blocks and labels them", () => {
+		expect(md).toContain("### <Authorization request>");
+		expect(md).toContain("```ts");
+		expect(md).toContain('authorizeToolCall(claims, "https://mcp.example.com/mcp", "notes", "read");');
+		expect(md).toContain("### <Agent SDK>");
+	});
+
+	it("always closes every fenced code block", () => {
+		const fences = md.split("\n").filter(line => line.startsWith("```")).length;
+		expect(fences % 2).toBe(0);
+		expect(fences).toBeGreaterThan(0);
 	});
 });
