@@ -15,20 +15,27 @@ function headerOf(init: RequestInit, name: string): string | null {
 describe("api fetch wrapper", () => {
 	afterEach(() => vi.unstubAllGlobals());
 
-	it("omits content-type on body-less POSTs — Better Auth rejects empty JSON bodies with 400", async () => {
+	it("body-less POSTs default to a JSON object — Better Auth rejects empty bodies (400) and missing content-type (415)", async () => {
 		const calls: { url: string; init: RequestInit }[] = [];
 		stubFetch(calls);
 		await api("/api/auth/sign-out", { method: "POST" });
-		expect(calls).toHaveLength(1);
-		expect(calls[0].init.body).toBeUndefined();
-		expect(headerOf(calls[0].init, "content-type")).toBeNull();
+		expect(calls[0].init.body).toBe("{}");
+		expect(headerOf(calls[0].init, "content-type")).toBe("application/json");
 	});
 
-	it("still sends application/json when a body is present", async () => {
+	it("sends the caller's body untouched alongside the JSON content-type", async () => {
 		const calls: { url: string; init: RequestInit }[] = [];
 		stubFetch(calls);
 		await api("/api/auth/sign-in/email", { method: "POST", body: JSON.stringify({ email: "a@b.c" }) });
 		expect(headerOf(calls[0].init, "content-type")).toBe("application/json");
-		expect(calls[0].init.body).not.toBeNull();
+		expect(calls[0].init.body).toBe(JSON.stringify({ email: "a@b.c" }));
+	});
+
+	it("keeps content-type on body-less DELETEs (session revocation hits auth endpoints)", async () => {
+		const calls: { url: string; init: RequestInit }[] = [];
+		stubFetch(calls);
+		await api("/api/v1/applications/app_1", { method: "DELETE" });
+		expect(calls[0].init.body).toBeUndefined();
+		expect(headerOf(calls[0].init, "content-type")).toBe("application/json");
 	});
 });

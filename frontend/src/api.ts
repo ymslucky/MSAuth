@@ -1,22 +1,24 @@
 /** JSON fetch wrapper: same-origin cookies, uniform error surfacing. */
 export async function api<T = Record<string, unknown>>(path: string, init?: RequestInit): Promise<T> {
-	// Only declare JSON when a body exists — Better Auth 400s empty JSON bodies.
+	// Better Auth rejects body-less POSTs twice over — an empty JSON body is a
+	// 400 and a missing content-type is a 415 — so JSON verbs default to `{}`.
 	// `credentials` is DOM-spec; workerd's RequestInit omits it, so the literal is asserted.
+	const method = (init?.method ?? "GET").toUpperCase();
+	const jsonVerb = method === "POST" || method === "PATCH" || method === "PUT";
+	const body = init?.body !== undefined && init?.body !== null ? init.body : jsonVerb ? "{}" : undefined;
 	const requestInit = {
 		credentials: "same-origin",
 		...init,
-		headers: {
-			...(init?.body !== undefined && init?.body !== null ? { "content-type": "application/json" } : {}),
-			...(init?.headers ?? {}),
-		},
+		body,
+		headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
 	} as RequestInit;
 	const response = await fetch(path, requestInit);
-	const body = await response.json().catch(() => ({}));
+	const parsed = await response.json().catch(() => ({}));
 	if (!response.ok) {
-		const detail = body as { error?: string; message?: string; error_description?: string };
+		const detail = parsed as { error?: string; message?: string; error_description?: string };
 		throw new Error(detail.error_description ?? detail.message ?? detail.error ?? `HTTP ${response.status}`);
 	}
-	return body as T;
+	return parsed as T;
 }
 
 export const post = <T>(path: string, body?: unknown) => api<T>(path, { method: "POST", body: JSON.stringify(body ?? {}) });

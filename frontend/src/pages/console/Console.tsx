@@ -6,7 +6,7 @@ import {
 import { api } from "../../api";
 import { useT } from "../../i18n";
 import { Link, usePath } from "../../router";
-import { Skeleton } from "../../ui";
+import { Skeleton, useNotice } from "../../ui";
 import Overview, { type OverviewResponse } from "./Overview";
 import { Applications, Keys, Resources } from "./Developer";
 import { Agents, Delegations } from "./Agents";
@@ -60,7 +60,7 @@ export default function Console() {
 	const path = usePath();
 	const [context, setContext] = useState<ConsoleContext | null>(null);
 	const [gone, setGone] = useState(false);
-	const [logoutError, setLogoutError] = useState(false);
+	const notice = useNotice();
 
 	useEffect(() => {
 		api<OverviewResponse>("/api/v1/overview")
@@ -116,9 +116,8 @@ export default function Console() {
 					event.preventDefault();
 					api("/api/auth/sign-out", { method: "POST" })
 						.then(() => { window.location.href = "/login"; })
-						.catch(() => setLogoutError(true));
+						.catch(() => notice.toast("error", t("Sign out failed — please retry")));
 				}}>{t("Sign out")}</a>
-				{logoutError && <p className="error-note" role="alert">{t("Sign out failed — please retry")}</p>}
 				</div>
 			</aside>
 			<main className="main">{page}</main>
