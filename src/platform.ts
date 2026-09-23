@@ -34,7 +34,7 @@ app.use("/api/*", async (c, next) => {
   await next();
 });
 
-app.get("/health", c => c.json({ service: "MSAuth", version: "2.0.0" }));
+app.get("/api/health", c => c.json({ service: "MSAuth", version: "2.0.0" }));
 app.get("/.well-known/oauth-authorization-server", async c => {
   const auth = await createAuth(c.env);
   return oauthProviderAuthServerMetadata(auth)(c.req.raw);

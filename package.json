@@ -38,9 +38,10 @@
 	"private": true,
 	"scripts": {
 		"cf-typegen": "wrangler types",
-		"check": "tsc && wrangler deploy --dry-run",
+		"check": "tsc && tsc -p frontend && npm run build:spa && wrangler deploy --dry-run",
+		"build:spa": "vite build --config frontend/vite.config.ts",
 		"db:schema": "node scripts/generate-schema.mjs",
-		"deploy": "wrangler deploy",
+		"deploy": "npm run build:spa && wrangler deploy",
 		"dev": "wrangler dev",
 		"predeploy": "node scripts/prepare-db.js && wrangler d1 migrations apply AUTH_DB --remote",
 		"test": "vitest run"
