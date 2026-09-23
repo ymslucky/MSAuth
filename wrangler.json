@@ -4,8 +4,11 @@
 	"name": "msauth",
 	"upload_source_maps": true,
 	"vars": {
-		"BETTER_AUTH_URL": "https://auth.example.com"
+		"BETTER_AUTH_URL": "https://auth.msxor.com"
 	},
+	"routes": [
+		{ "pattern": "auth.msxor.com", "custom_domain": true }
+	],
 	"assets": {
 		"directory": "./frontend/dist",
 		"not_found_handling": "single-page-application",
