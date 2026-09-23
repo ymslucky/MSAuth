@@ -76,6 +76,7 @@
 	/* ----- overlays, scrim, derived art surfaces ----- */
 	--scrim: rgba(22, 21, 15, 0.34);
 	--shadow-pop: 0 8px 24px rgba(22, 21, 15, 0.08);
+	--shadow-lift: 0 10px 28px rgba(22, 21, 15, 0.12);
 	--shadow-toast: 0 8px 24px rgba(22, 21, 15, 0.18);
 	--skel-a: #ecebe3;
 	--skel-b: #f5f4ef;
@@ -206,6 +207,7 @@
 
 	--scrim: rgba(0, 0, 0, 0.5);
 	--shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.5);
+	--shadow-lift: 0 10px 28px rgba(0, 0, 0, 0.55);
 	--shadow-toast: 0 8px 24px rgba(0, 0, 0, 0.45);
 	--skel-a: #26241f;
 	--skel-b: #2e2c25;

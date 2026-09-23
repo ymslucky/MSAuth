@@ -5,7 +5,7 @@ import { useT } from "../../i18n";
 import { useTableState } from "../../table";
 import { navigate } from "../../router";
 import {
-	Badge, Button, Card, CopyButton, Empty, ErrorNote, ErrorState, Field, FilterChips,
+	Badge, Button, Card, CopyButton, EmptyState, ErrorNote, ErrorState, Field, FilterChips,
 	Modal, MonoId, PageHeader, SkeletonProfile, SkeletonTable, SkeletonStats, Table,
 	TablePager, useNotice, usePaletteSource, type PaletteEntry,
 } from "../../ui";
@@ -119,7 +119,7 @@ export function Users() {
 					? <ErrorState message={error} onRetry={() => void reload()} />
 					: <SkeletonTable />
 				) : items.length === 0 ? (
-					<Empty glyph="?">{t("No matching users.")}</Empty>
+					<EmptyState art="search" title={t("No matching users.")} />
 				) : (
 					<>
 						<FilterChips ariaLabel={t("Filter by status")} chips={statusChips} active={status} onToggle={toggleStatus} />
@@ -289,7 +289,7 @@ export function UserDetail(props: { id: string }) {
 						{user?.banned && <p className="cell-sub" style={{ marginTop: 10 }}>{t("Ban and revoke everything this user controls.")}</p>}
 					</Card>
 					<Card title={t("Sessions")}>
-						{detail.sessions.length === 0 ? <Empty>{t("None.")}</Empty> : (
+						{detail.sessions.length === 0 ? <EmptyState art="users" title={t("None.")} /> : (
 							<Table head={[t("Created"), "IP", t("User agent"), t("Expires")]}>
 								{detail.sessions.map(session => (
 									<tr key={session.id}>
@@ -303,7 +303,7 @@ export function UserDetail(props: { id: string }) {
 						)}
 					</Card>
 					<Card title={t("Linked accounts")}>
-						{detail.accounts.length === 0 ? <Empty>{t("None.")}</Empty> : (
+						{detail.accounts.length === 0 ? <EmptyState art="audit" title={t("None.")} /> : (
 							<Table head={[t("Provider"), t("Account ID"), t("Linked")]}>
 								{detail.accounts.map(account => (
 									<tr key={account.id}>
@@ -425,6 +425,11 @@ export function Domains() {
 	const [error, setError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
 	const [busy, setBusy] = useState(false);
+	const table = useTableState(items ?? [], {
+		accessors: { createdAt: (row: DomainRow) => row.createdAt },
+		initialSort: { key: "createdAt", dir: "desc" },
+		pageSize: 25,
+	});
 
 	const reload = () => api<{ items: DomainRow[] }>("/api/v1/domains")
 		.then(result => { setItems(result.items ?? []); setError(null); })
@@ -470,10 +475,11 @@ export function Domains() {
 					? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
 					: <SkeletonTable />
 				) : items.length === 0 ? (
-					<Empty glyph="#">{t("No domains added.")}</Empty>
+					<EmptyState art="applications" title={t("No domains added.")} />
 				) : (
+					<>
 					<Table head={[t("Hostname"), t("TXT record"), t("Value"), t("Status"), ""]} rightCols={[4]}>
-						{items.map(row => (
+						{table.rows.map(row => (
 							<tr key={row.id}>
 								<td>{row.hostname}</td>
 								<td><MonoId value={`_msauth.${row.hostname}`} mask={false} /></td>
@@ -487,8 +493,19 @@ export function Domains() {
 							</tr>
 						))}
 					</Table>
-				)}
-			</Card>
+					{table.pages > 1 && (
+						<TablePager
+							page={table.page}
+							pages={table.pages}
+							start={table.start}
+							end={table.end}
+							total={table.total}
+							onPage={table.setPage}
+						/>
+						)}
+					</>
+					)}
+				</Card>
 		</>
 	);
 }

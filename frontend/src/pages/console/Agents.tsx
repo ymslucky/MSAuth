@@ -4,9 +4,10 @@ import { api, del, fmtDate, fullTimestamp, isValidExpiry, post } from "../../api
 import { useT } from "../../i18n";
 import { navigate } from "../../router";
 import { useOptimisticList } from "../../optimistic";
+import { useTableState } from "../../table";
 import {
-	Badge, Button, Card, Empty, ErrorNote, ErrorState, Field,
-	Modal, MonoId, PageHeader, SkeletonTable, Table, useNotice,
+	Badge, Button, Card, EmptyState, ErrorNote, ErrorState, Field,
+	Modal, MonoId, PageHeader, SkeletonTable, Table, TablePager, useNotice,
 	usePaletteSource, type PaletteEntry,
 } from "../../ui";
 
@@ -43,6 +44,11 @@ export function Agents() {
 	const [attempt, setAttempt] = useState(0);
 	const [creating, setCreating] = useState(false);
 	const optimistic = useOptimisticList<AgentRow>(items, setItems);
+	const table = useTableState(items ?? [], {
+		accessors: { createdAt: (row: AgentRow) => row.createdAt },
+		initialSort: { key: "createdAt", dir: "desc" },
+		pageSize: 25,
+	});
 
 	const reload = () => api<{ items: AgentRow[] }>("/api/v1/agents")
 		.then(result => { setItems(result.items ?? []); setError(null); })
@@ -103,28 +109,42 @@ export function Agents() {
 					? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
 					: <SkeletonTable />
 				) : items.length === 0 ? (
-					<Empty glyph="&" action={<Button kind="primary" onClick={() => setCreating(true)}>{t("Register agent")}</Button>}>
-						{t("No agents registered.")}
-					</Empty>
+					<EmptyState
+						art="agents"
+						title={t("No agents registered.")}
+						action={<Button kind="primary" onClick={() => setCreating(true)}>{t("Register agent")}</Button>}
+					/>
 				) : (
-					<Table head={[t("Name"), t("Client"), t("DPoP key"), t("Status"), t("Created"), ""]} rightCols={[5]}>
-						{items.map(row => (
-							<tr key={row.id}>
-								<td>{row.name}{row.description && <div className="cell-sub">{row.description}</div>}</td>
-								<td>{row.clientId ? <MonoId value={row.clientId} /> : <span className="muted">{t("not bound")}</span>}</td>
-								<td>{row.dpopJkt ? <MonoId value={row.dpopJkt} /> : <span className="muted">—</span>}</td>
-								<td>{row.status === "active" ? <Badge tone="ok">{t("active")}</Badge> : <Badge tone="bad">{t("revoked")}</Badge>}</td>
-								<td className="muted"><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
-								<td className="right">
+					<>
+						<Table head={[t("Name"), t("Client"), t("DPoP key"), t("Status"), t("Created"), ""]} rightCols={[5]}>
+							{table.rows.map(row => (
+								<tr key={row.id}>
+									<td>{row.name}{row.description && <div className="cell-sub">{row.description}</div>}</td>
+									<td>{row.clientId ? <MonoId value={row.clientId} /> : <span className="muted">{t("not bound")}</span>}</td>
+									<td>{row.dpopJkt ? <MonoId value={row.dpopJkt} /> : <span className="muted">—</span>}</td>
+									<td>{row.status === "active" ? <Badge tone="ok">{t("active")}</Badge> : <Badge tone="bad">{t("revoked")}</Badge>}</td>
+									<td className="muted"><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
+									<td className="right">
 										{row.status === "active" && (
 											<Button kind="danger" onClick={() => void revoke(row.id)}><ShieldOff size={14} strokeWidth={1.75} aria-hidden />{t("Revoke")}</Button>
 										)}
 									</td>
-							</tr>
-						))}
-					</Table>
+								</tr>
+							))}
+						</Table>
+						{table.pages > 1 && (
+							<TablePager
+								page={table.page}
+								pages={table.pages}
+								start={table.start}
+								end={table.end}
+								total={table.total}
+								onPage={table.setPage}
+							/>
+						)}
+					</>
 				)}
-			</Card>
+				</Card>
 			{creating && (
 				<AgentForm onClose={() => setCreating(false)} onSave={input => run(async () => {
 					await post("/api/v1/agents", input);
@@ -201,6 +221,11 @@ export function Delegations() {
 	const [attempt, setAttempt] = useState(0);
 	const [creating, setCreating] = useState(false);
 	const optimistic = useOptimisticList<DelegationRow>(items, setItems);
+	const table = useTableState(items ?? [], {
+		accessors: { createdAt: (row: DelegationRow) => row.createdAt },
+		initialSort: { key: "createdAt", dir: "desc" },
+		pageSize: 25,
+	});
 
 	const reload = () => api<{ items: DelegationRow[] }>("/api/v1/delegations")
 		.then(result => { setItems(result.items ?? []); setError(null); })
@@ -263,29 +288,43 @@ export function Delegations() {
 					? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
 					: <SkeletonTable />
 				) : items.length === 0 ? (
-					<Empty glyph="%" action={<Button kind="primary" onClick={() => setCreating(true)}>{t("New delegation")}</Button>}>
-						{t("No delegations.")}
-					</Empty>
+					<EmptyState
+						art="delegations"
+						title={t("No delegations.")}
+						action={<Button kind="primary" onClick={() => setCreating(true)}>{t("New delegation")}</Button>}
+					/>
 				) : (
-					<Table head={[t("Agent"), t("Resource"), t("Scopes / permissions"), t("Depth"), t("Expires"), t("Status"), ""]} rightCols={[6]}>
-						{items.map(row => (
-							<tr key={row.id}>
-								<td>{row.agentName}</td>
-								<td><MonoId value={row.resource} wide mask={false} /></td>
-								<td>{row.scopes.join(", ")}<div className="cell-sub mono">{JSON.stringify(row.authorizationDetails)}</div></td>
-								<td>{row.depth}{row.depth > 0 && <div className="cell-sub">{t("chain")}</div>}</td>
-								<td className="muted"><time title={fullTimestamp(row.expiresAt)}>{fmtDate(row.expiresAt)}</time></td>
-								<td>{row.revokedAt ? <Badge tone="bad">{t("revoked")}</Badge> : row.expiresAt < Date.now() ? <Badge tone="warn">{t("expired")}</Badge> : <Badge tone="ok">{t("live")}</Badge>}</td>
-								<td className="right">
+					<>
+						<Table head={[t("Agent"), t("Resource"), t("Scopes / permissions"), t("Depth"), t("Expires"), t("Status"), ""]} rightCols={[6]}>
+							{table.rows.map(row => (
+								<tr key={row.id}>
+									<td>{row.agentName}</td>
+									<td><MonoId value={row.resource} wide mask={false} /></td>
+									<td>{row.scopes.join(", ")}<div className="cell-sub mono">{JSON.stringify(row.authorizationDetails)}</div></td>
+									<td>{row.depth}{row.depth > 0 && <div className="cell-sub">{t("chain")}</div>}</td>
+									<td className="muted"><time title={fullTimestamp(row.expiresAt)}>{fmtDate(row.expiresAt)}</time></td>
+									<td>{row.revokedAt ? <Badge tone="bad">{t("revoked")}</Badge> : row.expiresAt < Date.now() ? <Badge tone="warn">{t("expired")}</Badge> : <Badge tone="ok">{t("live")}</Badge>}</td>
+									<td className="right">
 										{!row.revokedAt && (
 											<Button kind="danger" onClick={() => void revoke(row.id)}><ShieldOff size={14} strokeWidth={1.75} aria-hidden />{t("Revoke")}</Button>
 										)}
 									</td>
-							</tr>
-						))}
-					</Table>
+								</tr>
+							))}
+						</Table>
+						{table.pages > 1 && (
+							<TablePager
+								page={table.page}
+								pages={table.pages}
+								start={table.start}
+								end={table.end}
+								total={table.total}
+								onPage={table.setPage}
+							/>
+						)}
+					</>
 				)}
-			</Card>
+				</Card>
 			{creating && (
 				<DelegationForm agents={agents} onClose={() => setCreating(false)} onSave={input => run(async () => {
 					await post("/api/v1/delegations", input);

@@ -93,6 +93,7 @@ const nav = {
 	"Auto": "自动",
 	"Light": "浅色",
 	"Dark": "深色",
+	"Other": "其他",
 };
 
 const auth = {
@@ -131,6 +132,15 @@ const overview = {
 	"Action": "操作",
 	"Resource": "资源",
 	"When": "时间",
+	// data viz + first-run guidance
+	"Token exchange trend (7 days)": "近 7 天 token 交换趋势",
+	"exchanges in 7 days": "7 天内交换",
+	"peak": "峰值",
+	"Activity mix": "动态构成",
+	"Recent events by resource type": "按资源类型分组的最近动态",
+	"Get started in three steps.": "三步开始。",
+	"Create an application": "创建应用",
+	"Exchange your first token": "交换第一个令牌",
 };
 
 const applications = {
@@ -150,6 +160,7 @@ const applications = {
 	"Confidential client (client secret)": "机密客户端（使用 client secret）",
 	"Require DPoP-bound tokens": "要求 DPoP 绑定的 token",
 	"Copy it now — this value is never shown again.": "请立即复制 — 该值不会再显示。",
+	"Applications are OAuth clients that sign in users or call APIs on your behalf.": "应用是代表你登录或调用 API 的 OAuth 客户端。",
 };
 
 const keys = {
@@ -297,6 +308,37 @@ const toasts = {
 	"Domain verified.": "域名已验证。",
 };
 
+const dev = {
+	// /dev component catalog (console-gated, linked nowhere public)
+	"Component catalog": "组件目录",
+	"Documentation-as-code: every primitive, every state.": "文档即代码：所有原语与状态。",
+	"Buttons": "按钮",
+	"Tags & badges": "标签与徽章",
+	"Dialogs": "对话框",
+	"Open modal": "打开对话框",
+	"This is a modal.": "这是一个对话框。",
+	"Open confirm": "打开确认框",
+	"Delete everything?": "确定删除一切？",
+	"Confirmed": "已确认",
+	"Cancelled": "已取消",
+	"Toasts": "通知",
+	"Fire success toast": "发送成功通知",
+	"Fire error toast": "发送错误通知",
+	"Fire info toast": "发送信息通知",
+	"Toast with action": "带操作的通知",
+	"Undo": "撤销",
+	"Copy & identifiers": "复制与标识",
+	"Masked by default;": "默认遮蔽；",
+	"shows the value in full.": "完整显示该值。",
+	"Skeletons": "骨架屏",
+	"Empty states": "空状态",
+	"A hint line under the title.": "标题下的一行提示。",
+	"Table toolbar": "表格工具栏",
+	"Palette & preferences": "命令面板与偏好",
+	"Open palette": "打开命令面板",
+	"Data viz": "数据可视化",
+};
+
 /** Audit action codes, keyed by the exact string the backend writes to auditEvent. */
 const actions = {
 	// src/iam/agents.ts
@@ -338,6 +380,7 @@ export const zh: Record<string, string> = {
 	...security,
 	...admin,
 	...toasts,
+	...dev,
 	...actions,
 };
 

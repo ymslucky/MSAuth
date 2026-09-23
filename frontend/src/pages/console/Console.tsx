@@ -30,6 +30,8 @@ const UsersPage = lazy(() => import("./Admin").then(m => ({ default: m.Users }))
 const Settings = lazy(() => import("./Admin").then(m => ({ default: m.Settings })));
 const Domains = lazy(() => import("./Admin").then(m => ({ default: m.Domains })));
 const UserDetail = lazy(() => import("./Admin").then(m => ({ default: m.UserDetail })));
+// Documentation-as-code catalog — direct URL only, linked nowhere public.
+const Catalog = lazy(() => import("./Catalog"));
 
 /** Suspense fallback while a route chunk streams in. */
 function PageFallback() {
@@ -259,7 +261,8 @@ function renderPage(path: string, context: ConsoleContext, t: (key: string) => s
 		case "/users": return <UsersPage />;
 		case "/settings": return <Settings />;
 		case "/domains": return <Domains />;
+		case "/dev": return <Catalog />;
 		default:
-			return <p className="empty">{t("Unknown page.")}</p>;
+			return <p className="muted">{t("Unknown page.")}</p>;
 	}
 }

@@ -555,19 +555,34 @@ tbody tr:nth-child(n+9) { animation-delay: 128ms; }
 .error-card strong { color: var(--bad); font-size: 13.5px; display: block; }
 .error-card p { color: var(--ink-soft); font-size: 12.5px; margin-top: 2px; word-break: break-word; }
 
-/* ---------- empty states ---------- */
-.empty { text-align: center; padding: 34px 12px 30px; }
-.empty-glyph {
-	display: block;
-	font-family: var(--font-serif);
-	font-style: italic;
-	font-size: 46px;
-	line-height: 1;
-	color: var(--accent);
-	margin-bottom: 12px;
+/* ---------- empty states: hand-drawn line art + title + hint + action ---------- */
+.empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	padding: 30px 16px 26px;
 }
-.empty p { color: var(--muted); font-size: 13.5px; }
+.empty-art { color: var(--ink-soft); margin-bottom: 12px; }
+.empty-art svg { display: block; width: 76px; height: 76px; }
+.empty-state .empty-title { color: var(--ink); font-weight: 600; font-size: 14px; }
+.empty-state .empty-hint { color: var(--muted); font-size: 13px; margin-top: 5px; max-width: 46ch; }
 .empty-action { margin-top: 16px; }
+/* catalog variant: the seven arts side by side, labelled by their union key */
+.empty-catalog {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+	gap: 10px;
+	margin-bottom: 18px;
+}
+.empty-catalog .empty-state {
+	padding: 18px 8px 14px;
+	border: 1px dashed var(--line);
+	border-radius: var(--radius-lg);
+}
+.empty-catalog .empty-art { margin-bottom: 8px; }
+.empty-catalog .empty-art svg { width: 54px; height: 54px; }
+.empty-catalog .empty-title { font-family: var(--font-mono); font-weight: 400; font-size: 11px; color: var(--muted); }
 
 /* ---------- skeleton ---------- */
 .skeleton {
@@ -695,6 +710,68 @@ tbody tr:nth-child(n+9) { animation-delay: 128ms; }
 	letter-spacing: 0;
 }
 .hero-stats { margin-bottom: 18px; }
+
+/* ---------- overview viz: sparkline + activity mix (tokens only, dark free) ---------- */
+.viz-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+	gap: 18px;
+	margin-bottom: 18px;
+}
+/* hover micro-interaction: lift 2px + the shadow-lift token */
+.viz-grid .card {
+	margin-bottom: 0;
+	height: 100%;
+	transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+}
+.viz-grid .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+.viz-spark { display: flex; flex-direction: column; gap: 8px; }
+.viz-headline { display: flex; align-items: baseline; gap: 10px; }
+.viz-num { font-size: 34px; line-height: 1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.viz-caption { color: var(--muted); font-size: 12.5px; }
+.spark { display: block; width: 100%; height: auto; }
+.spark-line { fill: none; stroke: var(--accent); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.spark-area { fill: var(--accent-tint); stroke: none; }
+.spark-dot { fill: var(--accent); }
+.spark-axis { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; }
+
+/* activity mix: one tone dot per recent event + legend in tag vocabulary */
+.viz-mix { display: flex; flex-direction: column; gap: 14px; }
+.viz-dots { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 10px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--tag-other-ink); }
+.dot--agent { background: var(--tag-agent-ink); }
+.dot--delegation { background: var(--tag-delegation-ink); }
+.dot--apikey { background: var(--tag-apikey-ink); }
+.dot--user { background: var(--tag-user-ink); }
+.dot--session { background: var(--tag-session-ink); }
+.dot--domain { background: var(--tag-domain-ink); }
+.dot--alert { background: var(--tag-alert-ink); }
+.dot--resource { background: var(--tag-resource-ink); }
+.dot--client { background: var(--tag-client-ink); }
+.dot--other { background: var(--tag-other-ink); }
+.viz-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.viz-legend li { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-soft); }
+.viz-legend strong { margin-left: auto; font-weight: 500; color: var(--ink); }
+
+/* first-run onboarding: 创建应用 → 注册代理 → 交换第一个令牌 */
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.steps li { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 14px; }
+.steps li.current { color: var(--ink); font-weight: 500; }
+.steps li a { font-weight: inherit; }
+.step-num {
+	flex: none;
+	width: 26px;
+	height: 26px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid var(--line);
+	border-radius: 50%;
+	font-size: 14px;
+	color: var(--muted);
+}
+.steps li.current .step-num { border-color: var(--accent); color: var(--accent-darker); background: var(--accent-tint); }
+.step-check { color: var(--ok); font-weight: 600; }
 
 /* ---------- modal ---------- */
 .modal-backdrop {
@@ -861,6 +938,12 @@ tbody tr:nth-child(n+9) { animation-delay: 128ms; }
 }
 .auth-card .btn-row { margin-top: 4px; }
 .auth-card .btn-row .btn { flex: 1; }
+
+/* consent echo: static SVG constellation echoing the login scene's sphere */
+.consent-echo { display: block; margin: 0 auto 18px; color: var(--ink); }
+.consent-echo ellipse { fill: none; stroke: currentColor; opacity: 0.12; }
+.consent-echo .echo-ink { fill: currentColor; opacity: 0.38; }
+.consent-echo .echo-accent { fill: var(--accent); }
 
 /* ---------- table toolbar: filter chips, sort heads, pager, profile skeleton ---------- */
 .chip-row {

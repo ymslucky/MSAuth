@@ -4,7 +4,7 @@ import { api, del, fmtDate, fullTimestamp, post, summarizeAuditDetail } from "..
 import { useT } from "../../i18n";
 import { useTableState } from "../../table";
 import {
-	ActionTag, Badge, Button, Card, Empty, ErrorNote, ErrorState, Field, FilterChips,
+	ActionTag, Badge, Button, Card, EmptyState, ErrorNote, ErrorState, Field, FilterChips,
 	MonoId, PageHeader, RESOURCE_TONES, ResourceTag, resourceTone, SkeletonTable, Table,
 	TablePager, useNotice,
 } from "../../ui";
@@ -90,7 +90,7 @@ export function Audit(props: { operator: boolean }) {
 							<Field label={t("Resource type or ID")}><input value={resource} onChange={event => { setPage(1); setResource(event.target.value); }} spellCheck={false} /></Field>
 						</div>
 						{loading ? <SkeletonTable /> : items.length === 0 ? (
-							<Empty glyph="¶">{t("Nothing recorded for this filter.")}</Empty>
+							<EmptyState art="search" title={t("Nothing recorded for this filter.")} />
 						) : (
 							<>
 								{typeChips.length > 1 && (
@@ -161,6 +161,11 @@ export function Sessions() {
 	const [error, setError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
 	const [revoking, setRevoking] = useState(false);
+	const table = useTableState(items ?? [], {
+		accessors: { createdAt: (row: SessionRow) => row.createdAt },
+		initialSort: { key: "createdAt", dir: "desc" },
+		pageSize: 25,
+	});
 
 	const reload = () => api<{ items: SessionRow[]; currentId: string }>("/api/v1/sessions")
 		.then(result => { setItems(result.items ?? []); setCurrentId(result.currentId ?? ""); setError(null); })
@@ -199,26 +204,38 @@ export function Sessions() {
 					? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
 					: <SkeletonTable />
 				) : items.length === 0 ? (
-					<Empty glyph="…">{t("No sessions.")}</Empty>
+					<EmptyState art="users" title={t("No sessions.")} />
 				) : (
-					<Table head={[t("Created"), "IP", t("User agent"), t("Expires"), ""]} rightCols={[4]}>
-						{items.map(row => (
-							<tr key={row.id}>
-								<td className="muted"><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
-								<td><MonoId value={row.ipAddress ?? "—"} mask={false} /></td>
-								<td className="muted"><span title={row.userAgent ?? ""}>{(row.userAgent ?? "").slice(0, 60)}</span></td>
-								<td className="muted"><time title={fullTimestamp(row.expiresAt)}>{fmtDate(row.expiresAt)}</time></td>
-								<td className="right">
+					<>
+						<Table head={[t("Created"), "IP", t("User agent"), t("Expires"), ""]} rightCols={[4]}>
+							{table.rows.map(row => (
+								<tr key={row.id}>
+									<td className="muted"><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
+									<td><MonoId value={row.ipAddress ?? "—"} mask={false} /></td>
+									<td className="muted"><span title={row.userAgent ?? ""}>{(row.userAgent ?? "").slice(0, 60)}</span></td>
+									<td className="muted"><time title={fullTimestamp(row.expiresAt)}>{fmtDate(row.expiresAt)}</time></td>
+									<td className="right">
 										{row.id === currentId ? <Badge>{t("current")}</Badge> : (
 											<Button kind="danger" disabled={revoking} onClick={() => void revoke(row.id)}><ShieldOff size={14} strokeWidth={1.75} aria-hidden />{t("Revoke")}</Button>
 										)}
 									</td>
-							</tr>
-						))}
-					</Table>
+								</tr>
+							))}
+						</Table>
+						{table.pages > 1 && (
+							<TablePager
+								page={table.page}
+								pages={table.pages}
+								start={table.start}
+								end={table.end}
+								total={table.total}
+								onPage={table.setPage}
+							/>
+						)}
+					</>
 				)}
-			</Card>
-		</>
+				</Card>
+			</>
 	);
 }
 
@@ -237,6 +254,11 @@ export function Alerts() {
 	const [error, setError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
 	const [acking, setAcking] = useState<string | null>(null);
+	const table = useTableState(items ?? [], {
+		accessors: { createdAt: (row: AlertRow) => row.createdAt },
+		initialSort: { key: "createdAt", dir: "desc" },
+		pageSize: 25,
+	});
 
 	const reload = () => api<{ items: AlertRow[] }>("/api/v1/alerts")
 		.then(result => { setItems(result.items ?? []); setError(null); })
@@ -267,22 +289,34 @@ export function Alerts() {
 				: (
 					<Card>
 						{items === null ? <SkeletonTable /> : items.length === 0 ? (
-							<Empty glyph="!">{t("No alerts. Quiet is good.")}</Empty>
+							<EmptyState art="audit" title={t("No alerts. Quiet is good.")} />
 						) : (
-							<Table head={[t("When"), t("Kind"), t("Detail"), ""]} rightCols={[3]}>
-								{items.map(row => (
-									<tr key={row.id}>
-										<td className="muted" style={{ whiteSpace: "nowrap" }}><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
-										<td><code>{row.kind}</code></td>
-										<td className="mono muted"><span title={row.detail}>{row.detail.slice(0, 140)}</span></td>
-										<td className="right">
-											{row.acknowledgedAt ? <Badge tone="ok">{t("ack")}</Badge> : (
-												<Button kind="ghost" disabled={acking === row.id} onClick={() => acknowledge(row.id)}>{t("Acknowledge")}</Button>
-											)}
-										</td>
-									</tr>
-								))}
-							</Table>
+							<>
+								<Table head={[t("When"), t("Kind"), t("Detail"), ""]} rightCols={[3]}>
+									{table.rows.map(row => (
+										<tr key={row.id}>
+											<td className="muted" style={{ whiteSpace: "nowrap" }}><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
+											<td><code>{row.kind}</code></td>
+											<td className="mono muted"><span title={row.detail}>{row.detail.slice(0, 140)}</span></td>
+											<td className="right">
+												{row.acknowledgedAt ? <Badge tone="ok">{t("ack")}</Badge> : (
+													<Button kind="ghost" disabled={acking === row.id} onClick={() => acknowledge(row.id)}>{t("Acknowledge")}</Button>
+												)}
+											</td>
+										</tr>
+									))}
+								</Table>
+								{table.pages > 1 && (
+									<TablePager
+										page={table.page}
+										pages={table.pages}
+										start={table.start}
+										end={table.end}
+										total={table.total}
+										onPage={table.setPage}
+									/>
+								)}
+							</>
 						)}
 					</Card>
 				)}

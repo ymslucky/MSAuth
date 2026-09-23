@@ -4,9 +4,10 @@ import { api, del, fmtDate, fullTimestamp, patch, post } from "../../api";
 import { useT } from "../../i18n";
 import { navigate } from "../../router";
 import { useOptimisticList } from "../../optimistic";
+import { useTableState } from "../../table";
 import {
-	Badge, Button, Card, CopyButton, Empty, ErrorNote, ErrorState, Field,
-	Modal, MonoId, PageHeader, SkeletonTable, Table, useNotice,
+	Badge, Button, Card, CopyButton, EmptyState, ErrorNote, ErrorState, Field,
+	Modal, MonoId, PageHeader, SkeletonTable, Table, TablePager, useNotice,
 	usePaletteSource, type PaletteEntry,
 } from "../../ui";
 interface AppRow {
@@ -64,6 +65,12 @@ export function Applications() {
 	const [secret, setSecret] = useState<string | null>(null);
 	const [saving, setSaving] = useState(false);
 	const optimistic = useOptimisticList<AppRow>(items, setItems);
+	// Client-side paging: any list can outgrow one screen.
+	const table = useTableState(items ?? [], {
+		accessors: { createdAt: (row: AppRow) => row.createdAt },
+		initialSort: { key: "createdAt", dir: "desc" },
+		pageSize: 25,
+	});
 
 	const reload = () => api<{ items: AppRow[] }>("/api/v1/applications")
 		.then(result => { setItems(result.items ?? []); setError(null); })
@@ -126,12 +133,16 @@ export function Applications() {
 					? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
 					: <SkeletonTable />
 				) : items.length === 0 ? (
-					<Empty glyph="@" action={<Button kind="primary" onClick={() => setCreating(true)}>{t("New application")}</Button>}>
-						{t("No applications yet.")}
-					</Empty>
+					<EmptyState
+						art="applications"
+						title={t("No applications yet.")}
+						hint={t("Applications are OAuth clients that sign in users or call APIs on your behalf.")}
+						action={<Button kind="primary" onClick={() => setCreating(true)}>{t("New application")}</Button>}
+					/>
 				) : (
-					<Table head={[t("Name"), t("Client ID"), t("Callbacks"), t("Status"), ""]} rightCols={[4]}>
-						{items.map(row => (
+					<>
+						<Table head={[t("Name"), t("Client ID"), t("Callbacks"), t("Status"), ""]} rightCols={[4]}>
+							{table.rows.map(row => (
 							<tr key={row.client_id}>
 								<td>{row.client_name}</td>
 								<td><MonoId value={row.client_id} /></td>
@@ -157,10 +168,21 @@ export function Applications() {
 									</div>
 								</td>
 							</tr>
-						))}
-					</Table>
-				)}
-			</Card>
+							))}
+						</Table>
+							{table.pages > 1 && (
+								<TablePager
+									page={table.page}
+									pages={table.pages}
+									start={table.start}
+									end={table.end}
+									total={table.total}
+									onPage={table.setPage}
+								/>
+							)}
+						</>
+					)}
+				</Card>
 			{creating && (
 				<AppForm
 					pending={saving}
@@ -253,6 +275,11 @@ export function Keys() {
 	const [secret, setSecret] = useState<string | null>(null);
 	const [saving, setSaving] = useState(false);
 	const optimistic = useOptimisticList<KeyRow>(items, setItems);
+	const table = useTableState(items ?? [], {
+		accessors: { createdAt: (row: KeyRow) => row.createdAt },
+		initialSort: { key: "createdAt", dir: "desc" },
+		pageSize: 25,
+	});
 
 	const reload = () => api<{ apiKeys: KeyRow[] }>("/api/v1/keys")
 		.then(result => { setItems(result.apiKeys ?? []); setError(null); })
@@ -309,12 +336,15 @@ export function Keys() {
 					? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
 					: <SkeletonTable />
 				) : items.length === 0 ? (
-					<Empty glyph="*" action={<Button kind="primary" onClick={() => setCreating(true)}>{t("New key")}</Button>}>
-						{t("No API keys.")}
-					</Empty>
+					<EmptyState
+						art="keys"
+						title={t("No API keys.")}
+						action={<Button kind="primary" onClick={() => setCreating(true)}>{t("New key")}</Button>}
+					/>
 				) : (
+					<>
 					<Table head={[t("Name"), t("Key"), t("Created"), t("Expires"), t("Last used"), ""]} rightCols={[5]}>
-						{items.map(row => (
+						{table.rows.map(row => (
 							<tr key={row.id}>
 								<td>{row.name}</td>
 								<td><MonoId value={`${row.start ?? row.id}…`} /></td>
@@ -325,7 +355,18 @@ export function Keys() {
 							</tr>
 						))}
 					</Table>
-				)}
+					{table.pages > 1 && (
+						<TablePager
+							page={table.page}
+							pages={table.pages}
+							start={table.start}
+							end={table.end}
+							total={table.total}
+							onPage={table.setPage}
+						/>
+					)}
+					</>
+					)}
 			</Card>
 			{creating && (
 				<Modal title={t("New API key")} open onClose={() => setCreating(false)}>
@@ -370,6 +411,7 @@ export function Resources(props: { operator: boolean }) {
 	const [name, setName] = useState("");
 	const [linkTarget, setLinkTarget] = useState({ identifier: "", clientId: "" });
 	const [saving, setSaving] = useState(false);
+	const table = useTableState(items ?? [], { accessors: {}, pageSize: 25 });
 
 	// Palette: search loaded resources by name / identifier.
 	const paletteEntries = useMemo<PaletteEntry[] | null>(() => items === null ? null : items.map(row => ({
@@ -414,10 +456,11 @@ export function Resources(props: { operator: boolean }) {
 					? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
 					: <SkeletonTable />
 				) : items.length === 0 ? (
-					<Empty glyph="§">{t("No resources registered.")}</Empty>
+					<EmptyState art="applications" title={t("No resources registered.")} />
 				) : (
+					<>
 					<Table head={[t("Name"), t("Identifier"), t("TTL"), t("DPoP required"), t("Status")]}>
-						{items.map(row => (
+						{table.rows.map(row => (
 							<tr key={row.id}>
 								<td>{row.name}</td>
 								<td>
@@ -434,7 +477,18 @@ export function Resources(props: { operator: boolean }) {
 							</tr>
 						))}
 					</Table>
-				)}
+					{table.pages > 1 && (
+						<TablePager
+							page={table.page}
+							pages={table.pages}
+							start={table.start}
+							end={table.end}
+							total={table.total}
+							onPage={table.setPage}
+						/>
+					)}
+					</>
+					)}
 			</Card>
 			{props.operator && (
 				<>

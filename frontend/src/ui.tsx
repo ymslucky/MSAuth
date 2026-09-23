@@ -1,6 +1,7 @@
 import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Check, CheckCircle2, ChevronDown, ChevronUp, ChevronsUpDown, CircleAlert, Copy, Info, Search, X } from "lucide-react";
 import { useActionLabel, useT } from "./i18n";
+import { EmptyIllustration, type EmptyArt } from "./illustrations";
 import { maskId } from "./api";
 import { Link } from "./router";
 import { capVisibleToasts, noticeTtl, type NoticeTone } from "./notice";
@@ -133,12 +134,22 @@ export function ErrorState(props: { message?: string | null; onRetry?: () => voi
 	);
 }
 
-/** Editorial empty state: serif glyph + one-line explanation + optional CTA. */
-export function Empty(props: { glyph?: string; children: ReactNode; action?: ReactNode }) {
+/**
+ * Empty-state primitive: hand-drawn illustration + title + optional hint +
+ * primary action. `art` picks from the finite illustration vocabulary
+ * (illustrations.tsx) so every first-run moment reads in the same hand.
+ */
+export function EmptyState(props: {
+	art: EmptyArt;
+	title: ReactNode;
+	hint?: ReactNode;
+	action?: ReactNode;
+}) {
 	return (
-		<div className="empty">
-			{props.glyph && <span className="empty-glyph" aria-hidden="true">{props.glyph}</span>}
-			<p>{props.children}</p>
+		<div className="empty-state">
+			<EmptyIllustration art={props.art} />
+			<p className="empty-title">{props.title}</p>
+			{props.hint && <p className="empty-hint">{props.hint}</p>}
 			{props.action && <div className="empty-action">{props.action}</div>}
 		</div>
 	);
