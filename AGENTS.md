@@ -1,6 +1,9 @@
 # MSAuth — Development Guide
 
-OpenAuth authentication server deployed on Cloudflare Workers (KV + D1 + Secrets Store).
+IAM platform for individuals, indie hackers and one-person companies, with
+native AI-Agent / MCP authorization. Deployed on Cloudflare Workers
+(D1 + KV + Secrets Store). Stack: **Hono** (routing/middleware) +
+**Better Auth** (auth engine + plugins). No legacy OpenAuth code.
 
 ## Development workflow (mandatory)
 
@@ -17,77 +20,70 @@ OpenAuth authentication server deployed on Cloudflare Workers (KV + D1 + Secrets
 3. **Commit automatically once tests pass.** Do not wait for the user to ask;
    a green suite is the commit signal. Keep commits focused on one change.
 
+## Architecture
+
+```
+src/platform.ts   Hono app — worker entry: security headers, rate limiting,
+                  discovery endpoints, /api/auth/* (Better Auth handler),
+                  /api/v1/* (management API), SPA fallback via ASSETS
+src/iam/          auth.ts    Better Auth factory: plugins (admin, bearer, jwt,
+                             passkey, twoFactor, organization, apiKey,
+                             oauthProvider + exchange extension), per-request
+                             secret resolution, admin allowlist
+                  agents.ts  agent registry + delegation CRUD (/api/v1)
+                  developers.ts  OAuth apps, API keys, resources, DCR review
+                  governance.ts  overview, audit, users, sessions, alerts,
+                                 platform settings, domain verification
+                  http.ts    request helpers (body/text/list/page/audit)
+                  types.ts   Bindings, Auth/Identity types, isOperator
+src/agent/        exchange.ts  RFC 8693 token-exchange grant extension
+                             (delegation chains, DPoP-bound, ≤5 min tokens)
+                  policy.ts   RAR policy (mcp_tool details, subset-only
+                             narrowing, HTTPS resource/redirect validation)
+sdk/index.ts      Runtime-independent Agent SDK: AgentClient (PKCE +
+                  DPoP authorize/complete/proof/fetch/refresh/exchange),
+                  protected-resource metadata, authorizeToolCall
+migrations/       0001_schema.sql (generated) + 0002_seed.sql (idempotent)
+scripts/generate-schema.mjs   npm run db:schema — regenerates 0001 from the
+                  Better Auth plugin schemas; run it after plugin changes
+```
+
+One responsibility per module, single-direction dependencies, no cycles.
+Frontend SPA lives outside `src/` and is served by Workers Assets.
+
 ## Testing notes
 
 - Integration tests run inside workerd via `@cloudflare/vitest-pool-workers`
-  (vitest 4). Config lives in `vitest.config.mts`.
+  (vitest 4). Config: `vitest.config.mts`.
 - Bindings are declared manually in `vitest.config.mts` (NOT via
-  `wrangler.json`) so the Secrets Store bindings can be replaced with plain
-  string mocks: `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`. Tests must never
-  require live Cloudflare API access.
-- D1 migrations in `migrations/` are applied in tests by
-  `test/helpers.ts#applyMigrations` (imported with Vite `?raw`, split on
-  semicolons, executed via `D1.batch`). When adding a migration, update the
-  import list in `test/helpers.ts`.
-- `SELF.fetch` defaults to `redirect: "follow"`; the auth flows under test
-  depend on intermediate 302 responses and their `Set-Cookie` headers, so
-  always pass `redirect: "manual"` and drive redirects explicitly.
-- The password provider verification code is stored in KV under
-  `debug:code:<email>` by `sendCode` (in `src/index.ts`) so tests can complete
-  registration without an email provider.
+  `wrangler.json`) so Secrets Store bindings become plain string mocks
+  (`GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` / `ADMIN_EMAIL`). Tests must
+  never require live Cloudflare API access.
+- Migrations are applied in tests by importing `migrations/*.sql?raw`,
+  stripping comments, splitting on `;` and running `D1.batch`.
+- `SELF`-style flows use Hono's `app.request()`; auth state is a Better Auth
+  session cookie obtained from `POST /api/auth/sign-in/email`.
 
-## Architecture
+## Deployment notes
 
-Modular layout under `src/` (keep it that way — one responsibility per
-module, single-direction dependencies, no cycles):
+- `BETTER_AUTH_URL` is a plain var in `wrangler.json` (set the real origin
+  before deploying). `BETTER_AUTH_SECRET` is a Worker secret:
+  `wrangler secret put BETTER_AUTH_SECRET` (≥ 32 chars).
+- GitHub credentials + `ADMIN_EMAIL` resolve through Secrets Store bindings
+  and degrade gracefully when absent.
+- `predeploy` auto-creates the `msauth-db` D1 database if missing and applies
+  migrations remotely. Old `openauth-db` data is NOT migrated; the new schema
+  starts empty.
 
-- `index.ts` — worker entry: rate limiting + top-level routing only
-- `http.ts` — pure HTTP helpers; `constants.ts` — shared constants
-- `storage.ts` — KV adapter wrapper (TTL clamp); `subjects.ts` — subject schema
-- Database schema lives in `migrations/` as exactly two files:
-  `0001_schema.sql` (DDL) and `0002_seed.sql` (DML, idempotent). Schema
-  changes = edit these files; there is no incremental migration chain.
-- `scripts/prepare-db.js` (wired into `predeploy`) auto-creates the D1
-  database if missing (e.g. after a full teardown) and syncs its id into
-  `wrangler.json`, then migrations are applied remotely. Tests apply the
-  same files via `applyMigrations()` in `test/helpers.ts`.
-- `github.ts` — GitHub API client
-- `secrets.ts` — secret reading (Secrets Store | string), ADMIN_EMAIL allowlist
-- `sessions.ts` / `tokens.ts` — admin session lifecycle / JWT verification
-- `users.ts` — user domain logic (signup, roles, last-admin protection)
-- `authz.ts` — permission checks (hasPermission, permission codes)
-- `audit.ts` — audit writer
-- `issuer.ts` — OpenAuth issuer factory (allow whitelist, ttl, providers)
-- `admin-flow.ts` — admin OAuth browser flow handlers
-- `api/` — management API: `router.ts` (dispatch table + authz), one module
-  per resource (`users.ts`, `roles.ts`, `permissions.ts`, `audit.ts`); each
-  exports `register*Routes(): ApiRoute[]` — add endpoints by adding table
-  entries, not by editing the dispatcher
+## Product invariants
 
-- `src/index.ts` — Worker entry: OpenAuth issuer (password + GitHub providers),
-  admin OAuth login flow (`/admin/login|callback|logout`), management API
-  (`/api/users`, `/api/roles`, `/api/permissions`, `/api/me`).
-- `src/admin.ts` — Admin console single-page app served at `/admin` via
-  `renderAdminHtml(nonce)` (nonce-based CSP). Keep this file free of
-  backticks; the only template interpolation is the server-generated nonce.
-- RBAC model: `role`, `permission`, `user_role`, `role_permission` tables.
-  Permissions are enforced per-request from the DB; the issued subject JWT
-  carries a `roles` claim. The first user to sign in is bootstrapped as admin.
-- Secrets Store bindings (`SecretsStoreSecret`) resolve through
-  `readSecret`/`resolveGitHubCredentials`, which degrade gracefully when the
-  store is unavailable so password login and the admin console keep working.
-- Admin identity: `ADMIN_EMAIL` (comma-separated, case-insensitive) is the
-  single source of truth for the admin role, re-asserted on every login.
-  There is no first-user promotion.
-- Admin sessions: the browser holds an opaque `__Host-admin_session` id
-  backed by the `admin_sessions` D1 table (7 day absolute expiry, revocable
-  by row delete on logout). Access tokens are 1 hour.
-- `issuer({ allow })` whitelists only the admin-ui client and its exact
-  redirect URI; template demo routes are removed.
-- Brute force: /password/* POSTs are rate limited per IP via the
-  RATE_LIMITER binding (60/60s).
-- Registration: KV flag `config:registration` (default on). When off,
-  logins that would create a new user are rejected; existing users and
-  allowlisted admins keep working.
-- Audit: every management mutation writes `audit_log`; read via
-  `GET /api/audit` (audit:read permission).
+- Admin identity: `ADMIN_EMAIL` (comma-separated, case-insensitive,
+  email-verified) is the single source of truth, re-checked per request.
+- Management API (`/api/v1/*`) accepts browser sessions only — Authorization
+  and x-api-key headers are stripped before session lookup; mutations require
+  same-origin.
+- Agent tokens: exchanged via an explicit delegation, DPoP-bound to the
+  registered agent key, audience-pinned to one HTTPS resource, lifetime
+  ≤ 5 minutes, scopes/RAR may only narrow down the chain (depth ≤ 4).
+- Every management mutation writes `auditEvent`; non-operators can only read
+  their own audit rows.

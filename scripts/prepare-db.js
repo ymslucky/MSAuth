@@ -6,7 +6,7 @@
 const { execSync } = require("node:child_process");
 const fs = require("node:fs");
 
-const DATABASE_NAME = "openauth-db";
+const DATABASE_NAME = "msauth-db";
 const CONFIG_FILE = "wrangler.json";
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 

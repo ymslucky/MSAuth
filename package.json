@@ -17,14 +17,12 @@
 		"@better-auth/api-key": "1.7.5",
 		"@better-auth/oauth-provider": "1.7.5",
 		"@better-auth/passkey": "1.7.5",
-		"@openauthjs/openauth": "0.4.3",
 		"better-auth": "1.7.5",
 		"hono": "4.13.8",
 		"jose": "6.2.3",
 		"lucide-react": "1.47.0",
 		"react": "19.3.0",
-		"react-dom": "19.3.0",
-		"valibot": "1.2.0"
+		"react-dom": "19.3.0"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.22.0",
@@ -41,9 +39,11 @@
 	"scripts": {
 		"cf-typegen": "wrangler types",
 		"check": "tsc && wrangler deploy --dry-run",
+		"db:schema": "node scripts/generate-schema.mjs",
 		"deploy": "wrangler deploy",
 		"dev": "wrangler dev",
-		"predeploy": "node scripts/prepare-db.js && wrangler d1 migrations apply AUTH_DB --remote"
+		"predeploy": "node scripts/prepare-db.js && wrangler d1 migrations apply AUTH_DB --remote",
+		"test": "vitest run"
 	},
 	"allowScripts": {
 		"workerd@1.20260815.1": true,

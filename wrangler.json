@@ -1,8 +1,11 @@
 {
 	"compatibility_date": "2025-10-08",
-	"main": "src/index.ts",
-	"name": "openauth",
+	"main": "src/platform.ts",
+	"name": "msauth",
 	"upload_source_maps": true,
+	"vars": {
+		"BETTER_AUTH_URL": "https://auth.example.com"
+	},
 	"secrets_store_secrets": [
 		{
 			"binding": "GITHUB_CLIENT_ID",
@@ -29,7 +32,7 @@
 	"d1_databases": [
 		{
 			"binding": "AUTH_DB",
-			"database_name": "openauth-db",
+			"database_name": "msauth-db",
 			"database_id": "9f3f6e94-a8c3-4b85-a669-0184108ee034"
 		}
 	],
