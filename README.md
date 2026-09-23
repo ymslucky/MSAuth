@@ -2,7 +2,7 @@
 
 面向个人、极客与一人公司的 IAM 统一平台，原生支持 AI Agent 与 MCP 授权。
 
-部署于 Cloudflare Workers（D1 + KV + Secrets Store），技术栈 **Hono + Better Auth**。
+部署于 Cloudflare Workers（D1 + Secrets Store），技术栈 **Hono + Better Auth**。
 定位不是企业级 IAM 的简化版，而是轻量、开发者体验优先、原生面向 AI Agent 时代的身份基础设施。
 
 ## 功能
@@ -43,9 +43,9 @@ npm run deploy    # predeploy 自动建库（msauth-db）+ 应用迁移，构建
 
 必需配置：
 
-- `BETTER_AUTH_SECRET`：Worker secret（`npx wrangler secret put BETTER_AUTH_SECRET`，≥ 32 字符）
-- Secrets Store：`GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`、`ADMIN_EMAIL`
-  （管理员白名单，逗号分隔、大小写不敏感；缺失时密码登录与管理台优雅降级）
+- 四个密钥统一托管在 Cloudflare Secrets Store，经 `wrangler.json` 的 `secrets_store_secrets`
+  绑定到 Worker：`BETTER_AUTH_SECRET`（≥ 32 字符）、`GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`、
+  `ADMIN_EMAIL`（管理员白名单，逗号分隔、大小写不敏感；缺失时 GitHub 登录与管理台优雅降级）
 
 ## 客户端接入
 

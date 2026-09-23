@@ -1,6 +1,9 @@
 {
 	"name": "msauth",
 	"description": "IAM platform for individuals with native AI-Agent/MCP authorization, on Cloudflare Workers.",
+	"exports": {
+		"./sdk": "./sdk/index.ts"
+	},
 	"private": true,
 	"dependencies": {
 		"@better-auth/api-key": "1.7.5",
