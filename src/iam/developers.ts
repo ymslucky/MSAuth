@@ -95,7 +95,10 @@ developerRoutes.post("/resources", async c => {
   catch { throw new HTTPException(400, { message: "An exact HTTPS resource identifier is required" }); }
   const resource = await c.get("auth").api.adminCreateOAuthResource({
     headers: c.req.raw.headers,
-    body: { identifier, name: text(input.name, "name"), accessTokenTtl: 300, allowedScopes: ["mcp:invoke", "agent:delegate"], dpopBoundAccessTokensRequired: true },
+    // offline_access must survive resource narrowing: the provider intersects
+    // requested scopes with this list before storing the refresh token, and
+    // refresh rotation only runs when the stored scopes include offline_access.
+    body: { identifier, name: text(input.name, "name"), accessTokenTtl: 300, allowedScopes: ["mcp:invoke", "agent:delegate", "offline_access"], dpopBoundAccessTokensRequired: true },
   });
   await audit(c, "resource.created", "resource", resource.id, { identifier });
   return c.json(resource, 201);

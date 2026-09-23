@@ -48,6 +48,41 @@ beforeAll(async () => {
   otherCookie = (await login("member@example.com")).cookie;
 });
 
+describe("Platform security middleware", () => {
+  it("sends hardening headers on API responses", async () => {
+    const res = await request("/api/health");
+    const csp = res.headers.get("content-security-policy") ?? "";
+    expect(csp).toContain("default-src 'self'");
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(res.headers.get("referrer-policy")).toBe("no-referrer");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+  it("rate limits auth endpoints per IP (50/60s in tests)", async () => {
+    let limited = 0;
+    for (let i = 0; i < 55 && limited === 0; i++) {
+      const res = await request("/api/auth/ok", "", "GET");
+      if (res.status === 429) limited = i;
+    }
+    expect(limited).toBeGreaterThan(0);
+    expect(limited).toBeLessThanOrEqual(50);
+  });
+  it("rejects oversized API payloads", async () => {
+    const res = await request("/api/auth/sign-in/email", "", "POST", { email: "x".repeat(70000) });
+    expect(res.status).toBe(413);
+  });
+  it("gates dynamic client registration behind the platform switch", async () => {
+    await request("/api/v1/settings", ownerCookie, "PATCH", { dcrEnabled: false });
+    expect((await request("/api/auth/oauth2/register", "", "POST", {})).status).toBe(403);
+    await request("/api/v1/settings", ownerCookie, "PATCH", { dcrEnabled: true });
+    expect((await request("/api/auth/oauth2/register", "", "POST", {})).status).not.toBe(403);
+  });
+  it("never accepts RAR on /authorize — authority comes only from explicit delegations", async () => {
+    const res = await request("/api/auth/oauth2/authorize?client_id=x&authorization_details=" + encodeURIComponent('[{"type":"mcp_tool"}]'));
+    expect(res.status).toBe(400);
+  });
+});
+
 describe("IAM platform boundaries", () => {
   it("publishes actual OAuth discovery including S256, DPoP and token exchange", async () => {
     const res = await request("/.well-known/oauth-authorization-server");
@@ -201,8 +236,29 @@ describe("OAuth and Agent integration", () => {
     const refresh = await token({ grant_type: "refresh_token", client_id: client.client_id, refresh_token: tokens.refresh_token, resource }, await proof());
     expect(refresh.status).toBe(200);
     const rotated = await refresh.json() as { refresh_token: string };
+    expect(typeof rotated.refresh_token).toBe("string");
     expect(rotated.refresh_token).not.toBe(tokens.refresh_token);
+    // the rotated-away refresh token must be dead on arrival
+    expect((await token({ grant_type: "refresh_token", client_id: client.client_id, refresh_token: tokens.refresh_token, resource }, await proof())).status).toBe(400);
+    // a child delegation may only narrow its parent, and chains through the parent-issued token
+    const childRes = await request("/api/v1/delegations", ownerCookie, "POST", {
+      agentId: agent.id, resource, scopes: ["mcp:invoke"], parentId: delegation.id,
+      authorizationDetails: details, expiresAt: Date.now() + 1800000,
+    });
+    expect(childRes.status, await childRes.clone().text()).toBe(201);
+    const child = await childRes.json() as { id: string; depth: number };
+    expect(child.depth).toBe(1);
+    expect((await request("/api/v1/delegations", ownerCookie, "POST", {
+      agentId: agent.id, resource, scopes: ["mcp:invoke", "agent:delegate"], parentId: delegation.id, expiresAt: Date.now() + 1800000,
+    })).status).toBe(400);
+    const childExchange = await token({ ...fields, delegation_id: child.id, subject_token: delegated.access_token }, await proof());
+    expect(childExchange.status, await childExchange.clone().text()).toBe(200);
+    const childClaims = decodeJwt((await childExchange.json() as { access_token: string }).access_token);
+    expect(childClaims.delegation_id).toBe(child.id);
+    expect(childClaims.act).toEqual({ sub: agent.id, act: { sub: agent.id } });
     expect((await request("/api/v1/delegations/" + delegation.id, ownerCookie, "DELETE")).status).toBe(200);
     expect((await token(fields, await proof())).status).toBe(400);
+    // revoking the parent cascades to the child
+    expect((await token({ ...fields, delegation_id: child.id, subject_token: delegated.access_token }, await proof())).status).toBe(400);
   });
 });
