@@ -3,6 +3,9 @@
 	"main": "src/platform.ts",
 	"name": "msauth",
 	"upload_source_maps": true,
+	"build": {
+		"command": "npm run build:spa"
+	},
 	"vars": {
 		"BETTER_AUTH_URL": "https://auth.msxor.com"
 	},
