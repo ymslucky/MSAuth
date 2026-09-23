@@ -131,6 +131,11 @@
 	--dur-base: 180ms;
 	--dur-slow: 240ms;
 	--ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+	/* ambient loops (spinner, skeleton shimmer, boot pulse) — deliberately
+	   outside the ≤240ms interaction budget: they signal "working", not change */
+	--dur-spin: 620ms;
+	--dur-shimmer: 1400ms;
+	--dur-pulse: 900ms;
 
 	/* ----- type ----- */
 	--font-ui: "Bricolage Grotesque", system-ui, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;

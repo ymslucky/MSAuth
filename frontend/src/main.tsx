@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { LangProvider } from "./i18n";
 import { ThemeProvider } from "./theme";
-import { NoticeProvider } from "./ui";
+import { NoticeProvider } from "./notice-ui";
 import "./tokens.css";
 import "./style.css";
 

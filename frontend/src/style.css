@@ -72,6 +72,20 @@ p { margin: 0; }
 ::selection { background: var(--accent-tint); }
 
 .muted { color: var(--muted); }
+/* visually hidden but screen-reader reachable (table captions, live labels) */
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	border: 0;
+	clip-path: inset(50%);
+	overflow: hidden;
+	white-space: nowrap;
+}
+/* numeric table data aligns in columns even when relative labels vary in width */
+td time { font-variant-numeric: tabular-nums; }
 .mono { font-family: var(--font-mono); font-size: 12.5px; }
 .serif { font-family: var(--font-serif); font-style: italic; font-weight: 400; }
 code {
@@ -123,7 +137,7 @@ code {
 	border-right-color: transparent;
 	border-radius: 50%;
 	opacity: 0.85;
-	animation: spin 620ms linear infinite;
+	animation: spin var(--dur-spin) linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -333,6 +347,9 @@ input[type="datetime-local"] { font-family: var(--font-mono); font-size: 13px; }
 	flex-wrap: wrap;
 }
 .main-head p { color: var(--muted); font-size: 14px; margin-top: 5px; max-width: 62ch; }
+/* the subtitle paragraph always renders (head-sub) — reserved line height so
+   async page titles never shift the header geometry */
+.main-head .head-sub { min-height: 22px; }
 .main-head .serif { font-size: 19px; color: var(--ink-soft); margin-top: 6px; }
 .main-head .head-side { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
@@ -591,7 +608,7 @@ tbody tr:nth-child(n+9) { animation-delay: 128ms; }
 	border-radius: var(--radius-sm);
 	background: linear-gradient(90deg, var(--skel-a) 25%, var(--skel-b) 37%, var(--skel-a) 63%);
 	background-size: 400% 100%;
-	animation: shimmer 1.4s ease infinite;
+	animation: shimmer var(--dur-shimmer) ease infinite;
 }
 @keyframes shimmer {
 	0% { background-position: 100% 0; }
@@ -714,7 +731,7 @@ tbody tr:nth-child(n+9) { animation-delay: 128ms; }
 /* ---------- overview viz: sparkline + activity mix (tokens only, dark free) ---------- */
 .viz-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 	gap: 18px;
 	margin-bottom: 18px;
 }
@@ -1006,6 +1023,7 @@ tbody tr:nth-child(n+9) { animation-delay: 128ms; }
 	justify-content: flex-end;
 	gap: 12px;
 	margin-top: 14px;
+	flex-wrap: wrap;
 }
 .pager .mono { font-size: 12px; }
 
@@ -1153,9 +1171,12 @@ tbody tr:nth-child(n+9) { animation-delay: 128ms; }
 	}
 }
 
-/* ---------- responsive ---------- */
-@media (max-width: 960px) {
-	.main { padding: 24px 20px 40px; }
+/* ---------- responsive: three coherent stops — 1200 slim rail, 880 tighten
+   + login fold, 720 compact (nav folds, paddings shrink) ---------- */
+@media (max-width: 1200px) {
+	.shell { grid-template-columns: 200px minmax(0, 1fr); }
+	.side { padding: 20px 10px 16px; }
+	.main { max-width: none; padding: 24px 20px 40px; }
 }
 @media (max-width: 880px) {
 	.login-page { grid-template-columns: 1fr; }
@@ -1185,6 +1206,6 @@ tbody tr:nth-child(n+9) { animation-delay: 128ms; }
 
 /* Boot splash shown while the session gate resolves. */
 .boot-splash { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); }
-.boot-splash::after { content: ""; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); animation: boot-pulse .9s ease-in-out infinite alternate; }
+.boot-splash::after { content: ""; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); animation: boot-pulse var(--dur-pulse) ease-in-out infinite alternate; }
 @keyframes boot-pulse { from { opacity: .25; transform: scale(.82); } to { opacity: 1; transform: scale(1.08); } }
 @media (prefers-reduced-motion: reduce) { .boot-splash::after { animation: none; opacity: .55; } }

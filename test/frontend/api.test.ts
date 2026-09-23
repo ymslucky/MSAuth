@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { api } from "../../frontend/src/api";
+import { api, errorMessage } from "../../frontend/src/api";
 
 function stubFetch(calls: { url: string; init: RequestInit }[]) {
 	vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
@@ -11,6 +11,17 @@ function stubFetch(calls: { url: string; init: RequestInit }[]) {
 function headerOf(init: RequestInit, name: string): string | null {
 	return new Headers(init.headers).get(name);
 }
+
+describe("errorMessage — the one failure-surfacing helper every page renders", () => {
+	it("unwraps Error instances", () => {
+		expect(errorMessage(new Error("boom"))).toBe("boom");
+	});
+
+	it("stringifies non-Error throwables", () => {
+		expect(errorMessage("plain")).toBe("plain");
+		expect(errorMessage(42)).toBe("42");
+	});
+});
 
 describe("api fetch wrapper", () => {
 	afterEach(() => vi.unstubAllGlobals());

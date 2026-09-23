@@ -1,0 +1,239 @@
+import { useEffect, useMemo, useState } from "react";
+import { Share2, ShieldOff } from "lucide-react";
+import { api, del, errorMessage, isValidExpiry, post } from "../../api";
+import { useT } from "../../i18n";
+import { navigate } from "../../router";
+import { useOptimisticList } from "../../optimistic";
+import { useTableState } from "../../table";
+import {
+	Badge, Button, Card, EmptyState, ErrorNote, ErrorState, Field,
+	MonoId, PageHeader, SkeletonTable, Table, TablePager, When,
+} from "../../ui";
+import { Modal } from "../../dialog";
+import { useNotice } from "../../notice-ui";
+import { usePaletteSource, type PaletteEntry } from "../../palette-ui";
+import type { AgentRow } from "./Agents";
+
+const AGENT_SCOPES = ["mcp:invoke", "agent:delegate"];
+
+interface DelegationRow {
+	id: string;
+	agentId: string;
+	agentName: string;
+	resource: string;
+	scopes: string[];
+	authorizationDetails: { actions: string[]; identifiers: string[] }[];
+	expiresAt: number;
+	revokedAt: number | null;
+	depth: number;
+	createdAt: number;
+}
+
+export function Delegations() {
+	const t = useT();
+	const notice = useNotice();
+	const [items, setItems] = useState<DelegationRow[] | null>(null);
+	const [agents, setAgents] = useState<AgentRow[]>([]);
+	const [error, setError] = useState<string | null>(null);
+	const [attempt, setAttempt] = useState(0);
+	const [creating, setCreating] = useState(false);
+	const [saving, setSaving] = useState(false);
+	const optimistic = useOptimisticList<DelegationRow>(items, setItems);
+	const table = useTableState(items ?? [], {
+		accessors: { createdAt: (row: DelegationRow) => row.createdAt },
+		initialSort: { key: "createdAt", dir: "desc" },
+		pageSize: 25,
+	});
+
+	const reload = () => api<{ items: DelegationRow[] }>("/api/v1/delegations")
+		.then(result => { setItems(result.items ?? []); setError(null); })
+		.catch(cause => setError(errorMessage(cause)));
+	useEffect(() => {
+		setItems(null);
+		void reload();
+		api<{ items: AgentRow[] }>("/api/v1/agents").then(result => setAgents((result.items ?? []).filter(agent => agent.status === "active" && agent.clientId && agent.dpopJkt))).catch(() => undefined);
+	}, [attempt]);
+
+	async function run(action: () => Promise<unknown>, successMessage?: string) {
+		setError(null);
+		try {
+			await action();
+			if (successMessage) notice.toast("success", successMessage);
+			await reload();
+		} catch (cause) {
+			setError(errorMessage(cause));
+		}
+	}
+
+	async function revoke(id: string) {
+		if (!(await notice.confirm({ title: t("Revoke this delegation (and any children)?"), confirmLabel: t("Revoke") }))) return;
+		// Optimistic flip; children may cascade server-side, so reload on success
+		// to reconcile with the authoritative rows.
+		try {
+			await optimistic.run(
+				list => list.map(row => row.id === id ? { ...row, revokedAt: Date.now() } : row),
+				() => del(`/api/v1/delegations/${id}`),
+			);
+			notice.toast("success", t("Delegation revoked."));
+			void reload();
+		} catch (cause) {
+			notice.toast("error", errorMessage(cause));
+		}
+	}
+
+	// Palette: search loaded delegations by agent name / resource.
+	const paletteEntries = useMemo<PaletteEntry[] | null>(() => items === null ? null : items.map(row => ({
+		id: `delegation:${row.id}`,
+		group: "resource",
+		label: row.agentName,
+		keywords: `${row.agentName} ${row.resource} ${row.scopes.join(" ")}`,
+		icon: <Share2 size={15} strokeWidth={1.75} aria-hidden />,
+		perform: () => navigate("/delegations"),
+	})), [items]);
+	usePaletteSource("delegations", paletteEntries);
+
+	return (
+		<>
+			<PageHeader
+				title={t("Delegations")}
+				subtitle={t("Explicit consent for an agent to act as you on one resource. Authority only ever narrows, up to 4 hops.")}
+				crumbs={[{ label: t("Agents") }, { label: t("Delegations") }]}
+				actions={<Button kind="primary" onClick={() => setCreating(true)}>{t("New delegation")}</Button>}
+			/>
+			<ErrorNote message={items === null && error ? null : error} />
+			<Card>
+				{items === null ? (error
+					? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
+					: <SkeletonTable />
+				) : items.length === 0 ? (
+					<EmptyState
+						art="delegations"
+						title={t("No delegations.")}
+						action={<Button kind="primary" onClick={() => setCreating(true)}>{t("New delegation")}</Button>}
+					/>
+				) : (
+					<>
+						<Table caption={t("Delegations")} head={[t("Agent"), t("Resource"), t("Scopes / permissions"), t("Depth"), t("Expires"), t("Status"), ""]} rightCols={[6]}>
+							{table.rows.map(row => (
+								<tr key={row.id}>
+									<td>{row.agentName}</td>
+									<td><MonoId value={row.resource} wide mask={false} /></td>
+									<td>{row.scopes.join(", ")}<div className="cell-sub mono">{JSON.stringify(row.authorizationDetails)}</div></td>
+									<td>{row.depth}{row.depth > 0 && <div className="cell-sub">{t("chain")}</div>}</td>
+									<td className="muted"><When value={row.expiresAt} /></td>
+									<td>{row.revokedAt ? <Badge tone="bad">{t("revoked")}</Badge> : row.expiresAt < Date.now() ? <Badge tone="warn">{t("expired")}</Badge> : <Badge tone="ok">{t("live")}</Badge>}</td>
+									<td className="right">
+										{!row.revokedAt && (
+											<Button kind="danger" onClick={() => void revoke(row.id)}><ShieldOff size={14} strokeWidth={1.75} aria-hidden />{t("Revoke")}</Button>
+										)}
+									</td>
+								</tr>
+							))}
+						</Table>
+						{table.pages > 1 && (
+							<TablePager
+								page={table.page}
+								pages={table.pages}
+								start={table.start}
+								end={table.end}
+								total={table.total}
+								onPage={table.setPage}
+							/>
+						)}
+					</>
+				)}
+				</Card>
+			{creating && (
+				<DelegationForm agents={agents} pending={saving} onClose={() => setCreating(false)} onSave={input => {
+					setSaving(true);
+					void run(async () => {
+						await post("/api/v1/delegations", input);
+						setCreating(false);
+						notice.toast("success", t("Delegation granted."));
+					}).finally(() => setSaving(false));
+				}} />
+			)}
+		</>
+	);
+}
+
+function DelegationForm(props: { agents: AgentRow[]; pending: boolean; onClose: () => void; onSave: (input: Record<string, unknown>) => void }) {
+	const t = useT();
+	const [agentId, setAgentId] = useState(props.agents[0]?.id ?? "");
+	const [resource, setResource] = useState("");
+	const [scopes, setScopes] = useState<string[]>(["mcp:invoke"]);
+	const [parentId, setParentId] = useState("");
+	const [expiresAt, setExpiresAt] = useState(() => new Date(Date.now() + 86400000).toISOString().slice(0, 16));
+	const [expiryError, setExpiryError] = useState<string | null>(null);
+	const bindable = props.agents.length > 0;
+	const submit = () => {
+		if (!isValidExpiry(expiresAt)) {
+			setExpiryError(t("Expiry must be between one minute and 30 days from now."));
+			return;
+		}
+		props.onSave({
+			agentId,
+			resource: resource.trim(),
+			scopes,
+			expiresAt: new Date(expiresAt).getTime(),
+			...(parentId.trim() ? { parentId: parentId.trim() } : {}),
+		});
+	};
+	return (
+		<Modal title={t("New delegation")} open onClose={props.onClose}>
+			{!bindable ? (
+				<>
+					<p className="muted">{t("Register an agent bound to an OAuth client and a DPoP key first — a delegation needs both.")}</p>
+					<Button onClick={props.onClose}>{t("Close")}</Button>
+				</>
+			) : (
+				<>
+					<Field label={t("Agent")}>
+						<select value={agentId} onChange={event => setAgentId(event.target.value)}>
+							{props.agents.map(agent => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
+						</select>
+					</Field>
+					<Field label={t("Resource identifier")}><input value={resource} onChange={event => setResource(event.target.value)} placeholder="https://mcp.example.com/mcp" spellCheck={false} /></Field>
+					<div className="field">
+						<span>{t("Scopes")}</span>
+						{AGENT_SCOPES.map(scope => (
+							<label key={scope} className="check-row">
+								<input
+									type="checkbox"
+									checked={scopes.includes(scope)}
+									onChange={event => setScopes(current => event.target.checked ? [...current, scope] : current.filter(value => value !== scope))}
+								/>
+								<code>{scope}</code>
+							</label>
+						))}
+					</div>
+					<Field label={t("Parent delegation (optional)")} hint={t("Children may only narrow the parent's authority and expiry.")}>
+						<input value={parentId} onChange={event => setParentId(event.target.value)} spellCheck={false} />
+					</Field>
+					<Field
+						label={t("Expires at")}
+						hint={t("Between one minute and 30 days from now.")}
+						error={expiryError}
+						required
+					>
+						<input
+							type="datetime-local"
+							value={expiresAt}
+							onChange={event => setExpiresAt(event.target.value)}
+							onBlur={() => { if (expiresAt && !isValidExpiry(expiresAt)) setExpiryError(t("Expiry must be between one minute and 30 days from now.")); }}
+						/>
+					</Field>
+					<div className="btn-row">
+						<Button
+							kind="primary"
+							busy={props.pending}
+							disabled={!agentId || !resource.trim() || scopes.length === 0}
+							onClick={submit}
+						>{t("Grant")}</Button>
+						<Button kind="ghost" disabled={props.pending} onClick={props.onClose}>{t("Cancel")}</Button>
+					</div>
+				</>
+			)}
+		</Modal>
+	);
+}

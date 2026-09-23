@@ -3,9 +3,11 @@ import {
 	clampPage,
 	filterRows,
 	nextSort,
+	pageCount,
 	paginate,
 	sortRows,
 	tableView,
+	toggledSet,
 	type SortSpec,
 } from "../../frontend/src/table";
 
@@ -134,6 +136,29 @@ describe("clampPage", () => {
 
 	it("always yields page 1 for empty row sets", () => {
 		expect(clampPage(0, 5, 25)).toBe(1);
+	});
+});
+
+describe("pageCount — server-paged total → pager label", () => {
+	it("ceil-divides, floors at 1", () => {
+		expect(pageCount(0, 30)).toBe(1);
+		expect(pageCount(1, 30)).toBe(1);
+		expect(pageCount(30, 30)).toBe(1);
+		expect(pageCount(31, 30)).toBe(2);
+		expect(pageCount(91, 30)).toBe(4);
+	});
+});
+
+describe("toggledSet — immutable chip toggle shared by every toolbar", () => {
+	it("adds a missing key", () => {
+		const next = toggledSet(new Set(["a"]), "b");
+		expect([...next].sort()).toEqual(["a", "b"]);
+		expect(next).not.toBe(new Set(["a"]));
+	});
+
+	it("removes a present key", () => {
+		expect(toggledSet(new Set(["a", "b"]), "a").has("a")).toBe(false);
+		expect(toggledSet(new Set(["a", "b"]), "a").has("b")).toBe(true);
 	});
 });
 

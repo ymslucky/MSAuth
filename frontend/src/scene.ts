@@ -253,9 +253,21 @@ function startScene(THREE: Three, canvas: HTMLCanvasElement, palette: ScenePalet
 		};
 	}
 
+	// Tab hidden → drop the render loop; visible again → resume cleanly.
+	const onVisibility = (): void => {
+		if (document.hidden) {
+			if (raf) { cancelAnimationFrame(raf); raf = 0; }
+		} else if (!raf) {
+			last = performance.now();
+			raf = requestAnimationFrame(frame);
+		}
+	};
+	document.addEventListener("visibilitychange", onVisibility);
+
 	raf = requestAnimationFrame(frame);
 	return () => {
 		cancelAnimationFrame(raf);
+		document.removeEventListener("visibilitychange", onVisibility);
 		observer.disconnect();
 		window.removeEventListener("pointermove", onPointer);
 		disposeAll(THREE, renderer, [nodeGeometry, edgeGeometry, accentGeometry, ringGeometry], [nodeMaterial, edgeMaterial, coreMaterial, haloMaterial, ringMaterial]);

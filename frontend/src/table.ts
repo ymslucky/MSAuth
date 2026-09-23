@@ -77,6 +77,19 @@ export function clampPage(total: number, page: number, pageSize: number): number
 	return Math.min(Math.max(1, page), pages);
 }
 
+/** Total row count (server-paged) → page count, floored at 1 for the pager. */
+export function pageCount(total: number, pageSize: number): number {
+	return Math.max(1, Math.ceil(total / pageSize));
+}
+
+/** Immutable chip toggle: add the key when missing, remove it when present. */
+export function toggledSet(active: ReadonlySet<string>, key: string): Set<string> {
+	const next = new Set(active);
+	if (next.has(key)) next.delete(key);
+	else next.add(key);
+	return next;
+}
+
 export interface TableViewOptions<T> {
 	sort: SortSpec | null;
 	accessors: Accessors<T>;

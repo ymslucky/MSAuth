@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, fmtDate, fullTimestamp } from "../../api";
+import { api, errorMessage } from "../../api";
 import { useT } from "../../i18n";
 import { ledgerPalette, useTheme } from "../../theme";
 import { mountLedgerArt } from "../../art";
 import { Link } from "../../router";
-import { GITHUB_REPO_URL } from "../../ui";
+import { GITHUB_REPO_URL } from "../../palette-ui";
 import { daySeries, isFirstRun, onboardingSteps, sparklineGeometry, toneMix, type OnboardingStepId } from "../../viz";
-import { Card, EmptyState, ErrorState, ActionTag, MonoId, ResourceTag, resourceTone, Skeleton, SkeletonStats, SkeletonTable, Stat } from "../../ui";
+import { ActionTag, Card, EmptyState, ErrorState, MonoId, ResourceTag, resourceTone, Skeleton, SkeletonStats, SkeletonTable, Stat, Table, When } from "../../ui";
 
 export interface OverviewResponse {
 	counts: { applications: number; agents: number; delegations: number; keys: number };
@@ -150,7 +150,7 @@ export default function Overview() {
 		setError(null);
 		api<OverviewResponse>("/api/v1/overview")
 			.then(result => { setData(result); setLoading(false); })
-			.catch(cause => { setError(cause instanceof Error ? cause.message : String(cause)); setLoading(false); });
+			.catch(cause => { setError(errorMessage(cause)); setLoading(false); });
 	}, [attempt]);
 
 	// The Quiet Ledger re-inks on theme flips (brighter strokes, lower alpha in dark).
@@ -219,22 +219,15 @@ export default function Overview() {
 				{data.activity.length === 0 ? (
 					<EmptyState art="audit" title={t("Nothing recorded yet.")} />
 				) : (
-					<div className="table-wrap">
-						<table>
-							<thead>
-								<tr><th>{t("Action")}</th><th>{t("Resource")}</th><th className="right">{t("When")}</th></tr>
-							</thead>
-							<tbody>
-								{data.activity.map(row => (
-									<tr key={row.id}>
-										<td><ActionTag code={row.action} /></td>
-										<td><ResourceTag type={row.resourceType} /> <MonoId value={row.resourceId} /></td>
-										<td className="right muted"><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
+					<Table caption={t("Recent activity")} head={[t("Action"), t("Resource"), t("When")]} rightCols={[2]}>
+						{data.activity.map(row => (
+							<tr key={row.id}>
+								<td><ActionTag code={row.action} /></td>
+								<td><ResourceTag type={row.resourceType} /> <MonoId value={row.resourceId} /></td>
+								<td className="right muted"><When value={row.createdAt} /></td>
+							</tr>
+						))}
+					</Table>
 				)}
 			</Card>
 		</>

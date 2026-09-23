@@ -15,14 +15,14 @@ export function navigate(to: string): void {
 	window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
-export function Link(props: { to: string; className?: string; ariaCurrent?: boolean; children: ReactNode }) {
+export function Link(props: { to: string; className?: string; ariaCurrent?: boolean; onPointerEnter?: () => void; children: ReactNode }) {
 	const onClick = (event: MouseEvent) => {
 		if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
 		event.preventDefault();
 		navigate(props.to);
 	};
 	return (
-		<a href={props.to} className={props.className} aria-current={props.ariaCurrent ? "page" : undefined} onClick={onClick}>
+		<a href={props.to} className={props.className} aria-current={props.ariaCurrent ? "page" : undefined} onClick={onClick} onPointerEnter={props.onPointerEnter}>
 			{props.children}
 		</a>
 	);

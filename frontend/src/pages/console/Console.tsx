@@ -8,30 +8,53 @@ import { api } from "../../api";
 import { LangSegmented, useLang, useT } from "../../i18n";
 import { ThemeToggle, themeChoices, useTheme, type ThemeChoice } from "../../theme";
 import { Link, navigate, usePath } from "../../router";
-import {
-	Card, GITHUB_REPO_URL, PaletteEntry, PaletteProvider, Skeleton, SkeletonStats, SkeletonTable,
-	useNotice, usePalette, palettePlatformKey,
-} from "../../ui";
+import { Card, Skeleton, SkeletonStats, SkeletonTable } from "../../ui";
+import { GITHUB_REPO_URL, palettePlatformKey, PaletteEntry, PaletteProvider, usePalette } from "../../palette-ui";
+import { useNotice } from "../../notice-ui";
 import type { OverviewResponse } from "./Overview";
 
 /* Route-level code splitting: the entry bundle carries only the shell; each
-   console page loads on first visit behind a skeleton. Pages sharing a module
-   (Developer/Agents/Security/Admin) resolve to one shared chunk per module. */
+   console page is its own lazy chunk. The same import() expressions feed the
+   PRELOADS map below, so hovering a sidebar link warms the exact chunk the
+   click will need (pointerenter only — no modulepreload links). */
 const Overview = lazy(() => import("./Overview"));
-const Applications = lazy(() => import("./Developer").then(m => ({ default: m.Applications })));
-const Keys = lazy(() => import("./Developer").then(m => ({ default: m.Keys })));
-const Resources = lazy(() => import("./Developer").then(m => ({ default: m.Resources })));
+const Applications = lazy(() => import("./Applications").then(m => ({ default: m.Applications })));
+const Keys = lazy(() => import("./Keys").then(m => ({ default: m.Keys })));
+const Resources = lazy(() => import("./Resources").then(m => ({ default: m.Resources })));
 const AgentsPage = lazy(() => import("./Agents").then(m => ({ default: m.Agents })));
-const Delegations = lazy(() => import("./Agents").then(m => ({ default: m.Delegations })));
-const Audit = lazy(() => import("./Security").then(m => ({ default: m.Audit })));
-const Sessions = lazy(() => import("./Security").then(m => ({ default: m.Sessions })));
-const Alerts = lazy(() => import("./Security").then(m => ({ default: m.Alerts })));
-const UsersPage = lazy(() => import("./Admin").then(m => ({ default: m.Users })));
-const Settings = lazy(() => import("./Admin").then(m => ({ default: m.Settings })));
-const Domains = lazy(() => import("./Admin").then(m => ({ default: m.Domains })));
-const UserDetail = lazy(() => import("./Admin").then(m => ({ default: m.UserDetail })));
+const Delegations = lazy(() => import("./Delegations").then(m => ({ default: m.Delegations })));
+const Audit = lazy(() => import("./Audit").then(m => ({ default: m.Audit })));
+const Sessions = lazy(() => import("./Sessions").then(m => ({ default: m.Sessions })));
+const Alerts = lazy(() => import("./Alerts").then(m => ({ default: m.Alerts })));
+const UsersPage = lazy(() => import("./Users").then(m => ({ default: m.Users })));
+const Settings = lazy(() => import("./Settings").then(m => ({ default: m.Settings })));
+const Domains = lazy(() => import("./Domains").then(m => ({ default: m.Domains })));
+const UserDetail = lazy(() => import("./UserDetail").then(m => ({ default: m.UserDetail })));
 // Documentation-as-code catalog — direct URL only, linked nowhere public.
 const Catalog = lazy(() => import("./Catalog"));
+
+/** Path → dynamic chunk loader, shared with the sidebar's hover preloading. */
+const PRELOADS: Record<string, () => Promise<unknown>> = {
+	"/": () => import("./Overview"),
+	"/applications": () => import("./Applications"),
+	"/keys": () => import("./Keys"),
+	"/resources": () => import("./Resources"),
+	"/agents": () => import("./Agents"),
+	"/delegations": () => import("./Delegations"),
+	"/audit": () => import("./Audit"),
+	"/sessions": () => import("./Sessions"),
+	"/alerts": () => import("./Alerts"),
+	"/users": () => import("./Users"),
+	"/settings": () => import("./Settings"),
+	"/domains": () => import("./Domains"),
+};
+
+/** Warm a route chunk on pointer intent; failures stay silent (click retries). */
+function preloadRoute(to: string): (() => void) | undefined {
+	const load = PRELOADS[to];
+	if (!load) return undefined;
+	return () => { void load().catch(() => undefined); };
+}
 
 /** Suspense fallback while a route chunk streams in. */
 function PageFallback() {
@@ -210,12 +233,22 @@ function ConsoleShell(props: { path: string; context: ConsoleContext }) {
 					{NAV.map(section => (
 						<div key={section.group}>
 							{section.group !== "" && <div className="group">{t(section.group)}</div>}
-							{section.items.map(item => (
-								<Link key={item.to} to={item.to} className={path === item.to ? "active" : ""} ariaCurrent={path === item.to}>
-									<item.icon size={16} strokeWidth={1.75} aria-hidden />
-									{t(item.label)}
-								</Link>
-							))}
+							{section.items.map(item => {
+								// Prefix match keeps /users/:id highlighting the Users entry.
+								const active = path === item.to || path.startsWith(`${item.to}/`);
+								return (
+									<Link
+										key={item.to}
+										to={item.to}
+										className={active ? "active" : ""}
+										ariaCurrent={active}
+										onPointerEnter={preloadRoute(item.to)}
+									>
+										<item.icon size={16} strokeWidth={1.75} aria-hidden />
+										{t(item.label)}
+									</Link>
+								);
+							})}
 						</div>
 					))}
 				</nav>

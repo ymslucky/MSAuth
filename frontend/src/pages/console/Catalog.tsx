@@ -5,9 +5,12 @@ import { sparklineGeometry } from "../../viz";
 import { EMPTY_ARTS } from "../../illustrations";
 import {
 	ActionTag, Badge, Button, Card, CopyButton, EmptyState, Field, FilterChips,
-	Modal, MonoId, PageHeader, RESOURCE_TONES, Skeleton, SkeletonProfile, SkeletonStats,
-	SkeletonTable, Table, TablePager, palettePlatformKey, useNotice, usePalette,
+	MonoId, PageHeader, RESOURCE_TONES, Skeleton, SkeletonProfile, SkeletonStats,
+	SkeletonTable, Table, TablePager,
 } from "../../ui";
+import { Modal } from "../../dialog";
+import { useNotice } from "../../notice-ui";
+import { palettePlatformKey, usePalette } from "../../palette-ui";
 import { useTableState } from "../../table";
 
 /** Sample rows for the table-toolbar demo (3 per page, so the pager shows). */

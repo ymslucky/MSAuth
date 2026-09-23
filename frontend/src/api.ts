@@ -25,6 +25,11 @@ export const post = <T>(path: string, body?: unknown) => api<T>(path, { method: 
 export const patch = <T>(path: string, body?: unknown) => api<T>(path, { method: "PATCH", body: JSON.stringify(body ?? {}) });
 export const del = <T>(path: string) => api<T>(path, { method: "DELETE" });
 
+/** The one failure-surfacing helper: Error → message, anything else → String. */
+export function errorMessage(cause: unknown): string {
+	return cause instanceof Error ? cause.message : String(cause);
+}
+
 export function fmtDate(value: number | string | undefined | null): string {
 	// Platform tables store millisecond epochs; Better Auth tables return ISO-8601.
 	if (value === undefined || value === null || value === "") return "—";

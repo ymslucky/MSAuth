@@ -186,11 +186,23 @@ export function mountLedgerArt(
 		};
 	}
 
+	/** Tab hidden → drop the rAF loop entirely; visible again → resume cleanly. */
+	const onVisibility = (): void => {
+		if (document.hidden) {
+			if (raf) { cancelAnimationFrame(raf); raf = 0; }
+		} else if (!raf) {
+			last = performance.now();
+			raf = requestAnimationFrame(frame);
+		}
+	};
+	document.addEventListener("visibilitychange", onVisibility);
+
 	last = start;
 	raf = requestAnimationFrame(frame);
 	window.addEventListener("resize", onResize);
 	return () => {
 		cancelAnimationFrame(raf);
+		document.removeEventListener("visibilitychange", onVisibility);
 		window.removeEventListener("resize", onResize);
 	};
 }
