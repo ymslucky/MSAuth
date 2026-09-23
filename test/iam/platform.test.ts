@@ -152,6 +152,14 @@ describe("OAuth and Agent integration", () => {
     expect(res.status, await res.clone().text()).toBe(201);
     const client = await res.json() as { client_id: string };
     expect((await request("/api/v1/applications/" + client.client_id, otherCookie, "DELETE")).status).toBeGreaterThanOrEqual(400);
+    // lock the list contract the console SPA relies on: items array with renderable row fields
+    const appList = await request("/api/v1/applications", ownerCookie);
+    expect(appList.status).toBe(200);
+    const { items: appRows } = await appList.json() as { items: Array<{ client_id: string; client_name: string | null; redirect_uris: string[] }> };
+    expect(Array.isArray(appRows)).toBe(true);
+    const created = appRows.find(row => row.client_id === client.client_id);
+    expect(created?.client_name).toBe("CLI");
+    expect(created?.redirect_uris).toEqual(["http://127.0.0.1:54321/callback"]);
     const keyRes = await request("/api/v1/keys", ownerCookie, "POST", { name: "Automation" });
     expect(keyRes.status, await keyRes.clone().text()).toBe(201);
     const key = await keyRes.json() as { id: string; key: string };

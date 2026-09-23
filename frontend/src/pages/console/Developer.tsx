@@ -49,7 +49,7 @@ export function Applications() {
 	const [editing, setEditing] = useState<AppRow | null>(null);
 	const [secret, setSecret] = useState<string | null>(null);
 
-	const reload = () => api<AppRow[]>("/api/v1/applications").then(setItems).catch(cause => setError(String(cause.message)));
+	const reload = () => api<{ items: AppRow[] }>("/api/v1/applications").then(result => setItems(result.items ?? [])).catch(cause => setError(String(cause.message)));
 	useEffect(() => { void reload(); }, []);
 
 	async function run(action: () => Promise<unknown>, message?: string) {
