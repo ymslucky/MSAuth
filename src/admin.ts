@@ -566,20 +566,20 @@ export function renderAdminHtml(nonce: string): string {
 	var checks = '';
 	for (var i = 0; i < state.permissions.length; i++) {
 		var p = state.permissions[i];
-		checks += '<label><input type=\'checkbox\' value=\'' + esc(p.code) + '\\' name=\'key-scope\'\x3E ' + esc(p.code) + '\x3C/label\x3E';
+		checks += '<label><input type="checkbox" value="' + esc(p.code) + '" name="key-scope"> <span class="mono">' + esc(p.code) + '</span></label>';
 	}
 	openModal(
-		'\x3Ch3\x3E\u521B\u5EFA API \u5BC6\u94A5\x3C/h3\x3E' +
-		'\x3Clabel\x3E\u540D\u79F0\x3C/label\x3E\x3Cinput type=\x22text\x22 id=\x22key-name\x22\x3E' +
-		'\x3Clabel\x3EScopes\x3C/label\x3E' +
-		'\x3Cdiv class=\x22checklist\x22\x3E' + checks + '\x3C/div>' +
-		'\x3Cdiv class=\x22footer\x22>\x3Cbutton class=\x22btn\x22 data-action=\x22overlay-close\x22>取消</button>' +
-		'\x3Cbutton class=\x22btn primary" data-action="submit-create-key">创建</button></div>'
+		'<h3>创建 API 密钥</h3>' +
+		'<label>名称</label><input type="text" id="key-name">' +
+		'<label>Scopes</label>' +
+		'<div class="checklist">' + checks + '</div>' +
+		'<div class="footer"><button class="btn" data-action="overlay-close">取消</button>' +
+		'<button class="btn primary" data-action="submit-create-key">创建</button></div>'
 	);
 }
 
   function submitCreateKey() {
-    var name = .value.trim();
+		var name = $('key-name') ? $('key-name').value.trim() : '';
     var boxes = document.querySelectorAll('input[name="key-scope"]');
     var scopes = [];
     for (var i = 0; i < boxes.length; i++) if (boxes[i].checked) scopes.push(boxes[i].value);
@@ -608,7 +608,7 @@ export function renderAdminHtml(nonce: string): string {
 		var e = entries[i];
 		rows += '<tr><td>' + esc(e.actor_email) + '</td><td><span class="chip mono">' + esc(e.action) + '</span></td><td>' + esc(e.detail || "") + '</td><td class="muted">' + esc(e.created_at) + '</td></tr>';
 	}
-	.innerHTML =
+	$("tab-audit").innerHTML =
 		'<div class="card">' +
 		'<div class="toolbar"><span class="count">共 ' + entries.length + ' 条记录</span></div>' +
 		'<table><thead><tr><th>操作人</th><th>操作</th><th>详情</th><th时间</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
