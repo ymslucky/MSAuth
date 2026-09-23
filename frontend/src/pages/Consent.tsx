@@ -2,6 +2,7 @@ import { useState } from "react";
 import { post } from "../api";
 import { oauthQueryFromLocation } from "../oauthQuery";
 import { useT } from "../i18n";
+import { CopyButton } from "../ui";
 
 interface RequestInfo {
 	clientId: string;
@@ -44,18 +45,20 @@ export default function Consent() {
 	return (
 		<div className="auth-shell">
 			<div className="auth-card">
-				<h1>{t("Authorize application")}</h1>
+				<div className="brand"><img src="/favicon.svg" alt="" />MSAuth</div>
+				<h1 className="login-title">{t("Authorize application")}</h1>
 				<p className="auth-sub">
 					<code>{request.clientId}</code>{" "}
 					{t("is requesting access to your identity.")}
 				</p>
 				{request.resource && (
 					<p className="muted">
-						{t("Resource:")} <code>{request.resource}</code>
+						{t("Resource:")} <code>{request.resource}</code>{" "}
+						<CopyButton value={request.resource} />
 					</p>
 				)}
 				<div className="scope-box">
-					<strong style={{ fontSize: "0.85rem" }}>{t("Requested scopes")}</strong>
+					<strong>{t("Requested scopes")}</strong>
 					<div className="checks">
 						{request.scopes.length === 0 && <span className="muted">{t("No scopes requested")}</span>}
 						{request.scopes.map(scope => (
@@ -69,7 +72,7 @@ export default function Consent() {
 					<button className="btn primary" type="button" disabled={busy} onClick={() => void decide(true)}>
 						{t("Allow")}
 					</button>
-					<button className="btn danger" type="button" disabled={busy} onClick={() => void decide(false)}>
+					<button className="btn" type="button" disabled={busy} onClick={() => void decide(false)}>
 						{t("Deny")}
 					</button>
 				</div>

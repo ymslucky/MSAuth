@@ -6,6 +6,7 @@ import {
 import { api } from "../../api";
 import { LanguageToggle, useT } from "../../i18n";
 import { Link, usePath } from "../../router";
+import { Skeleton } from "../../ui";
 import Overview, { type OverviewResponse } from "./Overview";
 import { Applications, Keys, Resources } from "./Developer";
 import { Agents, Delegations } from "./Agents";
@@ -70,7 +71,19 @@ export default function Console() {
 		window.location.href = "/login";
 		return <div className="auth-shell"><p className="muted">{t("Redirecting to sign-in…")}</p></div>;
 	}
-	if (!context) return <div className="auth-shell"><p className="muted">{t("Loading…")}</p></div>;
+	if (!context) {
+		return (
+			<div className="auth-shell">
+				<div style={{ width: "min(320px, 100%)" }} role="status" aria-label={t("Loading…")}>
+					<Skeleton style={{ width: 120, height: 18, marginBottom: 22 }} />
+					<Skeleton style={{ width: "70%", marginBottom: 10 }} />
+					<Skeleton style={{ width: "88%", marginBottom: 10 }} />
+					<Skeleton style={{ width: "56%", marginBottom: 10 }} />
+					<Skeleton style={{ width: "78%" }} />
+				</div>
+			</div>
+		);
+	}
 	if (context.operator === false && OPERATOR_ONLY.some(prefix => path === prefix)) {
 		return <div className="auth-shell"><p className="muted">{t("Platform administrator access required.")}</p></div>;
 	}
@@ -86,8 +99,8 @@ export default function Console() {
 						<div key={section.group}>
 							{section.group !== "" && <div className="group">{t(section.group)}</div>}
 							{section.items.map(item => (
-								<Link key={item.to} to={item.to} className={path === item.to ? "active" : ""}>
-									<item.icon size={17} strokeWidth={1.75} aria-hidden />
+								<Link key={item.to} to={item.to} className={path === item.to ? "active" : ""} ariaCurrent={path === item.to}>
+									<item.icon size={16} strokeWidth={1.75} aria-hidden />
 									{t(item.label)}
 								</Link>
 							))}

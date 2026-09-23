@@ -216,6 +216,48 @@ export const zh: Record<string, string> = {
 	"verified": "已验证",
 	"pending": "待验证",
 	"Verify": "验证",
+
+	// redesign: shared primitives
+	"Retry": "重试",
+	"Copy": "复制",
+	"Copied": "已复制",
+	"Confirm": "确认",
+	"Something went wrong.": "出了点问题。",
+
+	// redesign: login brand panel
+	"A quiet ledger for identity.": "一本安静的身份账簿。",
+	"MSAuth is the identity layer for individuals and one-person companies — OAuth clients, API keys and DPoP-bound agents, governed from one console.": "MSAuth 是面向个人与一人公司的身份层 —— OAuth 客户端、API 密钥与 DPoP 绑定的代理，尽在一个控制台治理。",
+	"OAuth 2.1 clients and API keys": "OAuth 2.1 客户端与 API 密钥",
+	"DPoP-bound agents with audited delegation chains": "DPoP 绑定的代理与可审计的委托链",
+	"Every mutation on the record": "所有变更皆有审计记录",
+
+	// redesign: success toasts
+	"Application created.": "应用已创建。",
+	"Application updated.": "应用已更新。",
+	"Client secret rotated.": "客户端密钥已轮换。",
+	"Application deleted.": "应用已删除。",
+	"API key created.": "API 密钥已创建。",
+	"API key revoked.": "API 密钥已吊销。",
+	"Resource registered.": "资源已注册。",
+	"Client linked to resource.": "客户端已关联到资源。",
+	"Agent registered.": "代理已注册。",
+	"Agent revoked.": "代理已吊销。",
+	"Delegation granted.": "委托已创建。",
+	"Delegation revoked.": "委托已吊销。",
+	"Session revoked.": "会话已吊销。",
+	"Alert acknowledged.": "告警已确认。",
+	"User suspended.": "用户已封禁。",
+	"User unsuspended.": "已解除封禁。",
+	"Settings saved.": "设置已保存。",
+	"Domain added.": "域名已添加。",
+	"Domain verified.": "域名已验证。",
+
+	// redesign: forms
+	"Expiry must be between one minute and 30 days from now.": "过期时间必须介于 1 分钟到 30 天之后。",
+
+	// redesign: users
+	"Suspend user": "封禁用户",
+	"Suspending revokes this user's agents, delegations, clients and keys.": "封禁将同时吊销该用户的代理、委托、客户端和密钥。",
 };
 
 interface LangContextValue {

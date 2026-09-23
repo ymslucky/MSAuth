@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
-import { api, del, fmtDate, post } from "../../api";
+import { api, del, fmtDate, fullTimestamp, post } from "../../api";
 import { useT } from "../../i18n";
-import { Badge, Button, Card, Empty, ErrorNote, Field, Table } from "../../ui";
+import {
+	Badge, Button, Card, Confirm, Empty, ErrorNote, ErrorState, Field,
+	MonoId, SkeletonTable, Table, useToast,
+} from "../../ui";
 
 interface AuditRow {
 	id: string;
@@ -21,52 +24,65 @@ export function Audit(props: { operator: boolean }) {
 	const [actor, setActor] = useState("");
 	const [resource, setResource] = useState("");
 	const [error, setError] = useState<string | null>(null);
+	const [loading, setLoading] = useState(true);
+	const [attempt, setAttempt] = useState(0);
 
 	useEffect(() => {
+		setLoading(true);
 		const query = new URLSearchParams({ page: String(page), ...(actor.trim() ? { actor: actor.trim() } : {}), ...(resource.trim() ? { resource: resource.trim() } : {}) });
 		api<{ items: AuditRow[]; total: number }>(`/api/v1/audit?${query}`)
-			.then(result => { setItems(result.items ?? []); setTotal(result.total ?? 0); })
-			.catch(cause => setError(String(cause.message)));
-	}, [page, actor, resource]);
+			.then(result => { setItems(result.items ?? []); setTotal(result.total ?? 0); setError(null); })
+			.catch(cause => setError(cause instanceof Error ? cause.message : String(cause)))
+			.finally(() => setLoading(false));
+	}, [page, actor, resource, attempt]);
 
 	const pages = Math.max(1, Math.ceil(total / 30));
 	return (
 		<>
-			<div className="main-head">
+			<div className="main-head fade-up">
 				<div>
 					<h1>{t("Audit log")}</h1>
 					<p>{props.operator ? t("Every mutation on the platform, filterable by actor or resource.") : t("Every mutation you performed.")}</p>
 				</div>
 			</div>
-			<Card>
-				<div className="field-row">
-					{props.operator && (
-						<Field label={t("Actor user ID")}><input value={actor} onChange={event => { setPage(1); setActor(event.target.value); }} spellCheck={false} /></Field>
-					)}
-					<Field label={t("Resource type or ID")}><input value={resource} onChange={event => { setPage(1); setResource(event.target.value); }} spellCheck={false} /></Field>
-				</div>
-				<ErrorNote message={error} />
-				{items.length === 0 ? <Empty>{t("Nothing recorded for this filter.")}</Empty> : (
-					<Table head={[t("When"), t("Actor"), t("Action"), t("Resource"), t("Detail")]}>
-						{items.map(row => (
-							<tr key={row.id}>
-								<td className="muted" style={{ whiteSpace: "nowrap" }}>{fmtDate(row.createdAt)}</td>
-								<td className="mono muted">{row.actorId.slice(0, 8)}…</td>
-								<td><code>{row.action}</code></td>
-								<td>{row.resourceType} <span className="mono muted">{row.resourceId.slice(0, 8)}</span></td>
-								<td className="mono muted">{row.detail === "{}" ? "" : row.detail.slice(0, 120)}</td>
-							</tr>
-						))}
-					</Table>
+			{error && !loading
+				? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
+				: (
+					<Card>
+						<div className="field-row">
+							{props.operator && (
+								<Field label={t("Actor user ID")}><input value={actor} onChange={event => { setPage(1); setActor(event.target.value); }} spellCheck={false} /></Field>
+							)}
+							<Field label={t("Resource type or ID")}><input value={resource} onChange={event => { setPage(1); setResource(event.target.value); }} spellCheck={false} /></Field>
+						</div>
+						{loading ? <SkeletonTable /> : items.length === 0 ? (
+							<Empty glyph="¶">{t("Nothing recorded for this filter.")}</Empty>
+						) : (
+							<>
+								<Table head={[t("When"), t("Actor"), t("Action"), t("Resource"), t("Detail")]}>
+									{items.map(row => (
+										<tr key={row.id}>
+											<td className="muted" style={{ whiteSpace: "nowrap" }}><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
+											<td><MonoId value={row.actorId} /></td>
+											<td><code>{row.action}</code></td>
+											<td>{row.resourceType} <MonoId value={row.resourceId} /></td>
+											<td className="mono muted">
+												{row.detail !== "{}" && <span title={row.detail}>{row.detail.length > 120 ? `${row.detail.slice(0, 120)}…` : row.detail}</span>}
+											</td>
+										</tr>
+									))}
+								</Table>
+								{pages > 1 && (
+									<div className="btn-row" style={{ marginTop: 14 }}>
+										<Button kind="ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>{t("← Prev")}</Button>
+										<span className="muted mono">{page} / {pages}</span>
+										<Button kind="ghost" disabled={page >= pages} onClick={() => setPage(page + 1)}>{t("Next →")}</Button>
+									</div>
+								)}
+							</>
+						)}
+					</Card>
 				)}
-				{pages > 1 && (
-					<div className="btn-row" style={{ marginTop: 12 }}>
-						<Button kind="ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>{t("← Prev")}</Button>
-						<span className="muted">{page} / {pages}</span>
-						<Button kind="ghost" disabled={page >= pages} onClick={() => setPage(page + 1)}>{t("Next →")}</Button>
-					</div>
-				)}
-			</Card>
 		</>
 	);
 }
@@ -81,20 +97,28 @@ interface SessionRow {
 
 export function Sessions() {
 	const t = useT();
-	const [items, setItems] = useState<SessionRow[]>([]);
+	const toast = useToast();
+	const [items, setItems] = useState<SessionRow[] | null>(null);
 	const [currentId, setCurrentId] = useState("");
 	const [error, setError] = useState<string | null>(null);
+	const [attempt, setAttempt] = useState(0);
+	const [revokeTarget, setRevokeTarget] = useState<SessionRow | null>(null);
+	const [revokeBusy, setRevokeBusy] = useState(false);
 
 	const reload = () => api<{ items: SessionRow[]; currentId: string }>("/api/v1/sessions")
-		.then(result => { setItems(result.items ?? []); setCurrentId(result.currentId ?? ""); })
-		.catch(cause => setError(String(cause.message)));
-	useEffect(() => { void reload(); }, []);
+		.then(result => { setItems(result.items ?? []); setCurrentId(result.currentId ?? ""); setError(null); })
+		.catch(cause => setError(cause instanceof Error ? cause.message : String(cause)));
+	useEffect(() => {
+		setItems(null);
+		void reload();
+	}, [attempt]);
 
 	async function revoke(id: string) {
 		setError(null);
 		try {
 			await del(`/api/v1/sessions/${id}`);
 			if (id === currentId) { window.location.href = "/login"; return; }
+			toast(t("Session revoked."));
 			await reload();
 		} catch (cause) {
 			setError(cause instanceof Error ? cause.message : String(cause));
@@ -103,25 +127,30 @@ export function Sessions() {
 
 	return (
 		<>
-			<div className="main-head">
+			<div className="main-head fade-up">
 				<div>
 					<h1>{t("Sessions")}</h1>
 					<p>{t("Active browser sessions on your account.")}</p>
 				</div>
 			</div>
-			<ErrorNote message={error} />
+			<ErrorNote message={items === null && error ? null : error} />
 			<Card>
-				{items.length === 0 ? <Empty>{t("No sessions.")}</Empty> : (
-					<Table head={[t("Created"), "IP", t("User agent"), t("Expires"), ""]}>
+				{items === null ? (error
+					? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
+					: <SkeletonTable />
+				) : items.length === 0 ? (
+					<Empty glyph="…">{t("No sessions.")}</Empty>
+				) : (
+					<Table head={[t("Created"), "IP", t("User agent"), t("Expires"), ""]} rightCols={[4]}>
 						{items.map(row => (
 							<tr key={row.id}>
-								<td className="muted">{fmtDate(row.createdAt)}</td>
-								<td className="mono">{row.ipAddress ?? "—"}</td>
-								<td className="muted">{(row.userAgent ?? "").slice(0, 60)}</td>
-								<td className="muted">{fmtDate(row.expiresAt)}</td>
-								<td>
+								<td className="muted"><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
+								<td><MonoId value={row.ipAddress ?? "—"} /></td>
+								<td className="muted"><span title={row.userAgent ?? ""}>{(row.userAgent ?? "").slice(0, 60)}</span></td>
+								<td className="muted"><time title={fullTimestamp(row.expiresAt)}>{fmtDate(row.expiresAt)}</time></td>
+								<td className="right">
 									{row.id === currentId ? <Badge>{t("current")}</Badge> : (
-										<Button kind="danger" onClick={() => { if (confirm(t("Revoke this session?"))) void revoke(row.id); }}>{t("Revoke")}</Button>
+										<Button kind="danger" onClick={() => setRevokeTarget(row)}>{t("Revoke")}</Button>
 									)}
 								</td>
 							</tr>
@@ -129,6 +158,22 @@ export function Sessions() {
 					</Table>
 				)}
 			</Card>
+			{revokeTarget && (
+				<Confirm
+					open
+					title={t("Revoke this session?")}
+					confirmLabel={t("Revoke")}
+					busy={revokeBusy}
+					onConfirm={() => {
+						setRevokeBusy(true);
+						void revoke(revokeTarget.id).finally(() => {
+							setRevokeBusy(false);
+							setRevokeTarget(null);
+						});
+					}}
+					onCancel={() => setRevokeTarget(null)}
+				/>
+			)}
 		</>
 	);
 }
@@ -143,37 +188,61 @@ interface AlertRow {
 
 export function Alerts() {
 	const t = useT();
-	const [items, setItems] = useState<AlertRow[]>([]);
+	const toast = useToast();
+	const [items, setItems] = useState<AlertRow[] | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [attempt, setAttempt] = useState(0);
+	const [acking, setAcking] = useState<string | null>(null);
 
-	const reload = () => api<{ items: AlertRow[] }>("/api/v1/alerts").then(result => setItems(result.items ?? [])).catch(cause => setError(String(cause.message)));
-	useEffect(() => { void reload(); }, []);
+	const reload = () => api<{ items: AlertRow[] }>("/api/v1/alerts")
+		.then(result => { setItems(result.items ?? []); setError(null); })
+		.catch(cause => setError(cause instanceof Error ? cause.message : String(cause)));
+	useEffect(() => {
+		setItems(null);
+		void reload();
+	}, [attempt]);
+
+	function acknowledge(id: string) {
+		setAcking(id);
+		void post(`/api/v1/alerts/${id}/acknowledge`)
+			.then(() => { toast(t("Alert acknowledged.")); return reload(); })
+			.catch(cause => setError(cause instanceof Error ? cause.message : String(cause)))
+			.finally(() => setAcking(null));
+	}
 
 	return (
 		<>
-			<div className="main-head">
+			<div className="main-head fade-up">
 				<div>
 					<h1>{t("Security alerts")}</h1>
 					<p>{t("Sign-in anomalies and token events for your account.")}</p>
 				</div>
 			</div>
-			<ErrorNote message={error} />
-			<Card>
-				{items.length === 0 ? <Empty>{t("No alerts. Quiet is good.")}</Empty> : (
-					<Table head={[t("When"), t("Kind"), t("Detail"), ""]}>
-						{items.map(row => (
-							<tr key={row.id}>
-								<td className="muted" style={{ whiteSpace: "nowrap" }}>{fmtDate(row.createdAt)}</td>
-								<td><code>{row.kind}</code></td>
-								<td className="mono muted">{row.detail.slice(0, 140)}</td>
-								<td>{row.acknowledgedAt ? <Badge tone="ok">{t("ack")}</Badge> : (
-									<Button kind="ghost" onClick={() => void post(`/api/v1/alerts/${row.id}/acknowledge`).then(reload)}>{t("Acknowledge")}</Button>
-								)}</td>
-							</tr>
-						))}
-					</Table>
+			<ErrorNote message={items === null && error ? null : error} />
+			{items === null && error
+				? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
+				: (
+					<Card>
+						{items === null ? <SkeletonTable /> : items.length === 0 ? (
+							<Empty glyph="!">{t("No alerts. Quiet is good.")}</Empty>
+						) : (
+							<Table head={[t("When"), t("Kind"), t("Detail"), ""]} rightCols={[3]}>
+								{items.map(row => (
+									<tr key={row.id}>
+										<td className="muted" style={{ whiteSpace: "nowrap" }}><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
+										<td><code>{row.kind}</code></td>
+										<td className="mono muted"><span title={row.detail}>{row.detail.slice(0, 140)}</span></td>
+										<td className="right">
+											{row.acknowledgedAt ? <Badge tone="ok">{t("ack")}</Badge> : (
+												<Button kind="ghost" disabled={acking === row.id} onClick={() => acknowledge(row.id)}>{t("Acknowledge")}</Button>
+											)}
+										</td>
+									</tr>
+								))}
+							</Table>
+						)}
+					</Card>
 				)}
-			</Card>
 		</>
 	);
 }

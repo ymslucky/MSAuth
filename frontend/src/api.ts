@@ -1,10 +1,12 @@
 /** JSON fetch wrapper: same-origin cookies, uniform error surfacing. */
 export async function api<T = Record<string, unknown>>(path: string, init?: RequestInit): Promise<T> {
-	const response = await fetch(path, {
+	// `credentials` is DOM-spec; workerd's RequestInit omits it, so the literal is asserted.
+	const requestInit = {
 		credentials: "same-origin",
 		...init,
 		headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
-	});
+	} as RequestInit;
+	const response = await fetch(path, requestInit);
 	const body = await response.json().catch(() => ({}));
 	if (!response.ok) {
 		const detail = body as { error?: string; message?: string; error_description?: string };
@@ -22,4 +24,22 @@ export function fmtDate(value: number | string | undefined | null): string {
 	if (value === undefined || value === null || value === "") return "—";
 	const date = new Date(value);
 	return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
+}
+
+/** Full-precision ISO-8601 stamp for `<title>`/`<time>` attributes; "" when unparseable. */
+export function fullTimestamp(value: number | string | undefined | null): string {
+	if (value === undefined || value === null || value === "") return "";
+	const date = new Date(value);
+	return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+}
+
+/**
+ * Mirrors the delegation rule: expiresAt must sit between one minute and
+ * 30 days from now. Accepts ISO strings and datetime-local values (parsed
+ * as local time by `new Date`).
+ */
+export function isValidExpiry(value: string, now: number = Date.now()): boolean {
+	const time = new Date(value).getTime();
+	if (Number.isNaN(time)) return false;
+	return time >= now + 60_000 && time <= now + 30 * 86_400_000;
 }

@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
-import { api, del, fmtDate, post } from "../../api";
+import { api, del, fmtDate, fullTimestamp, isValidExpiry, post } from "../../api";
 import { useT } from "../../i18n";
-import { Badge, Button, Card, Empty, ErrorNote, Field, Modal, Table } from "../../ui";
+import {
+	Badge, Button, Card, Confirm, Empty, ErrorNote, ErrorState, Field,
+	Modal, MonoId, SkeletonTable, Table, useToast,
+} from "../../ui";
 
 const AGENT_SCOPES = ["mcp:invoke", "agent:delegate"];
 
@@ -30,17 +33,27 @@ interface DelegationRow {
 
 export function Agents() {
 	const t = useT();
-	const [items, setItems] = useState<AgentRow[]>([]);
+	const toast = useToast();
+	const [items, setItems] = useState<AgentRow[] | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [attempt, setAttempt] = useState(0);
 	const [creating, setCreating] = useState(false);
+	const [revokeTarget, setRevokeTarget] = useState<AgentRow | null>(null);
+	const [revokeBusy, setRevokeBusy] = useState(false);
 
-	const reload = () => api<{ items: AgentRow[] }>("/api/v1/agents").then(result => setItems(result.items ?? [])).catch(cause => setError(String(cause.message)));
-	useEffect(() => { void reload(); }, []);
+	const reload = () => api<{ items: AgentRow[] }>("/api/v1/agents")
+		.then(result => { setItems(result.items ?? []); setError(null); })
+		.catch(cause => setError(cause instanceof Error ? cause.message : String(cause)));
+	useEffect(() => {
+		setItems(null);
+		void reload();
+	}, [attempt]);
 
-	async function run(action: () => Promise<unknown>) {
+	async function run(action: () => Promise<unknown>, successMessage?: string) {
 		setError(null);
 		try {
 			await action();
+			if (successMessage) toast(successMessage);
 			await reload();
 		} catch (cause) {
 			setError(cause instanceof Error ? cause.message : String(cause));
@@ -49,27 +62,34 @@ export function Agents() {
 
 	return (
 		<>
-			<div className="main-head">
+			<div className="main-head fade-up">
 				<div>
 					<h1>{t("Agents")}</h1>
 					<p>{t("Agent instances acting on your behalf. Each one is pinned to an OAuth client and a DPoP key fingerprint.")}</p>
 				</div>
 				<Button kind="primary" onClick={() => setCreating(true)}>{t("Register agent")}</Button>
 			</div>
-			<ErrorNote message={error} />
+			<ErrorNote message={items === null && error ? null : error} />
 			<Card>
-				{items.length === 0 ? <Empty>{t("No agents registered.")}</Empty> : (
-					<Table head={[t("Name"), t("Client"), t("DPoP key"), t("Status"), t("Created"), ""]}>
+				{items === null ? (error
+					? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
+					: <SkeletonTable />
+				) : items.length === 0 ? (
+					<Empty glyph="&" action={<Button kind="primary" onClick={() => setCreating(true)}>{t("Register agent")}</Button>}>
+						{t("No agents registered.")}
+					</Empty>
+				) : (
+					<Table head={[t("Name"), t("Client"), t("DPoP key"), t("Status"), t("Created"), ""]} rightCols={[5]}>
 						{items.map(row => (
 							<tr key={row.id}>
-								<td>{row.name}{row.description && <div className="muted">{row.description}</div>}</td>
-								<td>{row.clientId ? <code>{row.clientId.slice(0, 18)}…</code> : <span className="muted">{t("not bound")}</span>}</td>
-								<td>{row.dpopJkt ? <code>{row.dpopJkt.slice(0, 12)}…</code> : <span className="muted">—</span>}</td>
+								<td>{row.name}{row.description && <div className="cell-sub">{row.description}</div>}</td>
+								<td>{row.clientId ? <MonoId value={row.clientId} /> : <span className="muted">{t("not bound")}</span>}</td>
+								<td>{row.dpopJkt ? <MonoId value={row.dpopJkt} /> : <span className="muted">—</span>}</td>
 								<td>{row.status === "active" ? <Badge tone="ok">{t("active")}</Badge> : <Badge tone="bad">{t("revoked")}</Badge>}</td>
-								<td className="muted">{fmtDate(row.createdAt)}</td>
-								<td>
+								<td className="muted"><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
+								<td className="right">
 									{row.status === "active" && (
-										<Button kind="danger" onClick={() => { if (confirm(t("Revoke this agent, its delegations and tokens?"))) void run(() => del(`/api/v1/agents/${row.id}`)); }}>{t("Revoke")}</Button>
+										<Button kind="danger" onClick={() => setRevokeTarget(row)}>{t("Revoke")}</Button>
 									)}
 								</td>
 							</tr>
@@ -77,10 +97,30 @@ export function Agents() {
 					</Table>
 				)}
 			</Card>
+			{revokeTarget && (
+				<Confirm
+					open
+					title={t("Revoke this agent, its delegations and tokens?")}
+					confirmLabel={t("Revoke")}
+					busy={revokeBusy}
+					onConfirm={() => {
+						setRevokeBusy(true);
+						void run(async () => {
+							await del(`/api/v1/agents/${revokeTarget.id}`);
+							toast(t("Agent revoked."));
+						}).finally(() => {
+							setRevokeBusy(false);
+							setRevokeTarget(null);
+						});
+					}}
+					onCancel={() => setRevokeTarget(null)}
+				/>
+			)}
 			{creating && (
 				<AgentForm onClose={() => setCreating(false)} onSave={input => run(async () => {
 					await post("/api/v1/agents", input);
 					setCreating(false);
+					toast(t("Agent registered."));
 				})} />
 			)}
 		</>
@@ -93,21 +133,31 @@ function AgentForm(props: { onClose: () => void; onSave: (input: { name: string;
 	const [description, setDescription] = useState("");
 	const [clientId, setClientId] = useState("");
 	const [publicJwk, setPublicJwk] = useState("");
+	const [jwkError, setJwkError] = useState<string | null>(null);
 	return (
 		<Modal title={t("Register agent")} open onClose={props.onClose}>
-			<Field label={t("Name")}><input value={name} onChange={event => setName(event.target.value)} maxLength={100} /></Field>
-			<Field label={t("Description")}><input value={description} onChange={event => setDescription(event.target.value)} maxLength={500} /></Field>
+			<Field label={t("Name")} count={`${name.length}/100`}>
+				<input value={name} onChange={event => setName(event.target.value)} maxLength={100} />
+			</Field>
+			<Field label={t("Description")} count={`${description.length}/500`}>
+				<input value={description} onChange={event => setDescription(event.target.value)} maxLength={500} />
+			</Field>
 			<Field label={t("OAuth client ID")} hint={t("Optional now — the agent can also self-register via DCR later.")}>
 				<input value={clientId} onChange={event => setClientId(event.target.value)} spellCheck={false} />
 			</Field>
-			<Field label={t("Agent public key (P-256 JWK)")} hint={t("Public key only. Tokens will be DPoP-bound to its thumbprint.")}>
-				<textarea rows={4} value={publicJwk} onChange={event => setPublicJwk(event.target.value)} spellCheck={false} placeholder='{"kty":"EC","crv":"P-256","x":"…","y":"…"}' />
+			<Field label={t("Agent public key (P-256 JWK)")} hint={t("Public key only. Tokens will be DPoP-bound to its thumbprint.")} error={jwkError}>
+				<textarea rows={4} value={publicJwk} onChange={event => { setPublicJwk(event.target.value); setJwkError(null); }} spellCheck={false} placeholder='{"kty":"EC","crv":"P-256","x":"…","y":"…"}' />
 			</Field>
 			<div className="btn-row">
 				<Button kind="primary" disabled={!name.trim()} onClick={() => {
 					let jwk: unknown;
 					if (publicJwk.trim()) {
-						try { jwk = JSON.parse(publicJwk); } catch { alert(t("Public key must be valid JSON")); return; }
+						try {
+							jwk = JSON.parse(publicJwk);
+						} catch {
+							setJwkError(t("Public key must be valid JSON"));
+							return;
+						}
 					}
 					props.onSave({
 						name: name.trim(), description: description.trim(),
@@ -122,21 +172,29 @@ function AgentForm(props: { onClose: () => void; onSave: (input: { name: string;
 
 export function Delegations() {
 	const t = useT();
-	const [items, setItems] = useState<DelegationRow[]>([]);
+	const toast = useToast();
+	const [items, setItems] = useState<DelegationRow[] | null>(null);
 	const [agents, setAgents] = useState<AgentRow[]>([]);
 	const [error, setError] = useState<string | null>(null);
+	const [attempt, setAttempt] = useState(0);
 	const [creating, setCreating] = useState(false);
+	const [revokeTarget, setRevokeTarget] = useState<DelegationRow | null>(null);
+	const [revokeBusy, setRevokeBusy] = useState(false);
 
-	const reload = () => api<{ items: DelegationRow[] }>("/api/v1/delegations").then(result => setItems(result.items ?? [])).catch(cause => setError(String(cause.message)));
+	const reload = () => api<{ items: DelegationRow[] }>("/api/v1/delegations")
+		.then(result => { setItems(result.items ?? []); setError(null); })
+		.catch(cause => setError(cause instanceof Error ? cause.message : String(cause)));
 	useEffect(() => {
+		setItems(null);
 		void reload();
 		api<{ items: AgentRow[] }>("/api/v1/agents").then(result => setAgents((result.items ?? []).filter(agent => agent.status === "active" && agent.clientId && agent.dpopJkt))).catch(() => undefined);
-	}, []);
+	}, [attempt]);
 
-	async function run(action: () => Promise<unknown>) {
+	async function run(action: () => Promise<unknown>, successMessage?: string) {
 		setError(null);
 		try {
 			await action();
+			if (successMessage) toast(successMessage);
 			await reload();
 		} catch (cause) {
 			setError(cause instanceof Error ? cause.message : String(cause));
@@ -145,28 +203,35 @@ export function Delegations() {
 
 	return (
 		<>
-			<div className="main-head">
+			<div className="main-head fade-up">
 				<div>
 					<h1>{t("Delegations")}</h1>
 					<p>{t("Explicit consent for an agent to act as you on one resource. Authority only ever narrows, up to 4 hops.")}</p>
 				</div>
 				<Button kind="primary" onClick={() => setCreating(true)}>{t("New delegation")}</Button>
 			</div>
-			<ErrorNote message={error} />
+			<ErrorNote message={items === null && error ? null : error} />
 			<Card>
-				{items.length === 0 ? <Empty>{t("No delegations.")}</Empty> : (
-					<Table head={[t("Agent"), t("Resource"), t("Scopes / permissions"), t("Depth"), t("Expires"), t("Status"), ""]}>
+				{items === null ? (error
+					? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
+					: <SkeletonTable />
+				) : items.length === 0 ? (
+					<Empty glyph="%" action={<Button kind="primary" onClick={() => setCreating(true)}>{t("New delegation")}</Button>}>
+						{t("No delegations.")}
+					</Empty>
+				) : (
+					<Table head={[t("Agent"), t("Resource"), t("Scopes / permissions"), t("Depth"), t("Expires"), t("Status"), ""]} rightCols={[6]}>
 						{items.map(row => (
 							<tr key={row.id}>
 								<td>{row.agentName}</td>
-								<td><code>{row.resource}</code></td>
-								<td>{row.scopes.join(", ")}<div className="muted mono">{JSON.stringify(row.authorizationDetails)}</div></td>
-								<td>{row.depth}{row.depth > 0 && <div className="muted">{t("chain")}</div>}</td>
-								<td className="muted">{fmtDate(row.expiresAt)}</td>
+								<td><MonoId value={row.resource} wide /></td>
+								<td>{row.scopes.join(", ")}<div className="cell-sub mono">{JSON.stringify(row.authorizationDetails)}</div></td>
+								<td>{row.depth}{row.depth > 0 && <div className="cell-sub">{t("chain")}</div>}</td>
+								<td className="muted"><time title={fullTimestamp(row.expiresAt)}>{fmtDate(row.expiresAt)}</time></td>
 								<td>{row.revokedAt ? <Badge tone="bad">{t("revoked")}</Badge> : row.expiresAt < Date.now() ? <Badge tone="warn">{t("expired")}</Badge> : <Badge tone="ok">{t("live")}</Badge>}</td>
-								<td>
+								<td className="right">
 									{!row.revokedAt && (
-										<Button kind="danger" onClick={() => { if (confirm(t("Revoke this delegation (and any children)?"))) void run(() => del(`/api/v1/delegations/${row.id}`)); }}>{t("Revoke")}</Button>
+										<Button kind="danger" onClick={() => setRevokeTarget(row)}>{t("Revoke")}</Button>
 									)}
 								</td>
 							</tr>
@@ -174,10 +239,30 @@ export function Delegations() {
 					</Table>
 				)}
 			</Card>
+			{revokeTarget && (
+				<Confirm
+					open
+					title={t("Revoke this delegation (and any children)?")}
+					confirmLabel={t("Revoke")}
+					busy={revokeBusy}
+					onConfirm={() => {
+						setRevokeBusy(true);
+						void run(async () => {
+							await del(`/api/v1/delegations/${revokeTarget.id}`);
+							toast(t("Delegation revoked."));
+						}).finally(() => {
+							setRevokeBusy(false);
+							setRevokeTarget(null);
+						});
+					}}
+					onCancel={() => setRevokeTarget(null)}
+				/>
+			)}
 			{creating && (
 				<DelegationForm agents={agents} onClose={() => setCreating(false)} onSave={input => run(async () => {
 					await post("/api/v1/delegations", input);
 					setCreating(false);
+					toast(t("Delegation granted."));
 				})} />
 			)}
 		</>
@@ -191,7 +276,21 @@ function DelegationForm(props: { agents: AgentRow[]; onClose: () => void; onSave
 	const [scopes, setScopes] = useState<string[]>(["mcp:invoke"]);
 	const [parentId, setParentId] = useState("");
 	const [expiresAt, setExpiresAt] = useState(() => new Date(Date.now() + 86400000).toISOString().slice(0, 16));
+	const [expiryError, setExpiryError] = useState<string | null>(null);
 	const bindable = props.agents.length > 0;
+	const submit = () => {
+		if (!isValidExpiry(expiresAt)) {
+			setExpiryError(t("Expiry must be between one minute and 30 days from now."));
+			return;
+		}
+		props.onSave({
+			agentId,
+			resource: resource.trim(),
+			scopes,
+			expiresAt: new Date(expiresAt).getTime(),
+			...(parentId.trim() ? { parentId: parentId.trim() } : {}),
+		});
+	};
 	return (
 		<Modal title={t("New delegation")} open onClose={props.onClose}>
 			{!bindable ? (
@@ -210,7 +309,7 @@ function DelegationForm(props: { agents: AgentRow[]; onClose: () => void; onSave
 					<div className="field">
 						<span>{t("Scopes")}</span>
 						{AGENT_SCOPES.map(scope => (
-							<label key={scope} style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+							<label key={scope} className="check-row">
 								<input
 									type="checkbox"
 									checked={scopes.includes(scope)}
@@ -223,20 +322,18 @@ function DelegationForm(props: { agents: AgentRow[]; onClose: () => void; onSave
 					<Field label={t("Parent delegation (optional)")} hint={t("Children may only narrow the parent's authority and expiry.")}>
 						<input value={parentId} onChange={event => setParentId(event.target.value)} spellCheck={false} />
 					</Field>
-					<Field label={t("Expires at")} hint={t("Between one minute and 30 days from now.")}>
-						<input type="datetime-local" value={expiresAt} onChange={event => setExpiresAt(event.target.value)} />
+					<Field
+						label={t("Expires at")}
+						hint={t("Between one minute and 30 days from now.")}
+						error={expiryError}
+					>
+						<input type="datetime-local" value={expiresAt} onChange={event => { setExpiresAt(event.target.value); setExpiryError(null); }} />
 					</Field>
 					<div className="btn-row">
 						<Button
 							kind="primary"
 							disabled={!agentId || !resource.trim() || scopes.length === 0}
-							onClick={() => props.onSave({
-								agentId,
-								resource: resource.trim(),
-								scopes,
-								expiresAt: new Date(expiresAt).getTime(),
-								...(parentId.trim() ? { parentId: parentId.trim() } : {}),
-							})}
+							onClick={submit}
 						>{t("Grant")}</Button>
 						<Button kind="ghost" onClick={props.onClose}>{t("Cancel")}</Button>
 					</div>

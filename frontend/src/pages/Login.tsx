@@ -41,39 +41,47 @@ export default function Login() {
 	}
 
 	return (
-		<div className="auth-shell">
-			<div style={{ position: "fixed", top: 16, right: 16 }}>
-				<LanguageToggle />
+		<div className="login-page">
+			<div className="login-brand">
+				<div className="brand"><img src="/favicon.svg" alt="" />MSAuth</div>
+				<p className="login-brand-welcome">{t("A quiet ledger for identity.")}</p>
+				<p className="login-story">{t("MSAuth is the identity layer for individuals and one-person companies — OAuth clients, API keys and DPoP-bound agents, governed from one console.")}</p>
+				<ul className="login-feats">
+					<li>{t("OAuth 2.1 clients and API keys")}</li>
+					<li>{t("DPoP-bound agents with audited delegation chains")}</li>
+					<li>{t("Every mutation on the record")}</li>
+				</ul>
 			</div>
-			<form
-				className="auth-card"
-				onSubmit={event => {
-					event.preventDefault();
-					if (!busy) void signInEmail();
-				}}
-			>
-				<div className="brand">
-					<img src="/favicon.svg" alt="" />
-					<h1>MSAuth</h1>
-				</div>
-				<p className="auth-sub">{t("Sign in to your identity console.")}</p>
-				<label className="field">
-					<span>{t("Email")}</span>
-					<input type="email" required autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} />
-				</label>
-				<label className="field">
-					<span>{t("Password")}</span>
-					<input type="password" required autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} />
-				</label>
-				<button className="btn primary block" type="submit" disabled={busy || !email || !password}>
-					{t("Sign in")}
-				</button>
-				<div className="divider">{t("or")}</div>
-				<button className="btn block" type="button" disabled={busy} onClick={() => void signInGithub()}>
-					<img src="/github.svg" alt="" width={17} height={17} /> {t("Continue with GitHub")}
-				</button>
-				{error && <p className="error-note" role="alert">{error}</p>}
-			</form>
+			<div className="login-form-col">
+				<div className="login-toggle"><LanguageToggle /></div>
+				<form
+					className="auth-card"
+					onSubmit={event => {
+						event.preventDefault();
+						if (!busy) void signInEmail();
+					}}
+				>
+					<div className="brand login-brand-compact"><img src="/favicon.svg" alt="" />MSAuth</div>
+					<h1 className="login-title">{t("Sign in to your identity console.")}</h1>
+					<p className="auth-sub">{t("A quiet ledger for identity.")}</p>
+					<label className="field">
+						<span>{t("Email")}</span>
+						<input type="email" required autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} />
+					</label>
+					<label className="field">
+						<span>{t("Password")}</span>
+						<input type="password" required autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} />
+					</label>
+					<button className="btn primary block" type="submit" disabled={busy || !email || !password}>
+						{t("Sign in")}
+					</button>
+					<div className="divider">{t("or")}</div>
+					<button className="btn block" type="button" disabled={busy} onClick={() => void signInGithub()}>
+						<img src="/github.svg" alt="" width={16} height={16} /> {t("Continue with GitHub")}
+					</button>
+					{error && <p className="error-note" role="alert">{error}</p>}
+				</form>
+			</div>
 		</div>
 	);
 }
