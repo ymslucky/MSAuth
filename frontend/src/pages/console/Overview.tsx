@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, fmtDate, fullTimestamp } from "../../api";
 import { useT } from "../../i18n";
 import { mountLedgerArt } from "../../art";
-import { Card, Empty, ErrorState, MonoId, Skeleton, SkeletonStats, SkeletonTable, Stat } from "../../ui";
+import { Card, Empty, ErrorState, ActionTag, MonoId, ResourceTag, Skeleton, SkeletonStats, SkeletonTable, Stat } from "../../ui";
 
 export interface OverviewResponse {
 	counts: { applications: number; agents: number; delegations: number; keys: number };
@@ -105,8 +105,8 @@ export default function Overview() {
 							<tbody>
 								{data.activity.map(row => (
 									<tr key={row.id}>
-										<td><code>{row.action}</code></td>
-										<td>{row.resourceType} <MonoId value={row.resourceId} /></td>
+										<td><ActionTag code={row.action} /></td>
+										<td><ResourceTag type={row.resourceType} /> <MonoId value={row.resourceId} /></td>
 										<td className="right muted"><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
 									</tr>
 								))}

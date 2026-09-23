@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Check, CheckCircle2, CircleAlert, Copy, Info, X } from "lucide-react";
-import { useT } from "./i18n";
+import { useActionLabel, useT } from "./i18n";
 import { maskId } from "./api";
 import { Link } from "./router";
 import { capVisibleToasts, noticeTtl, type NoticeTone } from "./notice";
@@ -60,6 +60,53 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
 
 export function Badge(props: { tone?: "ok" | "warn" | "bad"; children: ReactNode }) {
 	return <span className={`badge ${props.tone ?? ""}`}>{props.children}</span>;
+}
+
+/* ---------- tags: finite tone vocabulary for resource types & actions ---------- */
+
+export type ResourceTone =
+	| "agent" | "delegation" | "apikey" | "user" | "session"
+	| "domain" | "alert" | "resource" | "client" | "other";
+
+/** The finite tone set — every tone has a matching `.tag.tag--<tone>` class. */
+export const RESOURCE_TONES: readonly ResourceTone[] = [
+	"agent", "delegation", "apikey", "user", "session",
+	"domain", "alert", "resource", "client", "other",
+];
+
+/** Backend resourceType → tone; anything unknown falls back to neutral "other". */
+const RESOURCE_TYPE_TONES: Record<string, ResourceTone> = {
+	agent: "agent",
+	delegation: "delegation",
+	key: "apikey",
+	user: "user",
+	session: "session",
+	domain: "domain",
+	alert: "alert",
+	resource: "resource",
+	application: "client",
+	platform: "other",
+};
+
+export function resourceTone(type: string): ResourceTone {
+	return RESOURCE_TYPE_TONES[type] ?? "other";
+}
+
+/**
+ * Colored type pill for a backend resourceType: soft tinted background, deep
+ * matching text, hairline border. Keeps `title` = raw type for correlation.
+ */
+export function ResourceTag(props: { type: string }) {
+	return <span className={`tag tag--${resourceTone(props.type)}`} title={props.type}>{props.type}</span>;
+}
+
+/**
+ * Neutral pill for an audit action code, showing its translated label
+ * (see tAction) with the raw code preserved in `title` for log correlation.
+ */
+export function ActionTag(props: { code: string }) {
+	const actionLabel = useActionLabel();
+	return <span className="badge action" title={props.code}>{actionLabel(props.code)}</span>;
 }
 
 /** Inline mutation-failure note (fetch failures use `ErrorState` instead). */

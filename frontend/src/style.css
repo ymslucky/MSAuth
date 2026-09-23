@@ -151,17 +151,33 @@ code {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* language segmented control: 中文 | EN */
+/* language segmented control: 中文 | EN — sliding thumb, crossfading labels */
 .lang-seg {
+	position: relative;
 	display: inline-flex;
-	align-items: center;
-	gap: 2px;
+	align-items: stretch;
 	padding: 2px;
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	background: var(--surface);
 }
+.lang-seg .lang-thumb {
+	position: absolute;
+	top: 2px;
+	bottom: 2px;
+	left: 2px;
+	width: calc(50% - 2px);
+	border-radius: 999px;
+	background: var(--ink);
+	transform: translateX(0);
+	transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lang-seg .lang-thumb[data-lang="en"] { transform: translateX(100%); }
 .lang-seg button {
+	position: relative;
+	z-index: 1;
+	flex: 1 1 0;
+	min-width: 44px;
 	border: 0;
 	background: transparent;
 	color: var(--muted);
@@ -170,10 +186,14 @@ code {
 	padding: 5px 11px;
 	border-radius: 999px;
 	cursor: pointer;
-	transition: background 140ms ease-out, color 140ms ease-out;
+	transition: color 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .lang-seg button:hover { color: var(--ink); }
-.lang-seg button.active { background: var(--ink); color: var(--bg); }
+.lang-seg button.active { color: var(--bg); }
+
+/* language flip: brief opacity dip on the document (class toggled by LangProvider) */
+body { transition: opacity 120ms ease; }
+html.lang-dip body { opacity: 0.55; }
 
 /* ---------- forms ---------- */
 .field { display: block; margin-bottom: 14px; }
@@ -438,18 +458,12 @@ tbody tr:nth-child(n+9) { animation-delay: 128ms; }
 .audit-table { table-layout: auto; }
 .audit-table th, .audit-table td { white-space: nowrap; }
 .audit-table .col-when { font-family: var(--font-mono); font-size: 12px; color: var(--muted); min-width: 150px; }
-.audit-table .col-action .badge {
-	font-family: var(--font-mono);
-	font-weight: 500;
-	letter-spacing: 0;
-	padding: 2px 8px;
-}
 /* The resource cell is width-clamped, so its content must shrink instead of
    overflowing into the detail column: flex row + min-width:0 lets the id
    ellipsize while the icon button stays intact (flex:none). */
 .audit-table .col-resource { max-width: 330px; }
 .audit-table .col-resource .cell-res { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
-.audit-table .col-resource .res-type { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink); flex: none; }
+.audit-table .col-resource .tag { flex: none; }
 .audit-table .col-resource .mono-id { flex: 0 1 auto; min-width: 0; }
 .audit-table .col-resource .mono-id > span { max-width: none; }
 .audit-table .col-detail {
@@ -476,6 +490,34 @@ tbody tr:nth-child(n+9) { animation-delay: 128ms; }
 .badge.ok { color: var(--ok); background: var(--ok-tint); border-color: #d5e3d8; }
 .badge.warn { color: var(--warn); background: var(--warn-tint); border-color: #e8dcc2; }
 .badge.bad { color: var(--bad); background: var(--bad-tint); border-color: #ecd0cd; }
+
+/* tags: same pill vocabulary as .badge, one tinted tone per resource type.
+   Palette discipline: each tone is a soft tint + deep text + hairline border,
+   derived from the theme; vermilion is reserved for the alert (destructive)
+   family so it keeps its meaning. Doubled class keeps tone colors winning
+   over the generic `td > :first-child` ink rule. */
+.tag {
+	display: inline-block;
+	padding: 2px 9px;
+	border-radius: 999px;
+	font-size: 11.5px;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+	background: var(--bg);
+	color: var(--ink-soft);
+	border: 1px solid var(--line);
+	white-space: nowrap;
+}
+.tag.tag--agent { background: #ecefdf; color: #55631f; border-color: #dde2c8; }
+.tag.tag--delegation { background: #e6efed; color: #2f6058; border-color: #d0e1dc; }
+.tag.tag--apikey { background: var(--warn-tint); color: #8a6210; border-color: #eadcbc; }
+.tag.tag--user { background: #edebe3; color: #55523f; border-color: #ddd9cb; }
+.tag.tag--session { background: #e9edf4; color: #46608c; border-color: #d5dce9; }
+.tag.tag--domain { background: #f3ece4; color: #7a5a38; border-color: #e6d8c6; }
+.tag.tag--alert { background: var(--accent-tint); color: var(--accent-darker); border-color: #f0d2c4; }
+.tag.tag--resource { background: #ecf3ed; color: #3d7a4e; border-color: #d5e3d8; }
+.tag.tag--client { background: #ecebf4; color: #55508c; border-color: #dbd9ec; }
+.tag.tag--other { background: var(--bg); color: var(--ink-soft); border-color: var(--line); }
 
 .error-note { color: var(--bad); font-size: 13px; margin: 10px 0; font-weight: 500; }
 .error-card {

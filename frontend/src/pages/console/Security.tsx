@@ -3,8 +3,8 @@ import { ShieldOff } from "lucide-react";
 import { api, del, fmtDate, fullTimestamp, post, summarizeAuditDetail } from "../../api";
 import { useT } from "../../i18n";
 import {
-	Badge, Button, Card, Empty, ErrorNote, ErrorState, Field,
-	MonoId, PageHeader, SkeletonTable, Table, useNotice,
+	ActionTag, Badge, Button, Card, Empty, ErrorNote, ErrorState, Field,
+	MonoId, PageHeader, ResourceTag, SkeletonTable, Table, useNotice,
 } from "../../ui";
 
 interface AuditRow {
@@ -66,10 +66,10 @@ export function Audit(props: { operator: boolean }) {
 											<tr key={row.id}>
 												<td className="col-when"><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
 												<td><MonoId value={row.actorId} /></td>
-												<td className="col-action"><Badge>{row.action}</Badge></td>
+												<td className="col-action"><ActionTag code={row.action} /></td>
 												<td className="col-resource">
 													<span className="cell-res" title={`${row.resourceType} ${row.resourceId}`}>
-														<span className="res-type">{row.resourceType}</span>
+														<ResourceTag type={row.resourceType} />
 														<MonoId value={row.resourceId} />
 													</span>
 												</td>
