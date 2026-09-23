@@ -121,6 +121,7 @@ export const zh: Record<string, string> = {
 	"Register agent": "注册代理",
 	"No agents registered.": "还没有注册代理。",
 	"Client": "客户端",
+	"Client ID": "客户端 ID",
 	"DPoP key": "DPoP 密钥",
 	"not bound": "未绑定",
 	"revoked": "已撤销",
@@ -196,6 +197,7 @@ export const zh: Record<string, string> = {
 	"Linked accounts": "关联账号",
 	"Provider": "提供商",
 	"Linked": "关联时间",
+	"Account ID": "账号 ID",
 
 	// settings
 	"Platform settings": "平台设置",
@@ -262,7 +264,9 @@ export const zh: Record<string, string> = {
 
 	// notice stack + page chrome
 	"Dismiss": "知道了",
-	"Breadcrumb": "面包屑导航",
+	"Breadcrumb": "面包屑",
+	"Language": "语言",
+	"Open resource": "打开资源",
 	"Admin": "管理",
 	"Back": "返回",
 	"Profile": "资料",
@@ -314,11 +318,14 @@ export function useT() {
 	}, [lang]);
 }
 
-export function LanguageToggle() {
+/** Compact segmented `中文 | EN` control — reads as a setting, not a button. */
+export function LangSegmented() {
 	const { lang, setLang } = useContext(LangContext);
+	const t = useT();
 	return (
-		<button type="button" className="btn ghost lang-toggle" onClick={() => setLang(lang === "zh" ? "en" : "zh")}>
-			{lang === "zh" ? "EN" : "中文"}
-		</button>
+		<div className="lang-seg" role="group" aria-label={t("Language")}>
+			<button type="button" className={lang === "zh" ? "active" : ""} aria-pressed={lang === "zh"} onClick={() => setLang("zh")}>中文</button>
+			<button type="button" className={lang === "en" ? "active" : ""} aria-pressed={lang === "en"} onClick={() => setLang("en")}>EN</button>
+		</div>
 	);
 }

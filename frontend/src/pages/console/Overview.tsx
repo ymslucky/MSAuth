@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, fmtDate, fullTimestamp } from "../../api";
-import { LanguageToggle, useT } from "../../i18n";
+import { useT } from "../../i18n";
 import { mountLedgerArt } from "../../art";
 import { Card, Empty, ErrorState, MonoId, Skeleton, SkeletonStats, SkeletonTable, Stat } from "../../ui";
 
@@ -65,7 +65,6 @@ export default function Overview() {
 					<h1>{t("Welcome, {name}", { name: data.user.name })}</h1>
 					<p className="serif">{t("Your identity platform at a glance.")}</p>
 				</div>
-				<div className="hero-toggle"><LanguageToggle /></div>
 			</section>
 			<div className="stat-grid hero-stats">
 				{[

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { CheckCircle2, CircleAlert, Info, X } from "lucide-react";
-import { useT, LanguageToggle } from "./i18n";
+import { Check, CheckCircle2, CircleAlert, Copy, Info, X } from "lucide-react";
+import { useT } from "./i18n";
 import { Link } from "./router";
 import { capVisibleToasts, noticeTtl, type NoticeTone } from "./notice";
 
@@ -22,27 +22,32 @@ export function Button(props: {
 	onClick?: () => void;
 	kind?: "primary" | "danger" | "danger-solid" | "ghost";
 	disabled?: boolean;
+	/** Pending state: spinner + disabled, so submits never look dead. */
+	busy?: boolean;
 	type?: "button" | "submit";
+	className?: string;
 	ariaLabel?: string;
 	children: ReactNode;
 }) {
 	return (
 		<button
 			type={props.type ?? "button"}
-			className={`btn ${props.kind ?? ""}`}
+			className={`btn ${props.kind ?? ""} ${props.className ?? ""}`}
 			onClick={props.onClick}
-			disabled={props.disabled}
+			disabled={props.disabled || props.busy}
 			aria-label={props.ariaLabel}
+			aria-busy={props.busy || undefined}
 		>
+			{props.busy && <span className="spinner" aria-hidden="true" />}
 			{props.children}
 		</button>
 	);
 }
 
-export function Field(props: { label: string; children: ReactNode; hint?: string; error?: string | null; count?: string }) {
+export function Field(props: { label: string; children: ReactNode; hint?: string; error?: string | null; count?: string; required?: boolean }) {
 	return (
 		<label className={`field ${props.error ? "has-error" : ""}`}>
-			<span>{props.label}</span>
+			<span>{props.label}{props.required && <em className="req" aria-hidden="true"> *</em>}</span>
 			{props.children}
 			{props.error
 				? <small className="field-error" role="alert">{props.error}</small>
@@ -104,7 +109,8 @@ export function Table(props: { head: string[]; rightCols?: number[]; className?:
 
 /**
  * Page title row: optional breadcrumb (Console → section → page), title,
- * subtitle — with the language toggle and page actions right-aligned.
+ * subtitle — with page actions right-aligned. (The language control lives in
+ * the sidebar footer.)
  */
 export function PageHeader(props: {
 	title: ReactNode;
@@ -134,7 +140,6 @@ export function PageHeader(props: {
 			</div>
 			<div className="head-side">
 				{props.actions}
-				<LanguageToggle />
 			</div>
 		</div>
 	);
@@ -144,21 +149,55 @@ export function Modal(props: { title: string; open: boolean; onClose: () => void
 	const t = useT();
 	const closeRef = useRef(props.onClose);
 	closeRef.current = props.onClose;
+	const dialogRef = useRef<HTMLDivElement>(null);
 	useEffect(() => {
-		if (!props.open) return;
+		if (!props.open) return undefined;
+		const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		const node = dialogRef.current;
+		node?.focus();
 		const onKey = (event: KeyboardEvent) => {
-			if (event.key === "Escape") closeRef.current();
+			if (event.key === "Escape") {
+				closeRef.current();
+				return;
+			}
+			// Keep Tab focus inside the dialog while it is open.
+			if (event.key !== "Tab" || !node) return;
+			const focusables = node.querySelectorAll<HTMLElement>(
+				'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+			);
+			if (focusables.length === 0) return;
+			const first = focusables[0];
+			const last = focusables[focusables.length - 1];
+			const active = document.activeElement;
+			if (event.shiftKey && (active === first || active === node)) {
+				event.preventDefault();
+				last.focus();
+			} else if (!event.shiftKey && active === last) {
+				event.preventDefault();
+				first.focus();
+			}
 		};
 		window.addEventListener("keydown", onKey);
-		return () => window.removeEventListener("keydown", onKey);
+		return () => {
+			window.removeEventListener("keydown", onKey);
+			previous?.focus();
+		};
 	}, [props.open]);
 	if (!props.open) return null;
 	return (
 		<div className="modal-backdrop" onClick={props.onClose}>
-			<div className="modal" role="dialog" aria-modal="true" aria-label={props.title} onClick={event => event.stopPropagation()}>
+			<div
+				className="modal"
+				role="dialog"
+				aria-modal="true"
+				aria-label={props.title}
+				ref={dialogRef}
+				tabIndex={-1}
+				onClick={event => event.stopPropagation()}
+			>
 				<header className="card-head">
 					<h2>{props.title}</h2>
-					<Button kind="ghost" ariaLabel={t("Close")} onClick={props.onClose}>✕</Button>
+					<Button kind="ghost" ariaLabel={t("Close")} onClick={props.onClose}><X size={15} strokeWidth={2} aria-hidden /></Button>
 				</header>
 				{props.children}
 			</div>
@@ -182,7 +221,7 @@ export function Confirm(props: {
 		<Modal title={props.title} open onClose={props.onCancel}>
 			{props.body && <p className="confirm-body">{props.body}</p>}
 			<div className="btn-row">
-				<Button kind="danger-solid" disabled={props.busy} onClick={props.onConfirm}>{props.confirmLabel}</Button>
+				<Button kind="danger-solid" busy={props.busy} onClick={props.onConfirm}>{props.confirmLabel}</Button>
 				<Button kind="ghost" disabled={props.busy} onClick={props.onCancel}>{t("Cancel")}</Button>
 			</div>
 		</Modal>
@@ -248,7 +287,8 @@ export function CopyButton(props: { value: string; label?: string }) {
 			onClick={copy}
 			aria-label={props.label ?? `${t("Copy")}: ${props.value}`}
 		>
-			{copied ? t("Copied") : t("Copy")}
+			{copied ? <Check size={13} strokeWidth={2.25} aria-hidden /> : <Copy size={13} strokeWidth={2} aria-hidden />}
+			<span aria-hidden="true">{copied ? t("Copied") : t("Copy")}</span>
 		</button>
 	);
 }

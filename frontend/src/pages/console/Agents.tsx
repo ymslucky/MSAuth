@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ShieldOff } from "lucide-react";
 import { api, del, fmtDate, fullTimestamp, isValidExpiry, post } from "../../api";
 import { useT } from "../../i18n";
 import {
@@ -101,10 +102,10 @@ export function Agents() {
 								<td>{row.status === "active" ? <Badge tone="ok">{t("active")}</Badge> : <Badge tone="bad">{t("revoked")}</Badge>}</td>
 								<td className="muted"><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
 								<td className="right">
-									{row.status === "active" && (
-										<Button kind="danger" disabled={revoking} onClick={() => void revoke(row.id)}>{t("Revoke")}</Button>
-									)}
-								</td>
+										{row.status === "active" && (
+											<Button kind="danger" disabled={revoking} onClick={() => void revoke(row.id)}><ShieldOff size={14} strokeWidth={1.75} aria-hidden />{t("Revoke")}</Button>
+										)}
+									</td>
 							</tr>
 						))}
 					</Table>
@@ -128,9 +129,19 @@ function AgentForm(props: { onClose: () => void; onSave: (input: { name: string;
 	const [clientId, setClientId] = useState("");
 	const [publicJwk, setPublicJwk] = useState("");
 	const [jwkError, setJwkError] = useState<string | null>(null);
+	// Validation fires on blur (or submit), never on each keystroke.
+	const validateJwk = (value: string): string | null => {
+		if (!value.trim()) return null;
+		try {
+			JSON.parse(value);
+			return null;
+		} catch {
+			return t("Public key must be valid JSON");
+		}
+	};
 	return (
 		<Modal title={t("Register agent")} open onClose={props.onClose}>
-			<Field label={t("Name")} count={`${name.length}/100`}>
+			<Field label={t("Name")} count={`${name.length}/100`} required>
 				<input value={name} onChange={event => setName(event.target.value)} maxLength={100} />
 			</Field>
 			<Field label={t("Description")} count={`${description.length}/500`}>
@@ -140,22 +151,25 @@ function AgentForm(props: { onClose: () => void; onSave: (input: { name: string;
 				<input value={clientId} onChange={event => setClientId(event.target.value)} spellCheck={false} />
 			</Field>
 			<Field label={t("Agent public key (P-256 JWK)")} hint={t("Public key only. Tokens will be DPoP-bound to its thumbprint.")} error={jwkError}>
-				<textarea rows={4} value={publicJwk} onChange={event => { setPublicJwk(event.target.value); setJwkError(null); }} spellCheck={false} placeholder='{"kty":"EC","crv":"P-256","x":"…","y":"…"}' />
+				<textarea
+					rows={4}
+					value={publicJwk}
+					onChange={event => setPublicJwk(event.target.value)}
+					onBlur={() => setJwkError(validateJwk(publicJwk))}
+					spellCheck={false}
+					placeholder='{"kty":"EC","crv":"P-256","x":"…","y":"…"}'
+				/>
 			</Field>
 			<div className="btn-row">
 				<Button kind="primary" disabled={!name.trim()} onClick={() => {
-					let jwk: unknown;
-					if (publicJwk.trim()) {
-						try {
-							jwk = JSON.parse(publicJwk);
-						} catch {
-							setJwkError(t("Public key must be valid JSON"));
-							return;
-						}
+					const jwkErrorAtSubmit = validateJwk(publicJwk);
+					if (jwkErrorAtSubmit) {
+						setJwkError(jwkErrorAtSubmit);
+						return;
 					}
 					props.onSave({
 						name: name.trim(), description: description.trim(),
-						...(clientId.trim() && jwk ? { clientId: clientId.trim(), publicJwk: jwk } : {}),
+						...(clientId.trim() && publicJwk.trim() ? { clientId: clientId.trim(), publicJwk: JSON.parse(publicJwk) } : {}),
 					});
 				}}>{t("Register")}</Button>
 				<Button kind="ghost" onClick={props.onClose}>{t("Cancel")}</Button>
@@ -237,10 +251,10 @@ export function Delegations() {
 								<td className="muted"><time title={fullTimestamp(row.expiresAt)}>{fmtDate(row.expiresAt)}</time></td>
 								<td>{row.revokedAt ? <Badge tone="bad">{t("revoked")}</Badge> : row.expiresAt < Date.now() ? <Badge tone="warn">{t("expired")}</Badge> : <Badge tone="ok">{t("live")}</Badge>}</td>
 								<td className="right">
-									{!row.revokedAt && (
-										<Button kind="danger" disabled={revoking} onClick={() => void revoke(row.id)}>{t("Revoke")}</Button>
-									)}
-								</td>
+										{!row.revokedAt && (
+											<Button kind="danger" disabled={revoking} onClick={() => void revoke(row.id)}><ShieldOff size={14} strokeWidth={1.75} aria-hidden />{t("Revoke")}</Button>
+										)}
+									</td>
 							</tr>
 						))}
 					</Table>
@@ -314,8 +328,14 @@ function DelegationForm(props: { agents: AgentRow[]; onClose: () => void; onSave
 						label={t("Expires at")}
 						hint={t("Between one minute and 30 days from now.")}
 						error={expiryError}
+						required
 					>
-						<input type="datetime-local" value={expiresAt} onChange={event => { setExpiresAt(event.target.value); setExpiryError(null); }} />
+						<input
+							type="datetime-local"
+							value={expiresAt}
+							onChange={event => setExpiresAt(event.target.value)}
+							onBlur={() => { if (expiresAt && !isValidExpiry(expiresAt)) setExpiryError(t("Expiry must be between one minute and 30 days from now.")); }}
+						/>
 					</Field>
 					<div className="btn-row">
 						<Button

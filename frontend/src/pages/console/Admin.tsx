@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { ArrowLeft, Ban } from "lucide-react";
 import { api, del, fmtDate, fullTimestamp, patch, post } from "../../api";
 import { useT } from "../../i18n";
 import { navigate } from "../../router";
@@ -91,7 +92,7 @@ export function Users() {
 											{row.banned ? (
 												<Button kind="ghost" onClick={() => void run(() => post(`/api/v1/users/${row.id}/unban`), t("User unsuspended."))}>{t("Unsuspend")}</Button>
 											) : (
-												<Button kind="danger" onClick={() => { setBanTarget(row); setBanReason(""); }}>{t("Suspend")}</Button>
+												<Button kind="danger" onClick={() => { setBanTarget(row); setBanReason(""); }}><Ban size={14} strokeWidth={1.75} aria-hidden />{t("Suspend")}</Button>
 											)}
 										</div>
 									</td>
@@ -117,7 +118,8 @@ export function Users() {
 					<div className="btn-row">
 						<Button
 							kind="danger-solid"
-							disabled={banBusy || !banReason.trim()}
+							busy={banBusy}
+							disabled={!banReason.trim()}
 							onClick={() => {
 								setBanBusy(true);
 								void run(async () => {
@@ -180,7 +182,7 @@ export function UserDetail(props: { id: string }) {
 				title={user?.name ?? t("User detail")}
 				subtitle={user?.email}
 				crumbs={[{ label: t("Admin") }, { label: t("Users"), to: "/users" }, { label: user?.email ?? "…" }]}
-				actions={user && <Button kind="ghost" onClick={() => navigate("/users")}>← {t("Back")}</Button>}
+				actions={user && <Button kind="ghost" onClick={() => navigate("/users")}><ArrowLeft size={14} strokeWidth={1.75} aria-hidden />{t("Back")}</Button>}
 			/>
 			<ErrorNote message={detail && error ? error : null} />
 			{detail === null ? (error
@@ -217,7 +219,7 @@ export function UserDetail(props: { id: string }) {
 							{user?.banned ? (
 								<Button kind="ghost" disabled={busy} onClick={() => void run(() => post(`/api/v1/users/${user.id}/unban`), t("User unsuspended."))}>{t("Unsuspend")}</Button>
 							) : (
-								<Button kind="danger" onClick={() => { setBanReason(""); setBanOpen(true); }}>{t("Suspend")}</Button>
+								<Button kind="danger" disabled={busy} onClick={() => { setBanReason(""); setBanOpen(true); }}><Ban size={14} strokeWidth={1.75} aria-hidden />{t("Suspend")}</Button>
 							)}
 						</div>
 						{user?.banned && <p className="cell-sub" style={{ marginTop: 10 }}>{t("Ban and revoke everything this user controls.")}</p>}
@@ -260,7 +262,8 @@ export function UserDetail(props: { id: string }) {
 					<div className="btn-row">
 						<Button
 							kind="danger-solid"
-							disabled={banBusy || !banReason.trim()}
+							busy={banBusy}
+							disabled={!banReason.trim()}
 							onClick={() => {
 								setBanBusy(true);
 								void run(async () => {
@@ -390,7 +393,7 @@ export function Domains() {
 				<div className="field-row inner-cap">
 					<Field label={t("Hostname")}><input value={hostname} onChange={event => setHostname(event.target.value)} placeholder="example.com" spellCheck={false} /></Field>
 				</div>
-				<Button kind="primary" disabled={busy || !hostname.trim()} onClick={() => {
+				<Button kind="primary" busy={busy} disabled={!hostname.trim()} onClick={() => {
 					setBusy(true);
 					void run(async () => {
 						await post("/api/v1/domains", { hostname: hostname.trim() });

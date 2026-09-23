@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ExternalLink, ShieldOff, Trash2 } from "lucide-react";
 import { api, del, fmtDate, fullTimestamp, patch, post } from "../../api";
 import { useT } from "../../i18n";
 import {
@@ -122,7 +123,7 @@ export function Applications() {
 										<Button kind="danger" onClick={() => guardedRun(t("Delete this application and all its tokens?"), async () => {
 											await del(`/api/v1/applications/${row.client_id}`);
 											notice.toast("success", t("Application deleted."));
-										})}>{t("Delete")}</Button>
+										})}><Trash2 size={14} strokeWidth={1.75} aria-hidden />{t("Delete")}</Button>
 									</div>
 								</td>
 							</tr>
@@ -195,7 +196,7 @@ function AppForm(props: {
 				</div>
 			)}
 			<div className="btn-row">
-				<Button kind="primary" disabled={props.pending || !name.trim() || !redirects.trim()} onClick={() => props.onSave({
+				<Button kind="primary" busy={props.pending} disabled={!name.trim() || !redirects.trim()} onClick={() => props.onSave({
 					name: name.trim(),
 					redirectUris: redirects.split("\n").map(value => value.trim()).filter(Boolean),
 					confidential, dpop,
@@ -277,7 +278,7 @@ export function Keys() {
 								<td className="muted"><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
 								<td className="muted"><time title={fullTimestamp(row.expiresAt)}>{fmtDate(row.expiresAt)}</time></td>
 								<td className="muted"><time title={fullTimestamp(row.lastRequestAt)}>{fmtDate(row.lastRequestAt)}</time></td>
-								<td className="right"><Button kind="danger" disabled={revoking} onClick={() => void revoke(row.id)}>{t("Revoke")}</Button></td>
+								<td className="right"><Button kind="danger" disabled={revoking} onClick={() => void revoke(row.id)}><ShieldOff size={14} strokeWidth={1.75} aria-hidden />{t("Revoke")}</Button></td>
 							</tr>
 						))}
 					</Table>
@@ -310,7 +311,7 @@ function KeyForm(props: { pending: boolean; onSave: (name: string) => void }) {
 				<input value={name} onChange={event => setName(event.target.value)} maxLength={100} placeholder="ci-deploy" spellCheck={false} />
 			</Field>
 			<div className="btn-row">
-				<Button kind="primary" disabled={props.pending || !name.trim()} onClick={() => props.onSave(name.trim())}>{t("Create")}</Button>
+				<Button kind="primary" busy={props.pending} disabled={!name.trim()} onClick={() => props.onSave(name.trim())}>{t("Create")}</Button>
 			</div>
 		</>
 	);
@@ -365,7 +366,14 @@ export function Resources(props: { operator: boolean }) {
 						{items.map(row => (
 							<tr key={row.id}>
 								<td>{row.name}</td>
-								<td><MonoId value={row.identifier} wide /></td>
+								<td>
+									<span className="cell-res">
+										<MonoId value={row.identifier} wide />
+										<a className="ext-link" href={row.identifier} target="_blank" rel="noreferrer" aria-label={`${t("Open resource")}: ${row.identifier}`}>
+											<ExternalLink size={12} strokeWidth={1.75} aria-hidden />
+										</a>
+									</span>
+								</td>
 								<td className="mono muted">{row.accessTokenTtl ?? 300}s</td>
 								<td>{row.dpopBoundAccessTokensRequired ? t("yes") : t("no")}</td>
 								<td>{row.disabled ? <Badge tone="bad">{t("disabled")}</Badge> : <Badge tone="ok">{t("active")}</Badge>}</td>
@@ -381,7 +389,7 @@ export function Resources(props: { operator: boolean }) {
 							<Field label={t("Identifier")}><input value={identifier} onChange={event => setIdentifier(event.target.value)} placeholder="https://mcp.example.com/mcp" spellCheck={false} /></Field>
 							<Field label={t("Name")}><input value={name} onChange={event => setName(event.target.value)} placeholder="Notes MCP" /></Field>
 						</div>
-						<Button kind="primary" disabled={saving || !identifier.trim() || !name.trim()} onClick={() => {
+						<Button kind="primary" busy={saving} disabled={!identifier.trim() || !name.trim()} onClick={() => {
 							setSaving(true);
 							void run(async () => {
 								await post("/api/v1/resources", { identifier: identifier.trim(), name: name.trim() });
@@ -395,7 +403,7 @@ export function Resources(props: { operator: boolean }) {
 							<Field label={t("Resource identifier")}><input value={linkTarget.identifier} onChange={event => setLinkTarget({ ...linkTarget, identifier: event.target.value })} spellCheck={false} /></Field>
 							<Field label={t("Client ID")}><input value={linkTarget.clientId} onChange={event => setLinkTarget({ ...linkTarget, clientId: event.target.value })} spellCheck={false} /></Field>
 						</div>
-						<Button kind="primary" disabled={saving || !linkTarget.identifier.trim() || !linkTarget.clientId.trim()} onClick={() => {
+						<Button kind="primary" busy={saving} disabled={!linkTarget.identifier.trim() || !linkTarget.clientId.trim()} onClick={() => {
 							setSaving(true);
 							void run(async () => {
 								await post("/api/v1/resources/link", { identifier: linkTarget.identifier.trim(), clientId: linkTarget.clientId.trim() });

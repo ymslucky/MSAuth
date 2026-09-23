@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect x="7" y="7" width="50" height="50" rx="13" fill="#D9481C"/>
-  <path d="M20 44 V21 l12 14 12-14 v23" fill="none" stroke="#F6F5F1" stroke-width="5" stroke-linecap="square" stroke-linejoin="miter"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- MS monogram: geometric M + two-bowl S, vermilion hairline strokes on transparent paper -->
+  <path d="M4 25.5 V6.5 L10.75 15 L17.5 6.5 V25.5" fill="none" stroke="#D9481C" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"/>
+  <path d="M28.5 9.3 C28.5 7.7 27 6.5 24 6.5 C21.3 6.5 19.5 8.2 19.5 10.6 C19.5 14.8 28.5 14.2 28.5 20.9 C28.5 23.8 26.7 25.5 24 25.5 C21 25.5 19.5 24.3 19.5 22.7" fill="none" stroke="#D9481C" stroke-width="2.6" stroke-linecap="square"/>
 </svg>

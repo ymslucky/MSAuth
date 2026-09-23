@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import {
-	AppWindow, BellRing, Bot, Earth, KeyRound, LayoutDashboard, MonitorSmartphone,
+	AppWindow, BellRing, Bot, Earth, KeyRound, LayoutDashboard, LogOut, MonitorSmartphone,
 	ScrollText, Share2, SlidersHorizontal, Users, Globe,
 } from "lucide-react";
 import { api } from "../../api";
-import { useT } from "../../i18n";
+import { LangSegmented, useT } from "../../i18n";
 import { Link, usePath } from "../../router";
 import { Skeleton, useNotice } from "../../ui";
 import Overview, { type OverviewResponse } from "./Overview";
@@ -109,18 +109,22 @@ export default function Console() {
 					))}
 				</nav>
 				<div className="who">
-					{context.user.email}
-					{context.operator && <> · <strong>{t("operator")}</strong></>}
-					<br />
-					<a href="/api/auth/sign-out" onClick={event => {
-					event.preventDefault();
-					api("/api/auth/sign-out", { method: "POST" })
-						.then(() => { window.location.href = "/login"; })
-						.catch(() => notice.toast("error", t("Sign out failed — please retry")));
-				}}>{t("Sign out")}</a>
+					<div className="who-id">
+						{context.user.email}
+						{context.operator && <> · <strong>{t("operator")}</strong></>}
+					</div>
+					<div className="who-row">
+						<a href="/api/auth/sign-out" onClick={event => {
+							event.preventDefault();
+							api("/api/auth/sign-out", { method: "POST" })
+								.then(() => { window.location.href = "/login"; })
+								.catch(() => notice.toast("error", t("Sign out failed — please retry")));
+						}}><LogOut size={13} strokeWidth={1.75} aria-hidden />{t("Sign out")}</a>
+						<LangSegmented />
+					</div>
 				</div>
 			</aside>
-			<main className="main">{page}</main>
+			<main className="main"><div className="page-stage" key={path}>{page}</div></main>
 		</div>
 	);
 }

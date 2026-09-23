@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ShieldOff } from "lucide-react";
 import { api, del, fmtDate, fullTimestamp, post, summarizeAuditDetail } from "../../api";
 import { useT } from "../../i18n";
 import {
@@ -158,10 +159,10 @@ export function Sessions() {
 								<td className="muted"><span title={row.userAgent ?? ""}>{(row.userAgent ?? "").slice(0, 60)}</span></td>
 								<td className="muted"><time title={fullTimestamp(row.expiresAt)}>{fmtDate(row.expiresAt)}</time></td>
 								<td className="right">
-									{row.id === currentId ? <Badge>{t("current")}</Badge> : (
-										<Button kind="danger" disabled={revoking} onClick={() => void revoke(row.id)}>{t("Revoke")}</Button>
-									)}
-								</td>
+										{row.id === currentId ? <Badge>{t("current")}</Badge> : (
+											<Button kind="danger" disabled={revoking} onClick={() => void revoke(row.id)}><ShieldOff size={14} strokeWidth={1.75} aria-hidden />{t("Revoke")}</Button>
+										)}
+									</td>
 							</tr>
 						))}
 					</Table>

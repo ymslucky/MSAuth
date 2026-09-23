@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { post } from "../api";
 import { oauthQueryFromLocation } from "../oauthQuery";
-import { LanguageToggle, useT } from "../i18n";
+import { LangSegmented, useT } from "../i18n";
+import { Button } from "../ui";
+import { mountLoginScene } from "../scene";
 
 export default function Login() {
 	const t = useT();
@@ -9,6 +11,15 @@ export default function Login() {
 	const [password, setPassword] = useState("");
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const sceneRef = useRef<HTMLCanvasElement>(null);
+
+	// Identity constellation on paper; the CSS paper gradient stays visible
+	// until (and unless) the lazy three.js chunk takes over the canvas.
+	useEffect(() => {
+		const canvas = sceneRef.current;
+		if (!canvas) return undefined;
+		return mountLoginScene(canvas);
+	}, []);
 
 	async function signInEmail() {
 		setBusy(true);
@@ -43,17 +54,24 @@ export default function Login() {
 	return (
 		<div className="login-page">
 			<div className="login-brand">
-				<div className="brand"><img src="/favicon.svg" alt="" />MSAuth</div>
-				<p className="login-brand-welcome">{t("A quiet ledger for identity.")}</p>
-				<p className="login-story">{t("MSAuth is the identity layer for individuals and one-person companies — OAuth clients, API keys and DPoP-bound agents, governed from one console.")}</p>
-				<ul className="login-feats">
-					<li>{t("OAuth 2.1 clients and API keys")}</li>
-					<li>{t("DPoP-bound agents with audited delegation chains")}</li>
-					<li>{t("Every mutation on the record")}</li>
-				</ul>
+				<canvas ref={sceneRef} className="login-scene" aria-hidden="true" />
+				<div className="login-scrim" aria-hidden="true" />
+				<div className="login-brand-inner">
+					<div className="brand-row">
+						<div className="brand"><img src="/favicon.svg" alt="" />MSAuth</div>
+						<LangSegmented />
+					</div>
+					<p className="login-brand-welcome">{t("A quiet ledger for identity.")}</p>
+					<p className="login-story">{t("MSAuth is the identity layer for individuals and one-person companies — OAuth clients, API keys and DPoP-bound agents, governed from one console.")}</p>
+					<ul className="login-feats">
+						<li>{t("OAuth 2.1 clients and API keys")}</li>
+						<li>{t("DPoP-bound agents with audited delegation chains")}</li>
+						<li>{t("Every mutation on the record")}</li>
+					</ul>
+				</div>
 			</div>
 			<div className="login-form-col">
-				<div className="login-toggle"><LanguageToggle /></div>
+				<div className="login-toggle"><LangSegmented /></div>
 				<form
 					className="auth-card"
 					onSubmit={event => {
@@ -72,9 +90,7 @@ export default function Login() {
 						<span>{t("Password")}</span>
 						<input type="password" required autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} />
 					</label>
-					<button className="btn primary block" type="submit" disabled={busy || !email || !password}>
-						{t("Sign in")}
-					</button>
+					<Button kind="primary" className="block" type="submit" busy={busy} disabled={!email || !password}>{t("Sign in")}</Button>
 					<div className="divider">{t("or")}</div>
 					<button className="btn block" type="button" disabled={busy} onClick={() => void signInGithub()}>
 						<img src="/github.svg" alt="" width={16} height={16} /> {t("Continue with GitHub")}
