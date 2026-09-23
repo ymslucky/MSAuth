@@ -600,3 +600,9 @@ td .cell-sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
 	.main { padding: 20px 16px 36px; }
 	.usage-row { grid-template-columns: 84px 1fr 34px; }
 }
+
+/* Boot splash shown while the session gate resolves. */
+.boot-splash { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); }
+.boot-splash::after { content: ""; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); animation: boot-pulse .9s ease-in-out infinite alternate; }
+@keyframes boot-pulse { from { opacity: .25; transform: scale(.82); } to { opacity: 1; transform: scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { .boot-splash::after { animation: none; opacity: .55; } }
