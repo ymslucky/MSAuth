@@ -1,10 +1,14 @@
 /** JSON fetch wrapper: same-origin cookies, uniform error surfacing. */
 export async function api<T = Record<string, unknown>>(path: string, init?: RequestInit): Promise<T> {
+	// Only declare JSON when a body exists — Better Auth 400s empty JSON bodies.
 	// `credentials` is DOM-spec; workerd's RequestInit omits it, so the literal is asserted.
 	const requestInit = {
 		credentials: "same-origin",
 		...init,
-		headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
+		headers: {
+			...(init?.body !== undefined && init?.body !== null ? { "content-type": "application/json" } : {}),
+			...(init?.headers ?? {}),
+		},
 	} as RequestInit;
 	const response = await fetch(path, requestInit);
 	const body = await response.json().catch(() => ({}));
