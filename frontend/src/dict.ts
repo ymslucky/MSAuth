@@ -337,6 +337,79 @@ const dev = {
 	"Data viz": "数据可视化",
 };
 
+const docsArea = {
+	// public /docs integration guide
+	"Open console": "进入控制台",
+	"Integration guide": "接入指南",
+	"Four ways to connect third parties to MSAuth — pick the one that matches your caller.":
+		"四类第三方接入 MSAuth 的方式——按你的调用方选择对应路径。",
+	// section titles
+	"Web & SPA applications": "Web 与 SPA 应用",
+	"MCP servers & protected resources": "MCP 服务器与受保护资源",
+	"AI agents & delegated authority": "AI Agent 与委托授权",
+	"Machine-to-machine workloads": "机对机工作负载",
+	// audiences
+	"Third-party apps that sign users in with MSAuth.": "想让用户通过 MSAuth 登录的第三方应用。",
+	"Resource servers that must validate a token on every tool call.":
+		"每次工具调用都要校验令牌的资源服务器。",
+	"Agents acting on a user's behalf under an explicit, narrowing delegation.":
+		"在显式、只可收窄的委托之下代表用户行动的 Agent。",
+	"Scripts, CI jobs and services without a user context.": "没有用户上下文的脚本、CI 任务与服务。",
+	// web-app steps
+	"Create an OAuth application in the console, or register dynamically through RFC 7591 DCR (public by default, kill-switchable).":
+		"在控制台创建 OAuth 应用，或经 RFC 7591 DCR 动态注册（默认开放，可用开关关闭）。",
+	"Start the authorization-code flow with PKCE (S256), a state parameter and an exact resource identifier.":
+		"发起授权码流程：PKCE（S256）、state 参数与精确的 resource 标识。",
+	"Show the hosted consent page, then swap the code for tokens at the token endpoint.":
+		"展示托管 Consent 页，然后用 code 到 token 端点换取令牌。",
+	"Access tokens live 5 minutes; refresh tokens rotate on every use — store only the latest one.":
+		"访问令牌有效期 5 分钟；refresh token 每次使用都会轮换——只保存最新一枚。",
+	"Authorization request": "授权请求",
+	// mcp-server steps
+	"An operator registers the resource: exact HTTPS identifier, 300-second token TTL, DPoP required.":
+		"由 operator 注册资源：精确 HTTPS 标识、令牌 TTL 300 秒、强制 DPoP。",
+	"Publish RFC 9728 metadata at /.well-known/oauth-protected-resource so MCP hosts discover this server.":
+		"在 /.well-known/oauth-protected-resource 发布 RFC 9728 元数据，供 MCP Host 自动发现本服务器。",
+	"Validate access tokens locally against the published JWKS: audience, expiry and the cnf.jkt DPoP binding.":
+		"用发布的 JWKS 在本地校验访问令牌：audience、有效期与 cnf.jkt DPoP 绑定。",
+	"Gate every tool call through the RAR helper — mcp_tool authorization details decide authority.":
+		"每次工具调用都经 RAR 辅助函数把关——由 mcp_tool 授权明细决定权限。",
+	"Resource server integration": "资源服务器接入",
+	// agent steps
+	"Register an agent in the console: bind an OAuth client plus a P-256 public JWK — the private key never leaves the agent.":
+		"在控制台注册 Agent：绑定 OAuth 应用与 P-256 公钥 JWK——私钥永不出 Agent。",
+	"Create a delegation: one exact resource, scopes, RAR details, lifetime between one minute and 30 days.":
+		"创建委托：单一精确资源、scopes、RAR 明细，有效期 1 分钟至 30 天。",
+	"Run the SDK flow: PKCE authorize (with dpop_jkt), code exchange, then a token exchange against the delegation.":
+		"运行 SDK 流程：PKCE authorize（携带 dpop_jkt）→ code 换令牌 → 针对委托做 token exchange。",
+	"Delegated tokens live at most 5 minutes, are DPoP-bound to the agent key, pin one audience and can never refresh.":
+		"委托令牌有效期至多 5 分钟，DPoP 绑定 Agent 密钥、锁定单一 audience，且不可刷新。",
+	"Agents may sub-delegate to child agents — narrowing only, chain depth up to 4.":
+		"Agent 可向子 Agent 再委托——只可收窄，链深至多 4 层。",
+	"Agent SDK": "Agent SDK",
+	// m2m steps
+	"Use a confidential client with the client_credentials grant for short-lived (300 s) service tokens.":
+		"机密客户端使用 client_credentials 授权获取短效（300 秒）服务令牌。",
+	"Or use an API key: msa_ prefix, 30-day default expiry, rate-limited per key.":
+		"或使用 API Key：msa_ 前缀、默认 30 天过期、按 key 限速。",
+	"API keys never open the management API — that surface is browser-session-only by design.":
+		"API Key 永远打不开管理 API——该面按设计只接受浏览器会话。",
+	// constraints
+	"Platform invariants": "平台不变量",
+	"Management API is browser-only": "管理 API 仅限浏览器",
+	"All Authorization and x-api-key headers are stripped before session lookup; third-party tokens are never accepted there.":
+		"会话查找前会剥离所有 Authorization 与 x-api-key 头；第三方令牌一律不被接受。",
+	"Consent is explicit": "Consent 必须显式",
+	"The /authorize endpoint rejects inline authorization_details — authority flows only through registered delegations.":
+		"/authorize 端点拒绝内联 authorization_details——权限只能经注册的委托流动。",
+	"Token lifetime is capped": "令牌有效期有上限",
+	"Resource-scoped access tokens never exceed 300 seconds, and delegated tokens inherit the shortest chain expiry.":
+		"资源作用域访问令牌不超过 300 秒，委托令牌继承链上最短的过期时间。",
+	"Audience pinning": "Audience 锁定",
+	"Every token is bound to exactly one HTTPS resource identifier and refuses to widen it.":
+		"每枚令牌绑定且仅绑定一个 HTTPS 资源标识，拒绝扩大范围。",
+};
+
 /** Audit action codes, keyed by the exact string the backend writes to auditEvent. */
 const actions = {
 	// src/iam/agents.ts
@@ -379,5 +452,6 @@ export const zh: Record<string, string> = {
 	...admin,
 	...toasts,
 	...dev,
+	...docsArea,
 	...actions,
 };

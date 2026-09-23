@@ -19,4 +19,11 @@ describe("resolveGate", () => {
 		expect(resolveGate("/login", true)).toBe("login");
 		expect(resolveGate("/consent", false)).toBe("login");
 	});
+
+	it("serves the public docs page with or without a session", () => {
+		expect(resolveGate("/docs", false)).toBe("docs");
+		expect(resolveGate("/docs", true)).toBe("docs");
+		expect(resolveGate("/docs/integration", false)).toBe("docs");
+		expect(resolveGate("/docs/integration", true)).toBe("docs");
+	});
 });

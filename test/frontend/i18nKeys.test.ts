@@ -7,6 +7,7 @@ import paletteSource from "../../frontend/src/palette-ui.tsx?raw";
 import themeSource from "../../frontend/src/theme.tsx?raw";
 import loginSource from "../../frontend/src/pages/Login.tsx?raw";
 import consentSource from "../../frontend/src/pages/Consent.tsx?raw";
+import docsSource from "../../frontend/src/pages/Docs.tsx?raw";
 import consoleSource from "../../frontend/src/pages/console/Console.tsx?raw";
 import overviewSource from "../../frontend/src/pages/console/Overview.tsx?raw";
 import catalogSource from "../../frontend/src/pages/console/Catalog.tsx?raw";
@@ -32,6 +33,7 @@ const SOURCES: Record<string, string> = {
 	"theme.tsx": themeSource,
 	"pages/Login.tsx": loginSource,
 	"pages/Consent.tsx": consentSource,
+	"pages/Docs.tsx": docsSource,
 	"pages/console/Console.tsx": consoleSource,
 	"pages/console/Overview.tsx": overviewSource,
 	"pages/console/Catalog.tsx": catalogSource,

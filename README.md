@@ -49,6 +49,8 @@ npm run deploy    # predeploy 自动建库（msauth-db）+ 应用迁移，构建
 
 ## 客户端接入
 
+完整接入指南见公开页面 `/docs`（无需登录）。
+
 MCP Server 将自身声明为受保护资源，指向本授权服务器：
 
 ```ts
