@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, fmtDate, fullTimestamp } from "../../api";
 import { useT } from "../../i18n";
+import { ledgerPalette, useTheme } from "../../theme";
 import { mountLedgerArt } from "../../art";
 import { Card, Empty, ErrorState, ActionTag, MonoId, ResourceTag, Skeleton, SkeletonStats, SkeletonTable, Stat } from "../../ui";
 
@@ -14,6 +15,7 @@ export interface OverviewResponse {
 
 export default function Overview() {
 	const t = useT();
+	const { resolved } = useTheme();
 	const [data, setData] = useState<OverviewResponse | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
@@ -28,11 +30,12 @@ export default function Overview() {
 			.catch(cause => { setError(cause instanceof Error ? cause.message : String(cause)); setLoading(false); });
 	}, [attempt]);
 
+	// The Quiet Ledger re-inks on theme flips (brighter strokes, lower alpha in dark).
 	useEffect(() => {
 		const canvas = heroRef.current;
 		if (!canvas) return undefined;
-		return mountLedgerArt(canvas);
-	}, []);
+		return mountLedgerArt(canvas, 20260923, ledgerPalette(resolved));
+	}, [resolved]);
 
 	const reload = () => setAttempt(value => value + 1);
 

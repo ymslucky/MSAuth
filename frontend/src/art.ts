@@ -5,10 +5,10 @@
  * strokes drift along a layered value-noise flow field, like ruled ledger
  * lines being written. Every ~2% of strokes is a vermilion audit mark —
  * slightly longer, faintly louder. Deterministic per seed; no UI controls.
+ * The palette comes from the theme module (frontend/src/theme.ts): dark mode
+ * inks are brighter with a lower alpha scale.
  */
-
-const INK = { r: 0x16, g: 0x15, b: 0x0f };
-const VERMILION = { r: 0xd9, g: 0x48, b: 0x1c };
+import { ledgerPalette, type LedgerPalette } from "./theme";
 
 /** Small, fast, deterministic 32-bit PRNG (exported for tests). */
 export function mulberry32(seed: number): () => number {
@@ -67,7 +67,11 @@ function makeNoise(rand: () => number) {
 	};
 }
 
-export function mountLedgerArt(canvas: HTMLCanvasElement, seed: number = 20260923): () => void {
+export function mountLedgerArt(
+	canvas: HTMLCanvasElement,
+	seed: number = 20260923,
+	palette: LedgerPalette = ledgerPalette("light"),
+): () => void {
 	const context = canvas.getContext("2d");
 	if (!context) return () => undefined;
 
@@ -120,8 +124,8 @@ export function mountLedgerArt(canvas: HTMLCanvasElement, seed: number = 2026092
 		const cos = Math.cos(angle + wobble);
 		const sin = Math.sin(angle + wobble) * 0.5;
 		const half = stroke.len / 2;
-		const tint = stroke.audit ? VERMILION : INK;
-		const alpha = stroke.alpha * fadeIn * (0.82 + 0.18 * Math.sin(stroke.phase + time * 0.2));
+		const tint = stroke.audit ? palette.vermilion : palette.ink;
+		const alpha = stroke.alpha * palette.alphaScale * fadeIn * (0.82 + 0.18 * Math.sin(stroke.phase + time * 0.2));
 		context.strokeStyle = `rgba(${tint.r},${tint.g},${tint.b},${alpha.toFixed(3)})`;
 		context.lineWidth = 1;
 		context.beginPath();

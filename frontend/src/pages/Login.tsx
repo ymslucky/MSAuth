@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { post } from "../api";
 import { oauthQueryFromLocation } from "../oauthQuery";
 import { LangSegmented, useT } from "../i18n";
+import { ThemeToggle, scenePalette, useTheme } from "../theme";
 import { Button } from "../ui";
 import { mountLoginScene } from "../scene";
 
 export default function Login() {
 	const t = useT();
+	const { resolved } = useTheme();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [busy, setBusy] = useState(false);
@@ -15,11 +17,12 @@ export default function Login() {
 
 	// Identity constellation on paper; the CSS paper gradient stays visible
 	// until (and unless) the lazy three.js chunk takes over the canvas.
+	// Re-mounts on theme flips so the constellation re-inks for dark mode.
 	useEffect(() => {
 		const canvas = sceneRef.current;
 		if (!canvas) return undefined;
-		return mountLoginScene(canvas);
-	}, []);
+		return mountLoginScene(canvas, scenePalette(resolved));
+	}, [resolved]);
 
 	async function signInEmail() {
 		setBusy(true);
@@ -59,7 +62,7 @@ export default function Login() {
 				<div className="login-brand-inner">
 					<div className="brand-row">
 						<div className="brand"><img src="/favicon.svg" alt="" />MSAuth</div>
-						<LangSegmented />
+						<span className="controls-row"><LangSegmented /><ThemeToggle /></span>
 					</div>
 					<p className="login-brand-welcome">{t("A quiet ledger for identity.")}</p>
 					<p className="login-story">{t("MSAuth is the identity layer for individuals and one-person companies — OAuth clients, API keys and DPoP-bound agents, governed from one console.")}</p>
@@ -71,7 +74,7 @@ export default function Login() {
 				</div>
 			</div>
 			<div className="login-form-col">
-				<div className="login-toggle"><LangSegmented /></div>
+				<div className="login-toggle"><span className="controls-row"><LangSegmented /><ThemeToggle /></span></div>
 				<form
 					className="auth-card"
 					onSubmit={event => {

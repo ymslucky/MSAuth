@@ -1,0 +1,236 @@
+/* MSAuth design tokens — the SINGLE source for color, radius, shadow, motion.
+   style.css consumes only these custom properties; themes are data overrides
+   on the same names ([data-theme="dark"]), so new themes need zero component
+   changes. Light values are the original palette — the visual baseline. */
+
+:root {
+	color-scheme: light;
+
+	/* ----- core palette (light: bone paper + vermilion) ----- */
+	--bg: #f6f5f1;
+	--surface: #ffffff;
+	--ink: #16150f;
+	--ink-soft: #55523f;
+	--muted: #6e6b60;
+	--line: #e4e2d9;
+	--line-soft: #eeede6;
+	--line-strong: #d6d3c6;
+	--hover: #faf9f5;
+	--placeholder: #a39f92;
+
+	/* ----- accent family (vermilion is reserved for alert semantics) ----- */
+	--accent: #d9481c;
+	--accent-deep: #c0390e;
+	--accent-darker: #a83310;
+	--accent-tint: #fbeee8;
+	--on-accent: #ffffff;
+	--ring-accent: rgba(217, 72, 28, 0.14);
+	--ring-bad: rgba(179, 38, 30, 0.12);
+
+	/* ----- status families: ink on tint, hairline border ----- */
+	--ok: #3d7a4e;
+	--ok-tint: #ecf3ed;
+	--ok-border: #d5e3d8;
+	--warn: #b07c1f;
+	--warn-tint: #f8f1e2;
+	--warn-border: #e8dcc2;
+	--bad: #b3261e;
+	--bad-tint: #faeeed;
+	--bad-border: #ecd0cd;
+	--bad-border-strong: #e5c0bc;
+	--bad-deep: #97201a;
+
+	/* ----- tag tones (agent/delegation/apikey/user/session/domain/alert/
+	   resource/client/other): soft tint + deep ink + hairline ----- */
+	--tag-agent-bg: #ecefdf;
+	--tag-agent-ink: #55631f;
+	--tag-agent-border: #dde2c8;
+	--tag-delegation-bg: #e6efed;
+	--tag-delegation-ink: #2f6058;
+	--tag-delegation-border: #d0e1dc;
+	--tag-apikey-bg: #f8f1e2;
+	--tag-apikey-ink: #8a6210;
+	--tag-apikey-border: #eadcbc;
+	--tag-user-bg: #edebe3;
+	--tag-user-ink: #55523f;
+	--tag-user-border: #ddd9cb;
+	--tag-session-bg: #e9edf4;
+	--tag-session-ink: #46608c;
+	--tag-session-border: #d5dce9;
+	--tag-domain-bg: #f3ece4;
+	--tag-domain-ink: #7a5a38;
+	--tag-domain-border: #e6d8c6;
+	--tag-alert-bg: #fbeee8;
+	--tag-alert-ink: #a83310;
+	--tag-alert-border: #f0d2c4;
+	--tag-resource-bg: #ecf3ed;
+	--tag-resource-ink: #3d7a4e;
+	--tag-resource-border: #d5e3d8;
+	--tag-client-bg: #ecebf4;
+	--tag-client-ink: #55508c;
+	--tag-client-border: #dbd9ec;
+	--tag-other-bg: #f6f5f1;
+	--tag-other-ink: #55523f;
+	--tag-other-border: #e4e2d9;
+
+	/* ----- overlays, scrim, derived art surfaces ----- */
+	--scrim: rgba(22, 21, 15, 0.34);
+	--shadow-pop: 0 8px 24px rgba(22, 21, 15, 0.08);
+	--shadow-toast: 0 8px 24px rgba(22, 21, 15, 0.18);
+	--skel-a: #ecebe3;
+	--skel-b: #f5f4ef;
+	--hero-from: #f8f7f3;
+	--hero-veil-1: rgba(246, 245, 241, 0.94);
+	--hero-veil-2: rgba(246, 245, 241, 0.6);
+	--hero-veil-3: rgba(246, 245, 241, 0);
+	--brand-glow: #fbfaf6;
+	--brand-glow-edge: #f0eee6;
+	--brand-accent-glow: rgba(217, 72, 28, 0.05);
+	--brand-accent-glow-end: rgba(217, 72, 28, 0);
+	--brand-rule: rgba(22, 21, 15, 0.016);
+	--login-scrim-1: rgba(246, 245, 241, 0.94);
+	--login-scrim-2: rgba(246, 245, 241, 0.72);
+	--login-scrim-3: rgba(246, 245, 241, 0.28);
+	--login-scrim-4: rgba(246, 245, 241, 0);
+
+	/* ----- toast chrome (ink-inverted surface) ----- */
+	--toast-bg: #16150f;
+	--toast-ink: #f6f5f1;
+	--toast-ok: #8fc79b;
+	--toast-bad: #f6c9c5;
+	--toast-info: #c9c4ae;
+	--toast-action-ink: #fbeee8;
+	--toast-action-border: rgba(246, 245, 241, 0.35);
+	--toast-action-border-hover: rgba(246, 245, 241, 0.75);
+	--toast-action-hover-bg: rgba(246, 245, 241, 0.1);
+	--toast-close-ink: rgba(246, 245, 241, 0.6);
+
+	/* ----- spacing scale (4px) ----- */
+	--sp-0-5: 2px;
+	--sp-1: 4px;
+	--sp-2: 8px;
+	--sp-3: 12px;
+	--sp-4: 16px;
+	--sp-5: 20px;
+	--sp-6: 24px;
+	--sp-8: 32px;
+	--sp-10: 40px;
+	--sp-12: 48px;
+
+	/* ----- radius ----- */
+	--radius-xs: 4px;
+	--radius-sm: 6px;
+	--radius-md: 8px;
+	--radius-lg: 10px;
+	--radius-xl: 12px;
+	--radius-pill: 999px;
+
+	/* ----- motion ----- */
+	--dur-fast: 120ms;
+	--dur-base: 180ms;
+	--dur-slow: 240ms;
+	--ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+	/* ----- type ----- */
+	--font-ui: "Bricolage Grotesque", system-ui, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+	--font-serif: "Instrument Serif", Georgia, "Songti SC", "STSong", "SimSun", serif;
+	--font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+
+/* ----- dark: deep ink surfaces, bone text, brightened vermilion -----
+   Every value re-derives on the same token names; components never branch. */
+[data-theme="dark"] {
+	color-scheme: dark;
+
+	--bg: #141311;
+	--surface: #1d1b17;
+	--ink: #ece9e2;
+	--ink-soft: #c6c1b2;
+	--muted: #9b968a;
+	--line: #37342c;
+	--line-soft: #2b2823;
+	--line-strong: #4c483c;
+	--hover: #232119;
+	--placeholder: #837e6f;
+
+	--accent: #e85c2e;
+	--accent-deep: #ef6f42;
+	--accent-darker: #f68a60;
+	--accent-tint: #351f15;
+	--on-accent: #201008;
+	--ring-accent: rgba(232, 92, 46, 0.28);
+	--ring-bad: rgba(231, 113, 104, 0.24);
+
+	--ok: #9ed3ae;
+	--ok-tint: #1d2a22;
+	--ok-border: #33473a;
+	--warn: #d9ad5e;
+	--warn-tint: #2c2515;
+	--warn-border: #4a3d22;
+	--bad: #e77168;
+	--bad-tint: #38211d;
+	--bad-border: #5c332d;
+	--bad-border-strong: #6f3d36;
+	--bad-deep: #d0554a;
+
+	--tag-agent-bg: #262d16;
+	--tag-agent-ink: #c3cf80;
+	--tag-agent-border: #3a4520;
+	--tag-delegation-bg: #16302b;
+	--tag-delegation-ink: #90c8bd;
+	--tag-delegation-border: #244740;
+	--tag-apikey-bg: #2f2612;
+	--tag-apikey-ink: #dab463;
+	--tag-apikey-border: #4b3b1d;
+	--tag-user-bg: #2b2920;
+	--tag-user-ink: #c3bea7;
+	--tag-user-border: #423e30;
+	--tag-session-bg: #1d2739;
+	--tag-session-ink: #9fb9e2;
+	--tag-session-border: #30415d;
+	--tag-domain-bg: #302516;
+	--tag-domain-ink: #d5aa7b;
+	--tag-domain-border: #4d3b25;
+	--tag-alert-bg: #361d12;
+	--tag-alert-ink: #f2936e;
+	--tag-alert-border: #562d1a;
+	--tag-resource-bg: #16281c;
+	--tag-resource-ink: #95cca6;
+	--tag-resource-border: #274531;
+	--tag-client-bg: #232135;
+	--tag-client-ink: #b1abe2;
+	--tag-client-border: #383455;
+	--tag-other-bg: #242219;
+	--tag-other-ink: #c3bea7;
+	--tag-other-border: #3b382d;
+
+	--scrim: rgba(0, 0, 0, 0.5);
+	--shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.5);
+	--shadow-toast: 0 8px 24px rgba(0, 0, 0, 0.45);
+	--skel-a: #26241f;
+	--skel-b: #2e2c25;
+	--hero-from: #1a1915;
+	--hero-veil-1: rgba(20, 19, 17, 0.94);
+	--hero-veil-2: rgba(20, 19, 17, 0.6);
+	--hero-veil-3: rgba(20, 19, 17, 0);
+	--brand-glow: #191813;
+	--brand-glow-edge: #100f0d;
+	--brand-accent-glow: rgba(240, 102, 58, 0.06);
+	--brand-accent-glow-end: rgba(240, 102, 58, 0);
+	--brand-rule: rgba(236, 233, 226, 0.03);
+	--login-scrim-1: rgba(20, 19, 17, 0.94);
+	--login-scrim-2: rgba(20, 19, 17, 0.72);
+	--login-scrim-3: rgba(20, 19, 17, 0.28);
+	--login-scrim-4: rgba(20, 19, 17, 0);
+
+	--toast-bg: #ece9e2;
+	--toast-ink: #191813;
+	--toast-ok: #2c6e40;
+	--toast-bad: #a6291f;
+	--toast-info: #6e6b60;
+	--toast-action-ink: #8a2f10;
+	--toast-action-border: rgba(22, 21, 15, 0.35);
+	--toast-action-border-hover: rgba(22, 21, 15, 0.75);
+	--toast-action-hover-bg: rgba(22, 21, 15, 0.08);
+	--toast-close-ink: rgba(22, 21, 15, 0.6);
+}

@@ -1,17 +1,41 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
 	AppWindow, BellRing, Bot, Earth, KeyRound, LayoutDashboard, LogOut, MonitorSmartphone,
 	ScrollText, Share2, SlidersHorizontal, Users, Globe,
 } from "lucide-react";
 import { api } from "../../api";
 import { LangSegmented, useT } from "../../i18n";
+import { ThemeToggle } from "../../theme";
 import { Link, usePath } from "../../router";
-import { Skeleton, useNotice } from "../../ui";
-import Overview, { type OverviewResponse } from "./Overview";
-import { Applications, Keys, Resources } from "./Developer";
-import { Agents, Delegations } from "./Agents";
-import { Audit, Sessions, Alerts } from "./Security";
-import { Users as UsersPage, Settings, Domains, UserDetail } from "./Admin";
+import { Card, Skeleton, SkeletonStats, SkeletonTable, useNotice } from "../../ui";
+import type { OverviewResponse } from "./Overview";
+
+/* Route-level code splitting: the entry bundle carries only the shell; each
+   console page loads on first visit behind a skeleton. Pages sharing a module
+   (Developer/Agents/Security/Admin) resolve to one shared chunk per module. */
+const Overview = lazy(() => import("./Overview"));
+const Applications = lazy(() => import("./Developer").then(m => ({ default: m.Applications })));
+const Keys = lazy(() => import("./Developer").then(m => ({ default: m.Keys })));
+const Resources = lazy(() => import("./Developer").then(m => ({ default: m.Resources })));
+const AgentsPage = lazy(() => import("./Agents").then(m => ({ default: m.Agents })));
+const Delegations = lazy(() => import("./Agents").then(m => ({ default: m.Delegations })));
+const Audit = lazy(() => import("./Security").then(m => ({ default: m.Audit })));
+const Sessions = lazy(() => import("./Security").then(m => ({ default: m.Sessions })));
+const Alerts = lazy(() => import("./Security").then(m => ({ default: m.Alerts })));
+const UsersPage = lazy(() => import("./Admin").then(m => ({ default: m.Users })));
+const Settings = lazy(() => import("./Admin").then(m => ({ default: m.Settings })));
+const Domains = lazy(() => import("./Admin").then(m => ({ default: m.Domains })));
+const UserDetail = lazy(() => import("./Admin").then(m => ({ default: m.UserDetail })));
+
+/** Suspense fallback while a route chunk streams in. */
+function PageFallback() {
+	return (
+		<>
+			<SkeletonStats />
+			<Card><SkeletonTable /></Card>
+		</>
+	);
+}
 
 const NAV = [
 	{ group: "", items: [{ label: "Overview", to: "/", icon: LayoutDashboard }] },
@@ -120,11 +144,15 @@ export default function Console() {
 								.then(() => { window.location.href = "/login"; })
 								.catch(() => notice.toast("error", t("Sign out failed — please retry")));
 						}}><LogOut size={13} strokeWidth={1.75} aria-hidden />{t("Sign out")}</a>
-						<LangSegmented />
+						<span className="controls-row"><LangSegmented /><ThemeToggle /></span>
 					</div>
 				</div>
-			</aside>
-			<main className="main"><div className="page-stage" key={path}>{page}</div></main>
+				</aside>
+				<main className="main">
+					<div className="page-stage" key={path}>
+						<Suspense fallback={<PageFallback />}>{page}</Suspense>
+					</div>
+				</main>
 		</div>
 	);
 }
@@ -138,7 +166,7 @@ function renderPage(path: string, context: ConsoleContext, t: (key: string) => s
 		case "/applications": return <Applications />;
 		case "/keys": return <Keys />;
 		case "/resources": return <Resources operator={context.operator} />;
-		case "/agents": return <Agents />;
+		case "/agents": return <AgentsPage />;
 		case "/delegations": return <Delegations />;
 		case "/audit": return <Audit operator={context.operator} />;
 		case "/sessions": return <Sessions />;

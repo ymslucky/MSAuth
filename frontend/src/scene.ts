@@ -15,10 +15,7 @@
  * static frame and stops.
  */
 import type * as ThreeNS from "three";
-
-/** Ink/vermilion palette, mirroring the CSS tokens. */
-const INK = 0x16150f;
-const VERMILION = 0xd9481c;
+import { scenePalette, type ScenePalette } from "./theme";
 
 const NODE_COUNT = 700;
 const ACCENT_COUNT = 36;
@@ -112,14 +109,14 @@ const PARALLAX = 0.14;
 /** Idle auto-rotation, rad/s — well under the 0.05 ceiling. */
 const AUTO_SPIN = 0.038;
 
-export function mountLoginScene(canvas: HTMLCanvasElement): () => void {
+export function mountLoginScene(canvas: HTMLCanvasElement, palette: ScenePalette = scenePalette("light")): () => void {
 	let disposed = false;
 	let teardown: (() => void) | null = null;
 
 	void import("three")
 		.then(THREE => {
 			if (disposed) return;
-			teardown = startScene(THREE, canvas);
+			teardown = startScene(THREE, canvas, palette);
 		})
 		.catch(() => undefined); // offline / blocked — the CSS fallback stays
 
@@ -132,7 +129,7 @@ export function mountLoginScene(canvas: HTMLCanvasElement): () => void {
 
 type Three = typeof ThreeNS;
 
-function startScene(THREE: Three, canvas: HTMLCanvasElement): () => void {
+function startScene(THREE: Three, canvas: HTMLCanvasElement, palette: ScenePalette): () => void {
 	const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 	const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
 	renderer.setClearColor(0x000000, 0);
@@ -151,7 +148,7 @@ function startScene(THREE: Three, canvas: HTMLCanvasElement): () => void {
 	const nodeGeometry = new THREE.BufferGeometry();
 	nodeGeometry.setAttribute("position", new THREE.BufferAttribute(constellation.positions, 3));
 	const nodeMaterial = new THREE.PointsMaterial({
-		color: INK, size: 0.017, sizeAttenuation: true, transparent: true, opacity: 0.5, depthWrite: false,
+		color: palette.ink, size: 0.017, sizeAttenuation: true, transparent: true, opacity: palette.nodeOpacity, depthWrite: false,
 	});
 	group.add(new THREE.Points(nodeGeometry, nodeMaterial));
 
@@ -165,7 +162,7 @@ function startScene(THREE: Three, canvas: HTMLCanvasElement): () => void {
 	}
 	const edgeGeometry = new THREE.BufferGeometry();
 	edgeGeometry.setAttribute("position", new THREE.BufferAttribute(edgePositions, 3));
-	const edgeMaterial = new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0.09, depthWrite: false });
+	const edgeMaterial = new THREE.LineBasicMaterial({ color: palette.ink, transparent: true, opacity: palette.edgeOpacity, depthWrite: false });
 	group.add(new THREE.LineSegments(edgeGeometry, edgeMaterial));
 
 	// vermilion nodes: crisp core + wide faint halo (glow without additive bloom)
@@ -179,12 +176,12 @@ function startScene(THREE: Three, canvas: HTMLCanvasElement): () => void {
 	const accentGeometry = new THREE.BufferGeometry();
 	accentGeometry.setAttribute("position", new THREE.BufferAttribute(accentPositions, 3));
 	const coreMaterial = new THREE.PointsMaterial({
-		color: VERMILION, size: 0.062, sizeAttenuation: true, transparent: true, opacity: 0.95, depthWrite: false,
+		color: palette.accent, size: 0.062, sizeAttenuation: true, transparent: true, opacity: 0.95, depthWrite: false,
 	});
 	const core = new THREE.Points(accentGeometry, coreMaterial);
 	group.add(core);
 	const haloMaterial = new THREE.PointsMaterial({
-		color: VERMILION, size: 0.17, sizeAttenuation: true, transparent: true, opacity: 0.16, depthWrite: false,
+		color: palette.accent, size: 0.17, sizeAttenuation: true, transparent: true, opacity: 0.16, depthWrite: false,
 	});
 	const halo = new THREE.Points(accentGeometry, haloMaterial);
 	group.add(halo);
@@ -196,7 +193,7 @@ function startScene(THREE: Three, canvas: HTMLCanvasElement): () => void {
 		ringPoints.push(new THREE.Vector3(Math.cos(angle) * 1.24, 0, Math.sin(angle) * 1.24));
 	}
 	const ringGeometry = new THREE.BufferGeometry().setFromPoints(ringPoints);
-	const ringMaterial = new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0.12, depthWrite: false });
+	const ringMaterial = new THREE.LineBasicMaterial({ color: palette.ink, transparent: true, opacity: palette.ringOpacity, depthWrite: false });
 	const ring = new THREE.LineLoop(ringGeometry, ringMaterial);
 	ring.rotation.x = 0.32;
 	group.add(ring);
@@ -240,7 +237,7 @@ function startScene(THREE: Three, canvas: HTMLCanvasElement): () => void {
 		group.rotation.y += AUTO_SPIN * dt;
 		group.rotation.x += (tiltX - targetX - group.rotation.x) * Math.min(1, dt * 3.2);
 		group.rotation.z += (targetY * 0.4 - group.rotation.z) * Math.min(1, dt * 3.2);
-		haloMaterial.opacity = 0.13 + 0.07 * Math.sin(time * 0.9);
+		haloMaterial.opacity = palette.haloOpacity + 0.07 * Math.sin(time * 0.9);
 		group.position.y = Math.sin(time * 0.22) * 0.02;
 		renderer.render(scene, camera);
 		raf = requestAnimationFrame(frame);

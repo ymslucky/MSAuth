@@ -76,6 +76,10 @@ const nav = {
 	"Open resource": "打开资源",
 	"Admin": "管理",
 	"Profile": "资料",
+	"Theme": "主题",
+	"Auto": "自动",
+	"Light": "浅色",
+	"Dark": "深色",
 };
 
 const auth = {

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createContext, memo, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Check, CheckCircle2, CircleAlert, Copy, Info, X } from "lucide-react";
 import { useActionLabel, useT } from "./i18n";
 import { maskId } from "./api";
@@ -58,9 +58,10 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
 	);
 }
 
-export function Badge(props: { tone?: "ok" | "warn" | "bad"; children: ReactNode }) {
+/** Neutral status pill. Memoized: hot tables re-render these per keystroke. */
+export const Badge = memo(function Badge(props: { tone?: "ok" | "warn" | "bad"; children: ReactNode }) {
 	return <span className={`badge ${props.tone ?? ""}`}>{props.children}</span>;
-}
+});
 
 /* ---------- tags: finite tone vocabulary for resource types & actions ---------- */
 
@@ -95,10 +96,11 @@ export function resourceTone(type: string): ResourceTone {
 /**
  * Colored type pill for a backend resourceType: soft tinted background, deep
  * matching text, hairline border. Keeps `title` = raw type for correlation.
+ * Memoized: audit/user tables (30 rows) re-render on every filter keystroke.
  */
-export function ResourceTag(props: { type: string }) {
+export const ResourceTag = memo(function ResourceTag(props: { type: string }) {
 	return <span className={`tag tag--${resourceTone(props.type)}`} title={props.type}>{props.type}</span>;
-}
+});
 
 /**
  * Neutral pill for an audit action code, showing its translated label
@@ -320,7 +322,7 @@ export function SkeletonTable(props: { rows?: number }) {
 /* ---------- copy affordances ---------- */
 
 /** Icon-only copy affordance: 14px glyph that flips to a check for ~1.2s. */
-export function CopyButton(props: { value: string; label?: string }) {
+export const CopyButton = memo(function CopyButton(props: { value: string; label?: string }) {
 	const t = useT();
 	const [copied, setCopied] = useState(false);
 	const copy = () => {
@@ -340,22 +342,23 @@ export function CopyButton(props: { value: string; label?: string }) {
 			{copied ? <Check size={14} strokeWidth={2.25} aria-hidden /> : <Copy size={14} strokeWidth={2} aria-hidden />}
 		</button>
 	);
-}
+});
 
 /**
  * JetBrains Mono identifier with a `<title>`, a CopyButton (which carries the
  * full value) and — by default — a masked display via `maskId`, since these
  * are opaque machine identifiers. Pass `mask={false}` for values a human may
  * want to read in full (URLs, hostnames, IPs); those still truncate via CSS.
+ * Memoized: the most repeated cell in list-heavy tables.
  */
-export function MonoId(props: { value: string; wide?: boolean; mask?: boolean }) {
+export const MonoId = memo(function MonoId(props: { value: string; wide?: boolean; mask?: boolean }) {
 	return (
 		<span className={`mono-id ${props.wide ? "wide" : ""}`}>
 			<span title={props.value}>{props.mask === false ? props.value : maskId(props.value)}</span>
 			<CopyButton value={props.value} />
 		</span>
 	);
-}
+});
 
 /* ---------- unified notice stack: toasts + confirm promise ---------- */
 
