@@ -18,6 +18,8 @@ export const patch = <T>(path: string, body?: unknown) => api<T>(path, { method:
 export const del = <T>(path: string) => api<T>(path, { method: "DELETE" });
 
 export function fmtDate(value: number | string | undefined | null): string {
-	if (value === undefined || value === null) return "—";
-	return new Date(Number(value)).toLocaleString();
+	// Platform tables store millisecond epochs; Better Auth tables return ISO-8601.
+	if (value === undefined || value === null || value === "") return "—";
+	const date = new Date(value);
+	return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
 }
