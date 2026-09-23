@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, fmtDate } from "../../api";
+import { useT } from "../../i18n";
 import { Card, Empty, Stat } from "../../ui";
 
 export interface OverviewResponse {
@@ -11,6 +12,7 @@ export interface OverviewResponse {
 }
 
 export default function Overview() {
+	const t = useT();
 	const [data, setData] = useState<OverviewResponse | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
@@ -19,26 +21,26 @@ export default function Overview() {
 	}, []);
 
 	if (error) return <p className="error-note">{error}</p>;
-	if (!data) return <p className="muted">Loading…</p>;
+	if (!data) return <p className="muted">{t("Loading…")}</p>;
 	const peak = Math.max(1, ...data.usage.map(row => row.count));
 
 	return (
 		<>
 			<div className="main-head">
 				<div>
-					<h1>Welcome, {data.user.name}</h1>
-					<p>Your identity platform at a glance.</p>
+					<h1>{t("Welcome, {name}", { name: data.user.name })}</h1>
+					<p>{t("Your identity platform at a glance.")}</p>
 				</div>
 			</div>
 			<div className="stat-grid">
-				<Stat label="Applications" value={data.counts.applications} />
-				<Stat label="Active agents" value={data.counts.agents} />
-				<Stat label="Live delegations" value={data.counts.delegations} />
-				<Stat label="API keys" value={data.counts.keys} />
+				<Stat label={t("Applications")} value={data.counts.applications} />
+				<Stat label={t("Active agents")} value={data.counts.agents} />
+				<Stat label={t("Live delegations")} value={data.counts.delegations} />
+				<Stat label={t("API keys")} value={data.counts.keys} />
 			</div>
-			<Card title="Token exchanges (7 days)">
+			<Card title={t("Token exchanges (7 days)")}>
 				{data.usage.length === 0 ? (
-					<Empty>No delegated token exchanges yet.</Empty>
+					<Empty>{t("No delegated token exchanges yet.")}</Empty>
 				) : (
 					<div className="stat-grid">
 						{data.usage.map(row => (
@@ -51,14 +53,14 @@ export default function Overview() {
 					</div>
 				)}
 			</Card>
-			<Card title="Recent activity">
+			<Card title={t("Recent activity")}>
 				{data.activity.length === 0 ? (
-					<Empty>Nothing recorded yet.</Empty>
+					<Empty>{t("Nothing recorded yet.")}</Empty>
 				) : (
 					<div className="table-wrap">
 						<table>
 							<thead>
-								<tr><th>Action</th><th>Resource</th><th>When</th></tr>
+								<tr><th>{t("Action")}</th><th>{t("Resource")}</th><th>{t("When")}</th></tr>
 							</thead>
 							<tbody>
 								{data.activity.map(row => (

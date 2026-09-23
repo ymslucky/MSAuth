@@ -4,6 +4,7 @@ import {
 	ScrollText, Share2, SlidersHorizontal, Users, Globe,
 } from "lucide-react";
 import { api } from "../../api";
+import { LanguageToggle, useT } from "../../i18n";
 import { Link, usePath } from "../../router";
 import Overview, { type OverviewResponse } from "./Overview";
 import { Applications, Keys, Resources } from "./Developer";
@@ -54,6 +55,7 @@ export interface ConsoleContext {
 }
 
 export default function Console() {
+	const t = useT();
 	const path = usePath();
 	const [context, setContext] = useState<ConsoleContext | null>(null);
 	const [gone, setGone] = useState(false);
@@ -66,14 +68,14 @@ export default function Console() {
 
 	if (gone) {
 		window.location.href = "/login";
-		return <div className="auth-shell"><p className="muted">Redirecting to sign-in…</p></div>;
+		return <div className="auth-shell"><p className="muted">{t("Redirecting to sign-in…")}</p></div>;
 	}
-	if (!context) return <div className="auth-shell"><p className="muted">Loading…</p></div>;
+	if (!context) return <div className="auth-shell"><p className="muted">{t("Loading…")}</p></div>;
 	if (context.operator === false && OPERATOR_ONLY.some(prefix => path === prefix)) {
-		return <div className="auth-shell"><p className="muted">Platform administrator access required.</p></div>;
+		return <div className="auth-shell"><p className="muted">{t("Platform administrator access required.")}</p></div>;
 	}
 
-	const page = renderPage(path, context);
+	const page = renderPage(path, context, t);
 
 	return (
 		<div className="shell">
@@ -82,11 +84,11 @@ export default function Console() {
 				<nav>
 					{NAV.map(section => (
 						<div key={section.group}>
-							{section.group !== "" && <div className="group">{section.group}</div>}
+							{section.group !== "" && <div className="group">{t(section.group)}</div>}
 							{section.items.map(item => (
 								<Link key={item.to} to={item.to} className={path === item.to ? "active" : ""}>
 									<item.icon size={17} strokeWidth={1.75} aria-hidden />
-									{item.label}
+									{t(item.label)}
 								</Link>
 							))}
 						</div>
@@ -94,12 +96,15 @@ export default function Console() {
 				</nav>
 				<div className="who">
 					{context.user.email}
-					{context.operator && <> · <strong>operator</strong></>}
+					{context.operator && <> · <strong>{t("operator")}</strong></>}
 					<br />
 					<a href="/api/auth/sign-out" onClick={event => {
 						event.preventDefault();
 						void api("/api/auth/sign-out", { method: "POST" }).finally(() => { window.location.href = "/login"; });
-					}}>Sign out</a>
+					}}>{t("Sign out")}</a>
+					<div style={{ marginTop: 10 }}>
+						<LanguageToggle />
+					</div>
 				</div>
 			</aside>
 			<main className="main">{page}</main>
@@ -107,7 +112,7 @@ export default function Console() {
 	);
 }
 
-function renderPage(path: string, context: ConsoleContext) {
+function renderPage(path: string, context: ConsoleContext, t: (key: string) => string) {
 	switch (path) {
 		case "/": return <Overview />;
 		case "/applications": return <Applications />;
@@ -122,6 +127,6 @@ function renderPage(path: string, context: ConsoleContext) {
 		case "/settings": return <Settings />;
 		case "/domains": return <Domains />;
 		default:
-			return <p className="empty">Unknown page.</p>;
+			return <p className="empty">{t("Unknown page.")}</p>;
 	}
 }
