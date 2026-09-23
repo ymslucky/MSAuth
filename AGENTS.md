@@ -67,8 +67,13 @@ Frontend SPA lives outside `src/` and is served by Workers Assets.
 ## Deployment notes
 
 - `BETTER_AUTH_URL` is a plain var in `wrangler.json` (set the real origin
-  before deploying). `BETTER_AUTH_SECRET` is a Worker secret:
-  `wrangler secret put BETTER_AUTH_SECRET` (≥ 32 chars).
+  before deploying). All four secrets (`BETTER_AUTH_SECRET`, GitHub
+  credentials, `ADMIN_EMAIL`) are account-level Secrets Store bindings
+  declared in `wrangler.json`, so a fresh worker rebuild restores them
+  automatically.
+- Rotating `BETTER_AUTH_SECRET` breaks the JWKS private key stored
+  encrypted in D1 (`jwt` plugin). After rotating, clear it once:
+  `wrangler d1 execute AUTH_DB --remote --command "DELETE FROM jwks"`.
 - GitHub credentials + `ADMIN_EMAIL` resolve through Secrets Store bindings
   and degrade gracefully when absent.
 - `predeploy` auto-creates the `msauth-db` D1 database if missing and applies
