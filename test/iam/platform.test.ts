@@ -122,11 +122,19 @@ describe("IAM platform boundaries", () => {
     expect(res.status).toBe(404);
     expect(res.headers.get("content-type")).toContain("application/json");
   });
-  it("records mutations in an actor-filterable audit log", async () => {
+  it("records mutations in an actor-filterable audit log with resolved identities", async () => {
     const res = await request("/api/v1/audit?actor=" + ownerId);
-    const body = await res.json() as { items: { actorId: string; action: string }[] };
+    const body = await res.json() as { items: { actorId: string; actorEmail?: string | null; action: string }[] };
     expect(body.items.some(row => row.action === "agent.created")).toBe(true);
+    expect(body.items.length).toBeGreaterThan(0);
     expect(body.items.every(row => row.actorId === ownerId)).toBe(true);
+    // the console renders identities, never raw user UUIDs
+    expect(body.items.every(row => row.actorEmail === "root@example.com")).toBe(true);
+    // operators may filter by email — it resolves to the same actor id
+    const byEmail = await request("/api/v1/audit?actor=" + encodeURIComponent("root@example.com"));
+    const emailBody = await byEmail.json() as { items: { actorId: string }[] };
+    expect(emailBody.items.length).toBe(body.items.length);
+    expect(emailBody.items.every(row => row.actorId === ownerId)).toBe(true);
   });
   it("revokes the server-side session on logout", async () => {
     const disposable = await login("logout@example.com");

@@ -228,7 +228,7 @@ const security = {
 	// audit + sessions + alerts
 	"Every mutation on the platform, filterable by actor or resource.": "平台上的所有变更操作，可按操作者或资源筛选。",
 	"Every mutation you performed.": "你执行过的所有变更操作。",
-	"Actor user ID": "操作者用户 ID",
+	"Actor email or ID": "操作者邮箱或 ID",
 	"Resource type or ID": "资源类型或 ID",
 	"Nothing recorded for this filter.": "该筛选条件下没有记录。",
 	"Actor": "操作者",

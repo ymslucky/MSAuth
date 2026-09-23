@@ -11,6 +11,8 @@ import {
 interface AuditRow {
 	id: string;
 	actorId: string;
+	actorEmail?: string | null;
+	actorName?: string | null;
 	action: string;
 	resourceType: string;
 	resourceId: string;
@@ -79,7 +81,7 @@ export function Audit(props: { operator: boolean }) {
 					<Card>
 						<div className="field-row">
 							{props.operator && (
-								<Field label={t("Actor user ID")}><input value={actor} onChange={event => { setPage(1); setActor(event.target.value); }} spellCheck={false} /></Field>
+								<Field label={t("Actor email or ID")}><input value={actor} onChange={event => { setPage(1); setActor(event.target.value); }} spellCheck={false} /></Field>
 							)}
 							<Field label={t("Resource type or ID")}><input value={resource} onChange={event => { setPage(1); setResource(event.target.value); }} spellCheck={false} /></Field>
 						</div>
@@ -107,7 +109,9 @@ export function Audit(props: { operator: boolean }) {
 										return (
 											<tr key={row.id}>
 												<td className="col-when"><When value={row.createdAt} /></td>
-												<td><MonoId value={row.actorId} /></td>
+												<td>{row.actorEmail
+													? <span title={`${row.actorName ?? ""} ${row.actorId}`.trim()}>{row.actorEmail}</span>
+													: <MonoId value={row.actorId} />}</td>
 												<td className="col-action"><ActionTag code={row.action} /></td>
 												<td className="col-resource">
 													<span className="cell-res" title={`${row.resourceType} ${row.resourceId}`}>

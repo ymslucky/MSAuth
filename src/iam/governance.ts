@@ -27,10 +27,12 @@ governanceRoutes.get("/audit", async c => {
   const paging = page(c);
   const actor = c.get("operator") ? c.req.query("actor") ?? "" : c.get("identity").user.id;
   const resource = (c.req.query("resource") ?? "").slice(0, 200);
-  const where = "WHERE (? = '' OR actorId = ?) AND (? = '' OR resourceType = ? OR resourceId = ?)";
-  const values = [actor, actor, resource, resource, resource];
+  // actor filter accepts a raw user id or an email; rows always carry the
+  // resolved identity so the console never renders a bare UUID
+  const where = 'WHERE (? = \'\' OR auditEvent.actorId = ? OR auditEvent.actorId = (SELECT id FROM "user" WHERE lower(email) = lower(?))) AND (? = \'\' OR resourceType = ? OR resourceId = ?)';
+  const values = [actor, actor, actor, resource, resource, resource];
   const [rows, count] = await Promise.all([
-    c.env.AUTH_DB.prepare(`SELECT * FROM auditEvent ${where} ORDER BY createdAt DESC, id DESC LIMIT ? OFFSET ?`).bind(...values, paging.limit, paging.offset).all(),
+    c.env.AUTH_DB.prepare(`SELECT auditEvent.*, u.email AS actorEmail, u.name AS actorName FROM auditEvent LEFT JOIN "user" u ON u.id = auditEvent.actorId ${where} ORDER BY auditEvent.createdAt DESC, auditEvent.id DESC LIMIT ? OFFSET ?`).bind(...values, paging.limit, paging.offset).all(),
     c.env.AUTH_DB.prepare(`SELECT COUNT(*) AS total FROM auditEvent ${where}`).bind(...values).first<{ total: number }>(),
   ]);
   return c.json({ items: rows.results, total: count?.total ?? 0, page: paging.number });
