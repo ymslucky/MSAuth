@@ -5,7 +5,7 @@ import { useT } from "../../i18n";
 import { navigate } from "../../router";
 import { useTableState } from "../../table";
 import {
-	Badge, Button, Card, EmptyState, ErrorNote, ErrorState, Field,
+	Badge, Button, Card, EmptyState, ErrorState, Field,
 	MonoId, PageHeader, SkeletonTable, Table, TablePager,
 } from "../../ui";
 import { useNotice } from "../../notice-ui";
@@ -53,13 +53,12 @@ export function Resources(props: { operator: boolean }) {
 	}, [attempt]);
 
 	async function run(action: () => Promise<unknown>, successMessage?: string) {
-		setError(null);
 		try {
 			await action();
 			if (successMessage) notice.toast("success", successMessage);
 			await reload();
 		} catch (cause) {
-			setError(errorMessage(cause));
+			notice.toast("error", errorMessage(cause));
 		}
 	}
 
@@ -70,7 +69,6 @@ export function Resources(props: { operator: boolean }) {
 				subtitle={t("HTTPS APIs (e.g. MCP servers) that accept MSAuth tokens. Token audience is pinned to the exact identifier.")}
 				crumbs={[{ label: t("Developer") }, { label: t("Resources") }]}
 			/>
-			<ErrorNote message={items === null && error ? null : error} />
 			<Card>
 				{items === null ? (error
 					? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />

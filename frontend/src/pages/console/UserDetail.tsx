@@ -4,7 +4,7 @@ import { api, errorMessage, post } from "../../api";
 import { useT } from "../../i18n";
 import { navigate } from "../../router";
 import {
-	Badge, Button, Card, EmptyState, ErrorNote, ErrorState, Field, MonoId,
+	Badge, Button, Card, EmptyState, ErrorState, Field, MonoId,
 	PageHeader, SkeletonProfile, SkeletonTable, Table, When,
 } from "../../ui";
 import { Modal } from "../../dialog";
@@ -49,14 +49,13 @@ export function UserDetail(props: { id: string }) {
 	}, [reload, attempt]);
 
 	async function run(action: () => Promise<unknown>, successMessage: string) {
-		setError(null);
 		setBusy(true);
 		try {
 			await action();
 			notice.toast("success", successMessage);
 			await reload();
 		} catch (cause) {
-			setError(errorMessage(cause));
+			notice.toast("error", errorMessage(cause));
 		} finally {
 			setBusy(false);
 		}
@@ -71,7 +70,6 @@ export function UserDetail(props: { id: string }) {
 				crumbs={[{ label: t("Admin") }, { label: t("Users"), to: "/users" }, { label: user?.email ?? "…" }]}
 				actions={user && <Button kind="ghost" onClick={() => navigate("/users")}><ArrowLeft size={14} strokeWidth={1.75} aria-hidden />{t("Back")}</Button>}
 			/>
-			<ErrorNote message={detail && error ? error : null} />
 			{detail === null ? (error
 				? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
 				// Skeleton mirrors the final three-card geometry: profile grid + two tables.

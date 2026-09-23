@@ -6,7 +6,7 @@ import { navigate } from "../../router";
 import { useOptimisticList } from "../../optimistic";
 import { useTableState } from "../../table";
 import {
-	Badge, Button, Card, EmptyState, ErrorNote, ErrorState, Field,
+	Badge, Button, Card, EmptyState, ErrorState, Field,
 	MonoId, PageHeader, SkeletonTable, Table, TablePager, When,
 } from "../../ui";
 import { Modal } from "../../dialog";
@@ -51,13 +51,12 @@ export function Applications() {
 	}, [attempt]);
 
 	async function run(action: () => Promise<unknown>, successMessage?: string) {
-		setError(null);
 		try {
 			await action();
 			if (successMessage) notice.toast("success", successMessage);
 			await reload();
 		} catch (cause) {
-			setError(errorMessage(cause));
+			notice.toast("error", errorMessage(cause));
 		}
 	}
 
@@ -97,7 +96,6 @@ export function Applications() {
 				crumbs={[{ label: t("Developer") }, { label: t("Applications") }]}
 				actions={<Button kind="primary" onClick={() => setCreating(true)}>{t("New application")}</Button>}
 			/>
-			<ErrorNote message={items === null && error ? null : error} />
 			<Card>
 				{items === null ? (error
 					? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />

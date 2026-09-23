@@ -3,7 +3,7 @@ import { api, errorMessage, post } from "../../api";
 import { useT } from "../../i18n";
 import { useTableState } from "../../table";
 import {
-	Badge, Button, Card, EmptyState, ErrorNote, ErrorState, Field, MonoId,
+	Badge, Button, Card, EmptyState, ErrorState, Field, MonoId,
 	PageHeader, SkeletonTable, Table, TablePager, When,
 } from "../../ui";
 import { useNotice } from "../../notice-ui";
@@ -39,13 +39,12 @@ export function Domains() {
 	}, [attempt]);
 
 	async function run(action: () => Promise<unknown>, successMessage?: string) {
-		setError(null);
 		try {
 			await action();
 			if (successMessage) notice.toast("success", successMessage);
 			await reload();
 		} catch (cause) {
-			setError(errorMessage(cause));
+			notice.toast("error", errorMessage(cause));
 		}
 	}
 
@@ -56,7 +55,6 @@ export function Domains() {
 				subtitle={t("Prove ownership of the domains your resources run on.")}
 				crumbs={[{ label: t("Admin") }, { label: t("Domains") }]}
 			/>
-			<ErrorNote message={items === null && error ? null : error} />
 			<Card title={t("Add domain")}>
 				<div className="field-row inner-cap">
 					<Field label={t("Hostname")}><input value={hostname} onChange={event => setHostname(event.target.value)} placeholder="example.com" spellCheck={false} /></Field>

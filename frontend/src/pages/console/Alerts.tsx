@@ -3,7 +3,7 @@ import { api, errorMessage, post } from "../../api";
 import { useT } from "../../i18n";
 import { useTableState } from "../../table";
 import {
-	Badge, Button, Card, EmptyState, ErrorNote, ErrorState, PageHeader,
+	Badge, Button, Card, EmptyState, ErrorState, PageHeader,
 	SkeletonTable, Table, TablePager, When,
 } from "../../ui";
 import { useNotice } from "../../notice-ui";
@@ -41,7 +41,7 @@ export function Alerts() {
 		setAcking(id);
 		void post(`/api/v1/alerts/${id}/acknowledge`)
 			.then(() => { notice.toast("success", t("Alert acknowledged.")); return reload(); })
-			.catch(cause => setError(errorMessage(cause)))
+			.catch(cause => notice.toast("error", errorMessage(cause)))
 			.finally(() => setAcking(null));
 	}
 
@@ -52,7 +52,6 @@ export function Alerts() {
 				subtitle={t("Sign-in anomalies and token events for your account.")}
 				crumbs={[{ label: t("Security") }, { label: t("Alerts") }]}
 			/>
-			<ErrorNote message={items === null && error ? null : error} />
 			{items === null && error
 				? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
 				: (

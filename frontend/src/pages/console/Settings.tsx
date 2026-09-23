@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, errorMessage, patch } from "../../api";
 import { useT } from "../../i18n";
-import { Card, CopyButton, ErrorNote, ErrorState, PageHeader, SkeletonStats } from "../../ui";
+import { Card, CopyButton, ErrorState, PageHeader, SkeletonStats } from "../../ui";
 import { useNotice } from "../../notice-ui";
 
 interface SettingsResponse {
@@ -26,14 +26,13 @@ export function Settings() {
 	}, [attempt]);
 
 	async function toggle(key: "registrationEnabled" | "dcrEnabled", value: boolean) {
-		setError(null);
 		setBusy(true);
 		try {
 			await patch("/api/v1/settings", { [key]: value });
 			notice.toast("success", t("Settings saved."));
 			await reload();
 		} catch (cause) {
-			setError(errorMessage(cause));
+			notice.toast("error", errorMessage(cause));
 		} finally {
 			setBusy(false);
 		}
@@ -48,7 +47,6 @@ export function Settings() {
 				crumbs={[{ label: t("Admin") }, { label: t("Settings") }]}
 				subtitle={<>{t("Issuer:")} <code>{data.issuer}</code> <CopyButton value={data.issuer} /></>}
 			/>
-			<ErrorNote message={error} />
 			<div className="inner-cap">
 				<Card title={t("Registration")}>
 					<label className="check-row">
