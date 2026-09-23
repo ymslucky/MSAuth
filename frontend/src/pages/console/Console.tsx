@@ -9,6 +9,7 @@ import { LangSegmented, useLang, useT } from "../../i18n";
 import { ThemeToggle, themeChoices, useTheme, type ThemeChoice } from "../../theme";
 import { Link, navigate, usePath } from "../../router";
 import { Card, Skeleton, SkeletonStats, SkeletonTable } from "../../ui";
+import { operatorOnlyPathGuard, visibleSections } from "../../consoleNav";
 import { GITHUB_REPO_URL, palettePlatformKey, PaletteEntry, PaletteProvider, usePalette } from "../../palette-ui";
 import { useNotice } from "../../notice-ui";
 import type { OverviewResponse } from "./Overview";
@@ -101,8 +102,6 @@ const NAV = [
 	},
 ];
 
-const OPERATOR_ONLY = ["/users", "/settings"];
-
 export interface ConsoleContext {
 	user: { id: string; name: string; email: string; image: string | null };
 	operator: boolean;
@@ -112,13 +111,13 @@ const THEME_ICONS: Record<ThemeChoice, typeof Sun> = { auto: SunMoon, light: Sun
 const THEME_LABELS: Record<ThemeChoice, string> = { auto: "Auto", light: "Light", dark: "Dark" };
 
 /** Static palette entries: navigation, account + preference actions. */
-function useConsolePaletteEntries(userId: string): PaletteEntry[] {
+function useConsolePaletteEntries(userId: string, operator: boolean): PaletteEntry[] {
 	const t = useT();
 	const notice = useNotice();
 	const { setChoice } = useTheme();
 	const { lang, setLang } = useLang();
 	return useMemo<PaletteEntry[]>(() => [
-		...NAV.flatMap(section => section.items.map(item => ({
+		...visibleSections(NAV, operator).flatMap(section => section.items.map(item => ({
 			id: `nav:${item.to}`,
 			group: "navigate" as const,
 			label: t(item.label),
@@ -165,7 +164,7 @@ function useConsolePaletteEntries(userId: string): PaletteEntry[] {
 			icon: <Languages size={15} strokeWidth={1.75} aria-hidden />,
 			perform: () => setLang(lang === "zh" ? "en" : "zh"),
 		},
-	], [t, notice, userId, setChoice, lang, setLang]);
+	], [t, notice, userId, operator, setChoice, lang, setLang]);
 }
 
 export default function Console() {
@@ -176,7 +175,7 @@ export default function Console() {
 	const notice = useNotice();
 	// Unconditional: the hook count must not differ between the loading and
 	// loaded renders (userId is just an empty placeholder until it arrives).
-	const paletteEntries = useConsolePaletteEntries(context?.user.id ?? "");
+	const paletteEntries = useConsolePaletteEntries(context?.user.id ?? "", context?.operator ?? false);
 
 	useEffect(() => {
 		api<OverviewResponse>("/api/v1/overview")
@@ -201,7 +200,7 @@ export default function Console() {
 			</div>
 		);
 	}
-	if (context.operator === false && OPERATOR_ONLY.some(prefix => path === prefix || path.startsWith(`${prefix}/`))) {
+	if (operatorOnlyPathGuard(path, context.operator)) {
 		return <div className="auth-shell"><p className="muted">{t("Platform administrator access required.")}</p></div>;
 	}
 
@@ -230,7 +229,7 @@ function ConsoleShell(props: { path: string; context: ConsoleContext }) {
 					<kbd aria-hidden="true">{palettePlatformKey()}</kbd>
 				</button>
 				<nav>
-					{NAV.map(section => (
+					{visibleSections(NAV, context.operator).map(section => (
 						<div key={section.group}>
 							{section.group !== "" && <div className="group">{t(section.group)}</div>}
 							{section.items.map(item => {

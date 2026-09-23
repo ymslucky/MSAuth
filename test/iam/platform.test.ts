@@ -116,6 +116,9 @@ describe("IAM platform boundaries", () => {
     expect((await request("/api/v1/users", otherCookie)).status).toBe(403);
     expect((await request("/api/v1/users")).status).toBe(200);
     expect((await request("/api/v1/settings", otherCookie, "PATCH", { registrationEnabled: false })).status).toBe(403);
+    // user-scoped surfaces stay open to plain users — their menu entries must not hide
+    expect((await request("/api/v1/alerts", otherCookie)).status).toBe(200);
+    expect((await request("/api/v1/domains", otherCookie)).status).toBe(200);
   });
   it("never falls back to SPA HTML for unknown API routes", async () => {
     const res = await request("/api/v1/does-not-exist");
