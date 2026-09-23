@@ -4,14 +4,14 @@ import {
 	ScrollText, Share2, SlidersHorizontal, Users, Globe,
 } from "lucide-react";
 import { api } from "../../api";
-import { LanguageToggle, useT } from "../../i18n";
+import { useT } from "../../i18n";
 import { Link, usePath } from "../../router";
 import { Skeleton } from "../../ui";
 import Overview, { type OverviewResponse } from "./Overview";
 import { Applications, Keys, Resources } from "./Developer";
 import { Agents, Delegations } from "./Agents";
 import { Audit, Sessions, Alerts } from "./Security";
-import { Users as UsersPage, Settings, Domains } from "./Admin";
+import { Users as UsersPage, Settings, Domains, UserDetail } from "./Admin";
 
 const NAV = [
 	{ group: "", items: [{ label: "Overview", to: "/", icon: LayoutDashboard }] },
@@ -85,7 +85,7 @@ export default function Console() {
 			</div>
 		);
 	}
-	if (context.operator === false && OPERATOR_ONLY.some(prefix => path === prefix)) {
+	if (context.operator === false && OPERATOR_ONLY.some(prefix => path === prefix || path.startsWith(`${prefix}/`))) {
 		return <div className="auth-shell"><p className="muted">{t("Platform administrator access required.")}</p></div>;
 	}
 
@@ -119,9 +119,6 @@ export default function Console() {
 						.catch(() => setLogoutError(true));
 				}}>{t("Sign out")}</a>
 				{logoutError && <p className="error-note" role="alert">{t("Sign out failed — please retry")}</p>}
-					<div style={{ marginTop: 10 }}>
-						<LanguageToggle />
-					</div>
 				</div>
 			</aside>
 			<main className="main">{page}</main>
@@ -130,6 +127,9 @@ export default function Console() {
 }
 
 function renderPage(path: string, context: ConsoleContext, t: (key: string) => string) {
+	if (path.startsWith("/users/")) {
+		return <UserDetail id={decodeURIComponent(path.slice("/users/".length))} />;
+	}
 	switch (path) {
 		case "/": return <Overview />;
 		case "/applications": return <Applications />;

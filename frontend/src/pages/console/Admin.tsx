@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, del, fmtDate, fullTimestamp, patch, post } from "../../api";
 import { useT } from "../../i18n";
+import { navigate } from "../../router";
 import {
 	Badge, Button, Card, CopyButton, Empty, ErrorNote, ErrorState, Field,
-	Modal, MonoId, SkeletonTable, SkeletonStats, Table, useToast,
+	Modal, MonoId, PageHeader, SkeletonTable, SkeletonStats, Table, useNotice,
 } from "../../ui";
 
 interface UserRow {
@@ -16,7 +17,7 @@ interface UserRow {
 	createdAt: number;
 }
 
-interface UserDetail {
+interface UserDetailData {
 	user: UserRow;
 	sessions: { id: string; ipAddress: string | null; userAgent: string | null; createdAt: number; expiresAt: number }[];
 	accounts: { id: string; providerId: string; accountId: string; createdAt: number }[];
@@ -24,13 +25,12 @@ interface UserDetail {
 
 export function Users() {
 	const t = useT();
-	const toast = useToast();
+	const notice = useNotice();
 	const [items, setItems] = useState<UserRow[] | null>(null);
 	const [total, setTotal] = useState(0);
 	const [page, setPage] = useState(1);
 	const [query, setQuery] = useState("");
 	const [error, setError] = useState<string | null>(null);
-	const [detail, setDetail] = useState<UserDetail | null>(null);
 	const [banTarget, setBanTarget] = useState<UserRow | null>(null);
 	const [banReason, setBanReason] = useState("");
 	const [banBusy, setBanBusy] = useState(false);
@@ -50,7 +50,7 @@ export function Users() {
 		setError(null);
 		try {
 			await action();
-			if (successMessage) toast(successMessage);
+			if (successMessage) notice.toast("success", successMessage);
 			await reload();
 		} catch (cause) {
 			setError(cause instanceof Error ? cause.message : String(cause));
@@ -60,12 +60,11 @@ export function Users() {
 	const pages = Math.max(1, Math.ceil(total / 30));
 	return (
 		<>
-			<div className="main-head fade-up">
-				<div>
-					<h1>{t("Users")}</h1>
-					<p>{t("Platform identities. Suspension revokes agents, delegations, clients and keys.")}</p>
-				</div>
-			</div>
+			<PageHeader
+				title={t("Users")}
+				subtitle={t("Platform identities. Suspension revokes agents, delegations, clients and keys.")}
+				crumbs={[{ label: t("Admin") }, { label: t("Users") }]}
+			/>
 			<ErrorNote message={items === null && error ? null : error} />
 			<Card>
 				<Field label={t("Search email or name")}>
@@ -88,7 +87,7 @@ export function Users() {
 									<td>{row.banned ? <Badge tone="bad">{t("suspended")}</Badge> : <Badge tone="ok">{t("active")}</Badge>}</td>
 									<td className="right">
 										<div className="btn-row">
-											<Button kind="ghost" onClick={() => void api<UserDetail>(`/api/v1/users/${row.id}`).then(setDetail).catch(cause => setError(String(cause.message)))}>{t("Detail")}</Button>
+											<Button kind="ghost" onClick={() => navigate(`/users/${encodeURIComponent(row.id)}`)}>{t("Detail")}</Button>
 											{row.banned ? (
 												<Button kind="ghost" onClick={() => void run(() => post(`/api/v1/users/${row.id}/unban`), t("User unsuspended."))}>{t("Unsuspend")}</Button>
 											) : (
@@ -123,7 +122,7 @@ export function Users() {
 								setBanBusy(true);
 								void run(async () => {
 									await post(`/api/v1/users/${banTarget.id}/ban`, { reason: banReason.trim() });
-									toast(t("User suspended."));
+									notice.toast("success", t("User suspended."));
 								}).finally(() => {
 									setBanBusy(false);
 									setBanTarget(null);
@@ -134,33 +133,146 @@ export function Users() {
 					</div>
 				</Modal>
 			)}
-			{detail && (
-				<Modal title={t("User detail")} open onClose={() => setDetail(null)}>
-					<p><strong>{detail.user.name}</strong> <span className="muted">{detail.user.email}</span></p>
-					<h2 style={{ margin: "14px 0 6px" }}>{t("Sessions")}</h2>
-					{detail.sessions.length === 0 ? <Empty>{t("None.")}</Empty> : (
-						<Table head={[t("Created"), "IP", t("User agent")]}>
-							{detail.sessions.map(session => (
-								<tr key={session.id}>
-									<td className="muted"><time title={fullTimestamp(session.createdAt)}>{fmtDate(session.createdAt)}</time></td>
-									<td><MonoId value={session.ipAddress ?? "—"} /></td>
-									<td className="muted"><span title={session.userAgent ?? ""}>{(session.userAgent ?? "").slice(0, 40)}</span></td>
-								</tr>
-							))}
-						</Table>
-					)}
-					<h2 style={{ margin: "14px 0 6px" }}>{t("Linked accounts")}</h2>
-					{detail.accounts.length === 0 ? <Empty>{t("None.")}</Empty> : (
-						<Table head={[t("Provider"), t("Account ID"), t("Linked")]}>
-							{detail.accounts.map(account => (
-								<tr key={account.id}>
-									<td><code>{account.providerId}</code></td>
-									<td><MonoId value={account.accountId} /></td>
-									<td className="muted"><time title={fullTimestamp(account.createdAt)}>{fmtDate(account.createdAt)}</time></td>
-								</tr>
-							))}
-						</Table>
-					)}
+		</>
+	);
+}
+
+/** Full-page user detail (route `/users/:id`) — the old modal, uncramped. */
+export function UserDetail(props: { id: string }) {
+	const t = useT();
+	const notice = useNotice();
+	const [detail, setDetail] = useState<UserDetailData | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const [attempt, setAttempt] = useState(0);
+	const [banOpen, setBanOpen] = useState(false);
+	const [banReason, setBanReason] = useState("");
+	const [banBusy, setBanBusy] = useState(false);
+	const [busy, setBusy] = useState(false);
+
+	const reload = useCallback(() => {
+		return api<UserDetailData>(`/api/v1/users/${props.id}`)
+			.then(result => { setDetail(result); setError(null); })
+			.catch(cause => setError(cause instanceof Error ? cause.message : String(cause)));
+	}, [props.id]);
+	useEffect(() => {
+		setDetail(null);
+		void reload();
+	}, [reload, attempt]);
+
+	async function run(action: () => Promise<unknown>, successMessage: string) {
+		setError(null);
+		setBusy(true);
+		try {
+			await action();
+			notice.toast("success", successMessage);
+			await reload();
+		} catch (cause) {
+			setError(cause instanceof Error ? cause.message : String(cause));
+		} finally {
+			setBusy(false);
+		}
+	}
+
+	const user = detail?.user;
+	return (
+		<>
+			<PageHeader
+				title={user?.name ?? t("User detail")}
+				subtitle={user?.email}
+				crumbs={[{ label: t("Admin") }, { label: t("Users"), to: "/users" }, { label: user?.email ?? "…" }]}
+				actions={user && <Button kind="ghost" onClick={() => navigate("/users")}>← {t("Back")}</Button>}
+			/>
+			<ErrorNote message={detail && error ? error : null} />
+			{detail === null ? (error
+				? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
+				: <SkeletonTable rows={4} />
+			) : (
+				<>
+					<Card title={t("Profile")}>
+						<div className="profile-grid">
+							<div>
+								<span className="muted">{t("Email")}</span>
+								<strong>{user?.email}</strong>
+							</div>
+							<div>
+								<span className="muted">{t("User ID")}</span>
+								<MonoId value={user?.id ?? ""} />
+							</div>
+							<div>
+								<span className="muted">{t("Created")}</span>
+								<strong><time title={fullTimestamp(user?.createdAt)}>{fmtDate(user?.createdAt)}</time></strong>
+							</div>
+							<div>
+								<span className="muted">{t("Status")}</span>
+								<span className="status-badges">
+									{user?.banned
+										? <Badge tone="bad">{t("suspended")}</Badge>
+										: <Badge tone="ok">{t("active")}</Badge>}
+									{user?.emailVerified ? <Badge tone="ok">{t("Verified")}</Badge> : <Badge tone="warn">{t("no")}</Badge>}
+									{user?.twoFactorEnabled ? <Badge>{t("2FA")}</Badge> : null}
+								</span>
+							</div>
+						</div>
+						<div className="btn-row" style={{ marginTop: 16 }}>
+							{user?.banned ? (
+								<Button kind="ghost" disabled={busy} onClick={() => void run(() => post(`/api/v1/users/${user.id}/unban`), t("User unsuspended."))}>{t("Unsuspend")}</Button>
+							) : (
+								<Button kind="danger" onClick={() => { setBanReason(""); setBanOpen(true); }}>{t("Suspend")}</Button>
+							)}
+						</div>
+						{user?.banned && <p className="cell-sub" style={{ marginTop: 10 }}>{t("Ban and revoke everything this user controls.")}</p>}
+					</Card>
+					<Card title={t("Sessions")}>
+						{detail.sessions.length === 0 ? <Empty>{t("None.")}</Empty> : (
+							<Table head={[t("Created"), "IP", t("User agent"), t("Expires")]}>
+								{detail.sessions.map(session => (
+									<tr key={session.id}>
+										<td className="muted"><time title={fullTimestamp(session.createdAt)}>{fmtDate(session.createdAt)}</time></td>
+										<td><MonoId value={session.ipAddress ?? "—"} /></td>
+										<td className="muted"><span title={session.userAgent ?? ""}>{(session.userAgent ?? "").slice(0, 60)}</span></td>
+										<td className="muted"><time title={fullTimestamp(session.expiresAt)}>{fmtDate(session.expiresAt)}</time></td>
+									</tr>
+								))}
+							</Table>
+						)}
+					</Card>
+					<Card title={t("Linked accounts")}>
+						{detail.accounts.length === 0 ? <Empty>{t("None.")}</Empty> : (
+							<Table head={[t("Provider"), t("Account ID"), t("Linked")]}>
+								{detail.accounts.map(account => (
+									<tr key={account.id}>
+										<td><code>{account.providerId}</code></td>
+										<td><MonoId value={account.accountId} /></td>
+										<td className="muted"><time title={fullTimestamp(account.createdAt)}>{fmtDate(account.createdAt)}</time></td>
+									</tr>
+								))}
+							</Table>
+						)}
+					</Card>
+				</>
+			)}
+			{banOpen && user && (
+				<Modal title={t("Suspend user")} open onClose={() => setBanOpen(false)}>
+					<p className="confirm-body">{t("Suspending revokes this user's agents, delegations, clients and keys.")}</p>
+					<Field label={t("Suspension reason?")}>
+						<input value={banReason} onChange={event => setBanReason(event.target.value)} maxLength={200} />
+					</Field>
+					<div className="btn-row">
+						<Button
+							kind="danger-solid"
+							disabled={banBusy || !banReason.trim()}
+							onClick={() => {
+								setBanBusy(true);
+								void run(async () => {
+									await post(`/api/v1/users/${user.id}/ban`, { reason: banReason.trim() });
+								}, t("User suspended.")).finally(() => {
+									setBanBusy(false);
+									setBanOpen(false);
+								});
+							}}
+						>{t("Suspend")}</Button>
+						<Button kind="ghost" disabled={banBusy} onClick={() => setBanOpen(false)}>{t("Cancel")}</Button>
+					</div>
 				</Modal>
 			)}
 		</>
@@ -175,7 +287,7 @@ interface SettingsResponse {
 
 export function Settings() {
 	const t = useT();
-	const toast = useToast();
+	const notice = useNotice();
 	const [data, setData] = useState<SettingsResponse | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
@@ -193,7 +305,7 @@ export function Settings() {
 		setBusy(true);
 		try {
 			await patch("/api/v1/settings", { [key]: value });
-			toast(t("Settings saved."));
+			notice.toast("success", t("Settings saved."));
 			await reload();
 		} catch (cause) {
 			setError(cause instanceof Error ? cause.message : String(cause));
@@ -203,28 +315,29 @@ export function Settings() {
 	}
 
 	if (error && !data) return <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />;
-	if (!data) return <><div className="main-head fade-up"><div><h1>{t("Platform settings")}</h1></div></div><SkeletonStats count={2} /></>;
+	if (!data) return <><PageHeader title={t("Platform settings")} crumbs={[{ label: t("Admin") }, { label: t("Settings") }]} /><SkeletonStats count={2} /></>;
 	return (
 		<>
-			<div className="main-head fade-up">
-				<div>
-					<h1>{t("Platform settings")}</h1>
-					<p>{t("Issuer:")} <code>{data.issuer}</code> <CopyButton value={data.issuer} /></p>
-				</div>
-			</div>
+			<PageHeader
+				title={t("Platform settings")}
+				crumbs={[{ label: t("Admin") }, { label: t("Settings") }]}
+				subtitle={<>{t("Issuer:")} <code>{data.issuer}</code> <CopyButton value={data.issuer} /></>}
+			/>
 			<ErrorNote message={error} />
-			<Card title={t("Registration")}>
-				<label className="check-row">
-					<input type="checkbox" disabled={busy} checked={data.registrationEnabled} onChange={event => void toggle("registrationEnabled", event.target.checked)} />
-					{t("Allow new users to sign up (GitHub). Allowlisted admins can always sign in.")}
-				</label>
-			</Card>
-			<Card title={t("Dynamic client registration")}>
-				<label className="check-row">
-					<input type="checkbox" disabled={busy} checked={data.dcrEnabled} onChange={event => void toggle("dcrEnabled", event.target.checked)} />
-					{t("Allow unauthenticated OAuth clients to self-register (RFC 7591) — required for MCP client auto-discovery.")}
-				</label>
-			</Card>
+			<div className="inner-cap">
+				<Card title={t("Registration")}>
+					<label className="check-row">
+						<input type="checkbox" disabled={busy} checked={data.registrationEnabled} onChange={event => void toggle("registrationEnabled", event.target.checked)} />
+						{t("Allow new users to sign up (GitHub). Allowlisted admins can always sign in.")}
+					</label>
+				</Card>
+				<Card title={t("Dynamic client registration")}>
+					<label className="check-row">
+						<input type="checkbox" disabled={busy} checked={data.dcrEnabled} onChange={event => void toggle("dcrEnabled", event.target.checked)} />
+						{t("Allow unauthenticated OAuth clients to self-register (RFC 7591) — required for MCP client auto-discovery.")}
+					</label>
+				</Card>
+			</div>
 		</>
 	);
 }
@@ -239,7 +352,7 @@ interface DomainRow {
 
 export function Domains() {
 	const t = useT();
-	const toast = useToast();
+	const notice = useNotice();
 	const [items, setItems] = useState<DomainRow[] | null>(null);
 	const [hostname, setHostname] = useState("");
 	const [error, setError] = useState<string | null>(null);
@@ -258,7 +371,7 @@ export function Domains() {
 		setError(null);
 		try {
 			await action();
-			if (successMessage) toast(successMessage);
+			if (successMessage) notice.toast("success", successMessage);
 			await reload();
 		} catch (cause) {
 			setError(cause instanceof Error ? cause.message : String(cause));
@@ -267,15 +380,14 @@ export function Domains() {
 
 	return (
 		<>
-			<div className="main-head fade-up">
-				<div>
-					<h1>{t("Domains")}</h1>
-					<p>{t("Prove ownership of the domains your resources run on.")}</p>
-				</div>
-			</div>
+			<PageHeader
+				title={t("Domains")}
+				subtitle={t("Prove ownership of the domains your resources run on.")}
+				crumbs={[{ label: t("Admin") }, { label: t("Domains") }]}
+			/>
 			<ErrorNote message={items === null && error ? null : error} />
 			<Card title={t("Add domain")}>
-				<div className="field-row">
+				<div className="field-row inner-cap">
 					<Field label={t("Hostname")}><input value={hostname} onChange={event => setHostname(event.target.value)} placeholder="example.com" spellCheck={false} /></Field>
 				</div>
 				<Button kind="primary" disabled={busy || !hostname.trim()} onClick={() => {

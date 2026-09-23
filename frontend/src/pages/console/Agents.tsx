@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { api, del, fmtDate, fullTimestamp, isValidExpiry, post } from "../../api";
 import { useT } from "../../i18n";
 import {
-	Badge, Button, Card, Confirm, Empty, ErrorNote, ErrorState, Field,
-	Modal, MonoId, SkeletonTable, Table, useToast,
+	Badge, Button, Card, Empty, ErrorNote, ErrorState, Field,
+	Modal, MonoId, PageHeader, SkeletonTable, Table, useNotice,
 } from "../../ui";
 
 const AGENT_SCOPES = ["mcp:invoke", "agent:delegate"];
@@ -33,13 +33,12 @@ interface DelegationRow {
 
 export function Agents() {
 	const t = useT();
-	const toast = useToast();
+	const notice = useNotice();
 	const [items, setItems] = useState<AgentRow[] | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
 	const [creating, setCreating] = useState(false);
-	const [revokeTarget, setRevokeTarget] = useState<AgentRow | null>(null);
-	const [revokeBusy, setRevokeBusy] = useState(false);
+	const [revoking, setRevoking] = useState(false);
 
 	const reload = () => api<{ items: AgentRow[] }>("/api/v1/agents")
 		.then(result => { setItems(result.items ?? []); setError(null); })
@@ -53,22 +52,36 @@ export function Agents() {
 		setError(null);
 		try {
 			await action();
-			if (successMessage) toast(successMessage);
+			if (successMessage) notice.toast("success", successMessage);
 			await reload();
 		} catch (cause) {
 			setError(cause instanceof Error ? cause.message : String(cause));
 		}
 	}
 
+	async function revoke(id: string) {
+		setError(null);
+		if (!(await notice.confirm({ title: t("Revoke this agent, its delegations and tokens?"), confirmLabel: t("Revoke") }))) return;
+		setRevoking(true);
+		try {
+			await del(`/api/v1/agents/${id}`);
+			notice.toast("success", t("Agent revoked."));
+			await reload();
+		} catch (cause) {
+			setError(cause instanceof Error ? cause.message : String(cause));
+		} finally {
+			setRevoking(false);
+		}
+	}
+
 	return (
 		<>
-			<div className="main-head fade-up">
-				<div>
-					<h1>{t("Agents")}</h1>
-					<p>{t("Agent instances acting on your behalf. Each one is pinned to an OAuth client and a DPoP key fingerprint.")}</p>
-				</div>
-				<Button kind="primary" onClick={() => setCreating(true)}>{t("Register agent")}</Button>
-			</div>
+			<PageHeader
+				title={t("Agents")}
+				subtitle={t("Agent instances acting on your behalf. Each one is pinned to an OAuth client and a DPoP key fingerprint.")}
+				crumbs={[{ label: t("Agents") }]}
+				actions={<Button kind="primary" onClick={() => setCreating(true)}>{t("Register agent")}</Button>}
+			/>
 			<ErrorNote message={items === null && error ? null : error} />
 			<Card>
 				{items === null ? (error
@@ -89,7 +102,7 @@ export function Agents() {
 								<td className="muted"><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
 								<td className="right">
 									{row.status === "active" && (
-										<Button kind="danger" onClick={() => setRevokeTarget(row)}>{t("Revoke")}</Button>
+										<Button kind="danger" disabled={revoking} onClick={() => void revoke(row.id)}>{t("Revoke")}</Button>
 									)}
 								</td>
 							</tr>
@@ -97,30 +110,11 @@ export function Agents() {
 					</Table>
 				)}
 			</Card>
-			{revokeTarget && (
-				<Confirm
-					open
-					title={t("Revoke this agent, its delegations and tokens?")}
-					confirmLabel={t("Revoke")}
-					busy={revokeBusy}
-					onConfirm={() => {
-						setRevokeBusy(true);
-						void run(async () => {
-							await del(`/api/v1/agents/${revokeTarget.id}`);
-							toast(t("Agent revoked."));
-						}).finally(() => {
-							setRevokeBusy(false);
-							setRevokeTarget(null);
-						});
-					}}
-					onCancel={() => setRevokeTarget(null)}
-				/>
-			)}
 			{creating && (
 				<AgentForm onClose={() => setCreating(false)} onSave={input => run(async () => {
 					await post("/api/v1/agents", input);
 					setCreating(false);
-					toast(t("Agent registered."));
+					notice.toast("success", t("Agent registered."));
 				})} />
 			)}
 		</>
@@ -172,14 +166,13 @@ function AgentForm(props: { onClose: () => void; onSave: (input: { name: string;
 
 export function Delegations() {
 	const t = useT();
-	const toast = useToast();
+	const notice = useNotice();
 	const [items, setItems] = useState<DelegationRow[] | null>(null);
 	const [agents, setAgents] = useState<AgentRow[]>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
 	const [creating, setCreating] = useState(false);
-	const [revokeTarget, setRevokeTarget] = useState<DelegationRow | null>(null);
-	const [revokeBusy, setRevokeBusy] = useState(false);
+	const [revoking, setRevoking] = useState(false);
 
 	const reload = () => api<{ items: DelegationRow[] }>("/api/v1/delegations")
 		.then(result => { setItems(result.items ?? []); setError(null); })
@@ -194,22 +187,36 @@ export function Delegations() {
 		setError(null);
 		try {
 			await action();
-			if (successMessage) toast(successMessage);
+			if (successMessage) notice.toast("success", successMessage);
 			await reload();
 		} catch (cause) {
 			setError(cause instanceof Error ? cause.message : String(cause));
 		}
 	}
 
+	async function revoke(id: string) {
+		setError(null);
+		if (!(await notice.confirm({ title: t("Revoke this delegation (and any children)?"), confirmLabel: t("Revoke") }))) return;
+		setRevoking(true);
+		try {
+			await del(`/api/v1/delegations/${id}`);
+			notice.toast("success", t("Delegation revoked."));
+			await reload();
+		} catch (cause) {
+			setError(cause instanceof Error ? cause.message : String(cause));
+		} finally {
+			setRevoking(false);
+		}
+	}
+
 	return (
 		<>
-			<div className="main-head fade-up">
-				<div>
-					<h1>{t("Delegations")}</h1>
-					<p>{t("Explicit consent for an agent to act as you on one resource. Authority only ever narrows, up to 4 hops.")}</p>
-				</div>
-				<Button kind="primary" onClick={() => setCreating(true)}>{t("New delegation")}</Button>
-			</div>
+			<PageHeader
+				title={t("Delegations")}
+				subtitle={t("Explicit consent for an agent to act as you on one resource. Authority only ever narrows, up to 4 hops.")}
+				crumbs={[{ label: t("Agents") }, { label: t("Delegations") }]}
+				actions={<Button kind="primary" onClick={() => setCreating(true)}>{t("New delegation")}</Button>}
+			/>
 			<ErrorNote message={items === null && error ? null : error} />
 			<Card>
 				{items === null ? (error
@@ -231,7 +238,7 @@ export function Delegations() {
 								<td>{row.revokedAt ? <Badge tone="bad">{t("revoked")}</Badge> : row.expiresAt < Date.now() ? <Badge tone="warn">{t("expired")}</Badge> : <Badge tone="ok">{t("live")}</Badge>}</td>
 								<td className="right">
 									{!row.revokedAt && (
-										<Button kind="danger" onClick={() => setRevokeTarget(row)}>{t("Revoke")}</Button>
+										<Button kind="danger" disabled={revoking} onClick={() => void revoke(row.id)}>{t("Revoke")}</Button>
 									)}
 								</td>
 							</tr>
@@ -239,30 +246,11 @@ export function Delegations() {
 					</Table>
 				)}
 			</Card>
-			{revokeTarget && (
-				<Confirm
-					open
-					title={t("Revoke this delegation (and any children)?")}
-					confirmLabel={t("Revoke")}
-					busy={revokeBusy}
-					onConfirm={() => {
-						setRevokeBusy(true);
-						void run(async () => {
-							await del(`/api/v1/delegations/${revokeTarget.id}`);
-							toast(t("Delegation revoked."));
-						}).finally(() => {
-							setRevokeBusy(false);
-							setRevokeTarget(null);
-						});
-					}}
-					onCancel={() => setRevokeTarget(null)}
-				/>
-			)}
 			{creating && (
 				<DelegationForm agents={agents} onClose={() => setCreating(false)} onSave={input => run(async () => {
 					await post("/api/v1/delegations", input);
 					setCreating(false);
-					toast(t("Delegation granted."));
+					notice.toast("success", t("Delegation granted."));
 				})} />
 			)}
 		</>

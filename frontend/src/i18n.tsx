@@ -259,6 +259,16 @@ export const zh: Record<string, string> = {
 	// redesign: users
 	"Suspend user": "封禁用户",
 	"Suspending revokes this user's agents, delegations, clients and keys.": "封禁将同时吊销该用户的代理、委托、客户端和密钥。",
+
+	// notice stack + page chrome
+	"Dismiss": "知道了",
+	"Breadcrumb": "面包屑导航",
+	"Admin": "管理",
+	"Back": "返回",
+	"Profile": "资料",
+	"User ID": "用户 ID",
+	"Email address": "邮箱地址",
+	"Ban and revoke everything this user controls.": "封禁并吊销该用户控制的一切。",
 };
 
 interface LangContextValue {

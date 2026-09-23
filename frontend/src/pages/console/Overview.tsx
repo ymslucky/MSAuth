@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, fmtDate, fullTimestamp } from "../../api";
-import { useT } from "../../i18n";
-import { Card, Empty, ErrorState, MonoId, SkeletonStats, SkeletonTable, Stat } from "../../ui";
+import { LanguageToggle, useT } from "../../i18n";
+import { mountLedgerArt } from "../../art";
+import { Card, Empty, ErrorState, MonoId, Skeleton, SkeletonStats, SkeletonTable, Stat } from "../../ui";
 
 export interface OverviewResponse {
 	counts: { applications: number; agents: number; delegations: number; keys: number };
@@ -17,6 +18,7 @@ export default function Overview() {
 	const [error, setError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
 	const [loading, setLoading] = useState(true);
+	const heroRef = useRef<HTMLCanvasElement>(null);
 
 	useEffect(() => {
 		setLoading(true);
@@ -26,13 +28,26 @@ export default function Overview() {
 			.catch(cause => { setError(cause instanceof Error ? cause.message : String(cause)); setLoading(false); });
 	}, [attempt]);
 
+	useEffect(() => {
+		const canvas = heroRef.current;
+		if (!canvas) return undefined;
+		return mountLedgerArt(canvas);
+	}, []);
+
 	const reload = () => setAttempt(value => value + 1);
 
 	if (error && !data) return <ErrorState message={error} onRetry={reload} />;
 	if (loading && !data) {
 		return (
 			<>
-				<div className="main-head"><div><h1><span className="muted">…</span></h1></div></div>
+				<section className="hero fade-up" aria-hidden="true">
+					<canvas ref={heroRef} />
+					<div className="hero-copy">
+						<p className="hero-eyebrow">{t("Overview")}</p>
+						<Skeleton style={{ width: 250, height: 28 }} />
+						<Skeleton style={{ width: 190, height: 17, marginTop: 9 }} />
+					</div>
+				</section>
 				<SkeletonStats />
 				<Card><SkeletonTable rows={4} /></Card>
 			</>
@@ -43,13 +58,16 @@ export default function Overview() {
 
 	return (
 		<>
-			<div className="main-head fade-up">
-				<div>
+			<section className="hero fade-up" aria-label={t("Overview")}>
+				<canvas ref={heroRef} aria-hidden="true" />
+				<div className="hero-copy">
+					<p className="hero-eyebrow">{t("Overview")}</p>
 					<h1>{t("Welcome, {name}", { name: data.user.name })}</h1>
 					<p className="serif">{t("Your identity platform at a glance.")}</p>
 				</div>
-			</div>
-			<div className="stat-grid">
+				<div className="hero-toggle"><LanguageToggle /></div>
+			</section>
+			<div className="stat-grid hero-stats">
 				{[
 					{ label: t("Applications"), value: data.counts.applications },
 					{ label: t("Active agents"), value: data.counts.agents },

@@ -1,5 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { useT } from "./i18n";
+import { CheckCircle2, CircleAlert, Info, X } from "lucide-react";
+import { useT, LanguageToggle } from "./i18n";
+import { Link } from "./router";
+import { capVisibleToasts, noticeTtl, type NoticeTone } from "./notice";
 
 export function Card(props: { title?: string; actions?: ReactNode; children: ReactNode }) {
 	return (
@@ -84,10 +87,10 @@ export function Empty(props: { glyph?: string; children: ReactNode; action?: Rea
 	);
 }
 
-export function Table(props: { head: string[]; rightCols?: number[]; children: ReactNode }) {
+export function Table(props: { head: string[]; rightCols?: number[]; className?: string; children: ReactNode }) {
 	return (
 		<div className="table-wrap">
-			<table>
+			<table className={props.className}>
 				<thead>
 					<tr>{props.head.map((head, index) => (
 						<th key={head} className={props.rightCols?.includes(index) ? "right" : undefined}>{head}</th>
@@ -95,6 +98,44 @@ export function Table(props: { head: string[]; rightCols?: number[]; children: R
 				</thead>
 				<tbody>{props.children}</tbody>
 			</table>
+		</div>
+	);
+}
+
+/**
+ * Page title row: optional breadcrumb (Console → section → page), title,
+ * subtitle — with the language toggle and page actions right-aligned.
+ */
+export function PageHeader(props: {
+	title: ReactNode;
+	subtitle?: ReactNode;
+	crumbs?: { label: string; to?: string }[];
+	actions?: ReactNode;
+}) {
+	const t = useT();
+	const crumbs = props.crumbs ?? [];
+	const last = crumbs.length - 1;
+	return (
+		<div className="main-head fade-up">
+			<div>
+				{crumbs.length > 0 && (
+					<nav className="crumbs" aria-label={t("Breadcrumb")}>
+						{crumbs.map((crumb, index) => (
+							<span className="crumb" key={index}>
+								{crumb.to
+									? <Link to={crumb.to}>{crumb.label}</Link>
+									: <span aria-current={index === last ? "page" : undefined}>{crumb.label}</span>}
+							</span>
+						))}
+					</nav>
+				)}
+				<h1>{props.title}</h1>
+				{props.subtitle && <p>{props.subtitle}</p>}
+			</div>
+			<div className="head-side">
+				{props.actions}
+				<LanguageToggle />
+			</div>
 		</div>
 	);
 }
@@ -222,34 +263,126 @@ export function MonoId(props: { value: string; wide?: boolean }) {
 	);
 }
 
-/* ---------- toasts ---------- */
+/* ---------- unified notice stack: toasts + confirm promise ---------- */
 
-type ToastTone = "ok" | "bad";
-interface ToastItem { id: number; message: string; tone: ToastTone }
+interface ToastItem {
+	id: number;
+	tone: NoticeTone;
+	text: string;
+	actionLabel?: string;
+	onAction?: () => void;
+}
 
-const ToastContext = createContext<(message: string, tone?: ToastTone) => void>(() => undefined);
+const TOAST_ICONS: Record<NoticeTone, typeof CheckCircle2> = {
+	success: CheckCircle2,
+	error: CircleAlert,
+	info: Info,
+};
 
-let toastSeq = 0;
+export interface ConfirmOptions {
+	title: string;
+	body?: string;
+	confirmLabel: string;
+}
 
-export function ToastProvider(props: { children: ReactNode }) {
-	const [items, setItems] = useState<ToastItem[]>([]);
-	const push = useCallback((message: string, tone: ToastTone = "ok") => {
-		const id = ++toastSeq;
-		setItems(current => [...current, { id, message, tone }]);
-		window.setTimeout(() => {
-			setItems(current => current.filter(item => item.id !== id));
-		}, 3500);
+export interface NoticeApi {
+	/** Push a success/error/info toast (auto-dismisses; click to dismiss). */
+	toast: (tone: NoticeTone, text: string, opts?: { actionLabel?: string; onAction?: () => void }) => void;
+	/** Promise-based destructive-action dialog — resolves true only on confirm. */
+	confirm: (opts: ConfirmOptions) => Promise<boolean>;
+}
+
+const NoticeContext = createContext<NoticeApi>({
+	toast: () => undefined,
+	confirm: () => Promise.resolve(false),
+});
+
+let noticeSeq = 0;
+
+export function NoticeProvider(props: { children: ReactNode }) {
+	const t = useT();
+	const [toasts, setToasts] = useState<ToastItem[]>([]);
+	const [confirmState, setConfirmState] = useState<ConfirmOptions | null>(null);
+	const confirmResolve = useRef<((confirmed: boolean) => void) | null>(null);
+	const timers = useRef(new Map<number, number>());
+
+	const dismiss = useCallback((id: number) => {
+		const timer = timers.current.get(id);
+		if (timer !== undefined) {
+			window.clearTimeout(timer);
+			timers.current.delete(id);
+		}
+		setToasts(current => current.filter(item => item.id !== id));
 	}, []);
+
+	useEffect(() => () => {
+		for (const timer of timers.current.values()) window.clearTimeout(timer);
+		timers.current.clear();
+	}, []);
+
+	const toast = useCallback<NoticeApi["toast"]>((tone, text, opts) => {
+		const id = ++noticeSeq;
+		setToasts(current => capVisibleToasts([...current, { id, tone, text, ...opts }]));
+		timers.current.set(id, window.setTimeout(() => dismiss(id), noticeTtl(tone)));
+	}, [dismiss]);
+
+	const confirm = useCallback<NoticeApi["confirm"]>(opts =>
+		new Promise<boolean>(resolve => {
+			confirmResolve.current = resolve;
+			setConfirmState(opts);
+		}), []);
+
+	const settleConfirm = useCallback((confirmed: boolean) => {
+		confirmResolve.current?.(confirmed);
+		confirmResolve.current = null;
+		setConfirmState(null);
+	}, []);
+
 	return (
-		<ToastContext.Provider value={push}>
+		<NoticeContext.Provider value={{ toast, confirm }}>
 			{props.children}
 			<div className="toaster" role="status" aria-live="polite">
-				{items.map(item => <div key={item.id} className={`toast ${item.tone}`}>{item.message}</div>)}
+				{toasts.map(item => {
+					const Icon = TOAST_ICONS[item.tone];
+					return (
+						<div key={item.id} className={`toast ${item.tone}`} onClick={() => dismiss(item.id)}>
+							<Icon size={15} strokeWidth={2} aria-hidden />
+							<span className="toast-text">{item.text}</span>
+							{item.actionLabel && (
+								<button
+									type="button"
+									className="toast-action"
+									onClick={event => {
+										event.stopPropagation();
+										dismiss(item.id);
+										item.onAction?.();
+									}}
+								>{item.actionLabel}</button>
+							)}
+							<button
+								type="button"
+								className="toast-close"
+								aria-label={t("Dismiss")}
+								onClick={event => { event.stopPropagation(); dismiss(item.id); }}
+							><X size={13} strokeWidth={2} aria-hidden /></button>
+						</div>
+					);
+				})}
 			</div>
-		</ToastContext.Provider>
+			{confirmState && (
+				<Confirm
+					open
+					title={confirmState.title}
+					body={confirmState.body}
+					confirmLabel={confirmState.confirmLabel}
+					onConfirm={() => settleConfirm(true)}
+					onCancel={() => settleConfirm(false)}
+				/>
+			)}
+		</NoticeContext.Provider>
 	);
 }
 
-export function useToast() {
-	return useContext(ToastContext);
+export function useNotice(): NoticeApi {
+	return useContext(NoticeContext);
 }

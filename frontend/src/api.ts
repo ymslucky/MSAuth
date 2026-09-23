@@ -47,3 +47,26 @@ export function isValidExpiry(value: string, now: number = Date.now()): boolean 
 	if (Number.isNaN(time)) return false;
 	return time >= now + 60_000 && time <= now + 30 * 86_400_000;
 }
+
+const DETAIL_SUMMARY_CAP = 240;
+
+/**
+ * Audit `detail` JSON → compact human-readable summary for table cells
+ * ("key: value · key: value"). Non-JSON details pass through trimmed;
+ * empty objects render as "" so cells fall back to an em dash.
+ */
+export function summarizeAuditDetail(detail: string): string {
+	const trimmed = detail.trim();
+	if (!trimmed || trimmed === "{}") return "";
+	try {
+		const parsed: unknown = JSON.parse(trimmed);
+		if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return trimmed;
+		const summary = Object.entries(parsed as Record<string, unknown>)
+			.filter(([, value]) => value !== undefined && value !== null && value !== "")
+			.map(([key, value]) => `${key}: ${typeof value === "string" ? value : JSON.stringify(value)}`)
+			.join(" · ");
+		return summary.length > DETAIL_SUMMARY_CAP ? `${summary.slice(0, DETAIL_SUMMARY_CAP)}…` : summary;
+	} catch {
+		return trimmed.length > DETAIL_SUMMARY_CAP ? `${trimmed.slice(0, DETAIL_SUMMARY_CAP)}…` : trimmed;
+	}
+}

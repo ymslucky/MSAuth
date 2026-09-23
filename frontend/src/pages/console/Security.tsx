@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { api, del, fmtDate, fullTimestamp, post } from "../../api";
+import { api, del, fmtDate, fullTimestamp, post, summarizeAuditDetail } from "../../api";
 import { useT } from "../../i18n";
 import {
-	Badge, Button, Card, Confirm, Empty, ErrorNote, ErrorState, Field,
-	MonoId, SkeletonTable, Table, useToast,
+	Badge, Button, Card, Empty, ErrorNote, ErrorState, Field,
+	MonoId, PageHeader, SkeletonTable, Table, useNotice,
 } from "../../ui";
 
 interface AuditRow {
@@ -39,12 +39,11 @@ export function Audit(props: { operator: boolean }) {
 	const pages = Math.max(1, Math.ceil(total / 30));
 	return (
 		<>
-			<div className="main-head fade-up">
-				<div>
-					<h1>{t("Audit log")}</h1>
-					<p>{props.operator ? t("Every mutation on the platform, filterable by actor or resource.") : t("Every mutation you performed.")}</p>
-				</div>
-			</div>
+			<PageHeader
+				title={t("Audit log")}
+				subtitle={props.operator ? t("Every mutation on the platform, filterable by actor or resource.") : t("Every mutation you performed.")}
+				crumbs={[{ label: t("Security") }, { label: t("Audit log") }]}
+			/>
 			{error && !loading
 				? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
 				: (
@@ -59,18 +58,26 @@ export function Audit(props: { operator: boolean }) {
 							<Empty glyph="¶">{t("Nothing recorded for this filter.")}</Empty>
 						) : (
 							<>
-								<Table head={[t("When"), t("Actor"), t("Action"), t("Resource"), t("Detail")]}>
-									{items.map(row => (
-										<tr key={row.id}>
-											<td className="muted" style={{ whiteSpace: "nowrap" }}><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
-											<td><MonoId value={row.actorId} /></td>
-											<td><code>{row.action}</code></td>
-											<td>{row.resourceType} <MonoId value={row.resourceId} /></td>
-											<td className="mono muted">
-												{row.detail !== "{}" && <span title={row.detail}>{row.detail.length > 120 ? `${row.detail.slice(0, 120)}…` : row.detail}</span>}
-											</td>
-										</tr>
-									))}
+								<Table className="audit-table" head={[t("When"), t("Actor"), t("Action"), t("Resource"), t("Detail")]}>
+									{items.map(row => {
+										const summary = summarizeAuditDetail(row.detail);
+										return (
+											<tr key={row.id}>
+												<td className="col-when"><time title={fullTimestamp(row.createdAt)}>{fmtDate(row.createdAt)}</time></td>
+												<td><MonoId value={row.actorId} /></td>
+												<td className="col-action"><Badge>{row.action}</Badge></td>
+												<td className="col-resource">
+													<span className="cell-res" title={`${row.resourceType} ${row.resourceId}`}>
+														<span className="res-type">{row.resourceType}</span>
+														<MonoId value={row.resourceId} />
+													</span>
+												</td>
+												<td className="col-detail" title={row.detail !== "{}" ? row.detail : undefined}>
+													{summary || <span className="muted">—</span>}
+												</td>
+											</tr>
+										);
+									})}
 								</Table>
 								{pages > 1 && (
 									<div className="btn-row" style={{ marginTop: 14 }}>
@@ -97,13 +104,12 @@ interface SessionRow {
 
 export function Sessions() {
 	const t = useT();
-	const toast = useToast();
+	const notice = useNotice();
 	const [items, setItems] = useState<SessionRow[] | null>(null);
 	const [currentId, setCurrentId] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
-	const [revokeTarget, setRevokeTarget] = useState<SessionRow | null>(null);
-	const [revokeBusy, setRevokeBusy] = useState(false);
+	const [revoking, setRevoking] = useState(false);
 
 	const reload = () => api<{ items: SessionRow[]; currentId: string }>("/api/v1/sessions")
 		.then(result => { setItems(result.items ?? []); setCurrentId(result.currentId ?? ""); setError(null); })
@@ -115,24 +121,27 @@ export function Sessions() {
 
 	async function revoke(id: string) {
 		setError(null);
+		if (!(await notice.confirm({ title: t("Revoke this session?"), confirmLabel: t("Revoke") }))) return;
+		setRevoking(true);
 		try {
 			await del(`/api/v1/sessions/${id}`);
 			if (id === currentId) { window.location.href = "/login"; return; }
-			toast(t("Session revoked."));
+			notice.toast("success", t("Session revoked."));
 			await reload();
 		} catch (cause) {
 			setError(cause instanceof Error ? cause.message : String(cause));
+		} finally {
+			setRevoking(false);
 		}
 	}
 
 	return (
 		<>
-			<div className="main-head fade-up">
-				<div>
-					<h1>{t("Sessions")}</h1>
-					<p>{t("Active browser sessions on your account.")}</p>
-				</div>
-			</div>
+			<PageHeader
+				title={t("Sessions")}
+				subtitle={t("Active browser sessions on your account.")}
+				crumbs={[{ label: t("Security") }, { label: t("Sessions") }]}
+			/>
 			<ErrorNote message={items === null && error ? null : error} />
 			<Card>
 				{items === null ? (error
@@ -150,7 +159,7 @@ export function Sessions() {
 								<td className="muted"><time title={fullTimestamp(row.expiresAt)}>{fmtDate(row.expiresAt)}</time></td>
 								<td className="right">
 									{row.id === currentId ? <Badge>{t("current")}</Badge> : (
-										<Button kind="danger" onClick={() => setRevokeTarget(row)}>{t("Revoke")}</Button>
+										<Button kind="danger" disabled={revoking} onClick={() => void revoke(row.id)}>{t("Revoke")}</Button>
 									)}
 								</td>
 							</tr>
@@ -158,22 +167,6 @@ export function Sessions() {
 					</Table>
 				)}
 			</Card>
-			{revokeTarget && (
-				<Confirm
-					open
-					title={t("Revoke this session?")}
-					confirmLabel={t("Revoke")}
-					busy={revokeBusy}
-					onConfirm={() => {
-						setRevokeBusy(true);
-						void revoke(revokeTarget.id).finally(() => {
-							setRevokeBusy(false);
-							setRevokeTarget(null);
-						});
-					}}
-					onCancel={() => setRevokeTarget(null)}
-				/>
-			)}
 		</>
 	);
 }
@@ -188,7 +181,7 @@ interface AlertRow {
 
 export function Alerts() {
 	const t = useT();
-	const toast = useToast();
+	const notice = useNotice();
 	const [items, setItems] = useState<AlertRow[] | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
@@ -205,19 +198,18 @@ export function Alerts() {
 	function acknowledge(id: string) {
 		setAcking(id);
 		void post(`/api/v1/alerts/${id}/acknowledge`)
-			.then(() => { toast(t("Alert acknowledged.")); return reload(); })
+			.then(() => { notice.toast("success", t("Alert acknowledged.")); return reload(); })
 			.catch(cause => setError(cause instanceof Error ? cause.message : String(cause)))
 			.finally(() => setAcking(null));
 	}
 
 	return (
 		<>
-			<div className="main-head fade-up">
-				<div>
-					<h1>{t("Security alerts")}</h1>
-					<p>{t("Sign-in anomalies and token events for your account.")}</p>
-				</div>
-			</div>
+			<PageHeader
+				title={t("Security alerts")}
+				subtitle={t("Sign-in anomalies and token events for your account.")}
+				crumbs={[{ label: t("Security") }, { label: t("Alerts") }]}
+			/>
 			<ErrorNote message={items === null && error ? null : error} />
 			{items === null && error
 				? <ErrorState message={error} onRetry={() => setAttempt(value => value + 1)} />
