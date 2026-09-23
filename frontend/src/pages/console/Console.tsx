@@ -1,19 +1,50 @@
 import { useEffect, useState } from "react";
+import {
+	AppWindow, BellRing, Bot, Earth, KeyRound, LayoutDashboard, MonitorSmartphone,
+	ScrollText, Share2, SlidersHorizontal, Users, Globe,
+} from "lucide-react";
 import { api } from "../../api";
 import { Link, usePath } from "../../router";
 import Overview, { type OverviewResponse } from "./Overview";
 import { Applications, Keys, Resources } from "./Developer";
 import { Agents, Delegations } from "./Agents";
 import { Audit, Sessions, Alerts } from "./Security";
-import { Users, Settings, Domains } from "./Admin";
+import { Users as UsersPage, Settings, Domains } from "./Admin";
 
 const NAV = [
-	{ group: "", items: [["Overview", "/"]] },
-	{ group: "Developer", items: [["Applications", "/applications"], ["API keys", "/keys"], ["Resources", "/resources"]] },
-	{ group: "Agents", items: [["Agents", "/agents"], ["Delegations", "/delegations"]] },
-	{ group: "Security", items: [["Audit log", "/audit"], ["Sessions", "/sessions"], ["Alerts", "/alerts"]] },
-	{ group: "Platform", items: [["Users", "/users"], ["Settings", "/settings"], ["Domains", "/domains"]] },
-] as const;
+	{ group: "", items: [{ label: "Overview", to: "/", icon: LayoutDashboard }] },
+	{
+		group: "Developer",
+		items: [
+			{ label: "Applications", to: "/applications", icon: AppWindow },
+			{ label: "API keys", to: "/keys", icon: KeyRound },
+			{ label: "Resources", to: "/resources", icon: Globe },
+		],
+	},
+	{
+		group: "Agents",
+		items: [
+			{ label: "Agents", to: "/agents", icon: Bot },
+			{ label: "Delegations", to: "/delegations", icon: Share2 },
+		],
+	},
+	{
+		group: "Security",
+		items: [
+			{ label: "Audit log", to: "/audit", icon: ScrollText },
+			{ label: "Sessions", to: "/sessions", icon: MonitorSmartphone },
+			{ label: "Alerts", to: "/alerts", icon: BellRing },
+		],
+	},
+	{
+		group: "Platform",
+		items: [
+			{ label: "Users", to: "/users", icon: Users },
+			{ label: "Settings", to: "/settings", icon: SlidersHorizontal },
+			{ label: "Domains", to: "/domains", icon: Earth },
+		],
+	},
+];
 
 const OPERATOR_ONLY = ["/users", "/settings"];
 
@@ -47,13 +78,16 @@ export default function Console() {
 	return (
 		<div className="shell">
 			<aside className="side">
-				<div className="brand">MSAuth</div>
+				<div className="brand"><img src="/favicon.svg" alt="" />MSAuth</div>
 				<nav>
 					{NAV.map(section => (
 						<div key={section.group}>
 							{section.group !== "" && <div className="group">{section.group}</div>}
-							{section.items.map(([label, to]) => (
-								<Link key={to} to={to} className={path === to ? "active" : ""}>{label}</Link>
+							{section.items.map(item => (
+								<Link key={item.to} to={item.to} className={path === item.to ? "active" : ""}>
+									<item.icon size={17} strokeWidth={1.75} aria-hidden />
+									{item.label}
+								</Link>
 							))}
 						</div>
 					))}
@@ -84,7 +118,7 @@ function renderPage(path: string, context: ConsoleContext) {
 		case "/audit": return <Audit operator={context.operator} />;
 		case "/sessions": return <Sessions />;
 		case "/alerts": return <Alerts />;
-		case "/users": return <Users />;
+		case "/users": return <UsersPage />;
 		case "/settings": return <Settings />;
 		case "/domains": return <Domains />;
 		default:

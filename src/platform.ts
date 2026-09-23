@@ -14,7 +14,7 @@ const app = new Hono<AppEnv>();
 app.use("*", secureHeaders({
   contentSecurityPolicy: {
     defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'"],
-    imgSrc: ["'self'", "data:"], connectSrc: ["'self'"], frameAncestors: ["'none'"],
+    imgSrc: ["'self'", "data:"], fontSrc: ["'self'"], connectSrc: ["'self'"], frameAncestors: ["'none'"],
     objectSrc: ["'none'"], baseUri: ["'self'"], formAction: ["'self'"],
   },
   referrerPolicy: "no-referrer",

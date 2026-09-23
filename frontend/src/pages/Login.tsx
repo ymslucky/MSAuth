@@ -48,6 +48,7 @@ export default function Login() {
 				}}
 			>
 				<div className="brand">
+					<img src="/favicon.svg" alt="" />
 					<h1>MSAuth</h1>
 				</div>
 				<p className="auth-sub">Sign in to your identity console.</p>
@@ -64,7 +65,7 @@ export default function Login() {
 				</button>
 				<div className="divider">or</div>
 				<button className="btn block" type="button" disabled={busy} onClick={() => void signInGithub()}>
-					Continue with GitHub
+					<img src="/github.svg" alt="" width={17} height={17} /> Continue with GitHub
 				</button>
 				{error && <p className="error-note" role="alert">{error}</p>}
 			</form>

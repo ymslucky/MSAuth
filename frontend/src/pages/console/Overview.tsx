@@ -45,7 +45,7 @@ export default function Overview() {
 							<div className="stat" key={row.day}>
 								<strong>{row.count}</strong>
 								<span>{row.day}</span>
-								<div style={{ height: 4, background: "var(--accent)", width: `${(row.count / peak) * 100}%`, borderRadius: 2, marginTop: 6 }} />
+								<div className="bar" style={{ width: `${(row.count / peak) * 100}%` }} />
 							</div>
 						))}
 					</div>
