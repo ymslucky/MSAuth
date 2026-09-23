@@ -10,7 +10,7 @@ await build({
 });
 const { authPlugins } = await import(pathToFileURL(resolve(".wrangler/schema-config.mjs")).href);
 const schema = getSchema({
-  plugins: authPlugins("https://auth.example.com"),
+  plugins: authPlugins("https://auth.test"),
   rateLimit: { storage: "database" },
 });
 const quote = value => '"' + value.replaceAll('"', '""') + '"';

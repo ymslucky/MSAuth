@@ -4,7 +4,7 @@ import { AgentClient, createProtectedResourceMetadata, authorizeToolCall } from 
 
 describe("runtime-independent Agent SDK", () => {
   it("creates PKCE authorization with explicit resource and DPoP thumbprint", async () => {
-    const agent = await AgentClient.create({ issuer: "https://auth.example.com", clientId: "cli", resource: "https://mcp.example.com/mcp" });
+    const agent = await AgentClient.create({ issuer: "https://auth.test", clientId: "cli", resource: "https://mcp.example.com/mcp" });
     const flow = await agent.authorize("http://127.0.0.1:4444/callback", ["mcp:invoke"]);
     const url = new URL(flow.url);
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
@@ -14,7 +14,7 @@ describe("runtime-independent Agent SDK", () => {
     expect(flow.verifier.length).toBeGreaterThanOrEqual(43);
   });
   it("signs request-bound proofs without exposing private key material", async () => {
-    const agent = await AgentClient.create({ issuer: "https://auth.example.com", clientId: "cli", resource: "https://mcp.example.com/mcp" });
+    const agent = await AgentClient.create({ issuer: "https://auth.test", clientId: "cli", resource: "https://mcp.example.com/mcp" });
     const proof = await agent.proof("POST", "https://mcp.example.com/mcp?x=1", "token");
     expect(decodeProtectedHeader(proof).typ).toBe("dpop+jwt");
     expect(decodeProtectedHeader(proof).jwk).not.toHaveProperty("d");
@@ -22,17 +22,17 @@ describe("runtime-independent Agent SDK", () => {
     expect(decodeJwt(proof).ath).toBeTruthy();
   });
   it("does not send an access token to another resource", async () => {
-    const agent = await AgentClient.create({ issuer: "https://auth.example.com", clientId: "cli", resource: "https://mcp.example.com/mcp" });
+    const agent = await AgentClient.create({ issuer: "https://auth.test", clientId: "cli", resource: "https://mcp.example.com/mcp" });
     await expect(agent.fetch("https://evil.example.com/")).rejects.toThrow();
   });
   it("validates state before sending the authorization code", async () => {
-    const agent = await AgentClient.create({ issuer: "https://auth.example.com", clientId: "cli", resource: "https://mcp.example.com/mcp" });
+    const agent = await AgentClient.create({ issuer: "https://auth.test", clientId: "cli", resource: "https://mcp.example.com/mcp" });
     const flow = await agent.authorize("http://127.0.0.1:4444/callback", ["mcp:invoke"]);
     await expect(agent.complete("http://127.0.0.1:4444/callback?state=wrong&code=x", flow)).rejects.toThrow();
   });
   it("publishes MCP protected-resource metadata without accepting arbitrary issuers", () => {
-    const metadata = createProtectedResourceMetadata("https://mcp.example.com/mcp", "https://auth.example.com");
-    expect(metadata.authorization_servers).toEqual(["https://auth.example.com"]);
+    const metadata = createProtectedResourceMetadata("https://mcp.example.com/mcp", "https://auth.test");
+    expect(metadata.authorization_servers).toEqual(["https://auth.test"]);
     expect(metadata.resource).toBe("https://mcp.example.com/mcp");
   });
   it("enforces tool, action, audience and expiry at the resource server", () => {

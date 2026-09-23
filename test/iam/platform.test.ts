@@ -9,7 +9,7 @@ import { calculateJwkThumbprint, decodeJwt, exportJWK, generateKeyPair, SignJWT 
 import { EXCHANGE_GRANT } from "../../src/agent/exchange";
 
 const bindings = env as unknown as Bindings;
-const origin = "https://auth.example.com";
+const origin = "https://auth.test"; // reserved test domain, matches BETTER_AUTH_URL in vitest.config.mts
 let ownerCookie = "";
 let otherCookie = "";
 let ownerId = "";

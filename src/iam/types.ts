@@ -2,7 +2,6 @@ import type { createAuth } from "./auth";
 
 export interface Bindings {
   AUTH_DB: D1Database;
-  AUTH_STORAGE: KVNamespace;
   ASSETS?: Fetcher;
   RATE_LIMITER: RateLimit;
   BETTER_AUTH_URL: string;

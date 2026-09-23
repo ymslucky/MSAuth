@@ -1,18 +1,7 @@
 {
 	"name": "msauth",
-	"description": "Deploy an OpenAuth server on Cloudflare Workers.",
-	"cloudflare": {
-		"label": "OpenAuth Server",
-		"products": [
-			"Workers",
-			"D1",
-			"KV"
-		],
-		"categories": [],
-		"preview_icon_url": "https://imagedelivery.net/wSMYJvS3Xw-n339CbDyDIA/5764e3ad-0e07-4873-1139-39ba4e6ab200/public",
-		"preview_image_url": "https://imagedelivery.net/wSMYJvS3Xw-n339CbDyDIA/40ce8067-10e9-4bc8-d296-fe18b3c05d00/preview",
-		"publish": true
-	},
+	"description": "IAM platform for individuals with native AI-Agent/MCP authorization, on Cloudflare Workers.",
+	"private": true,
 	"dependencies": {
 		"@better-auth/api-key": "1.7.5",
 		"@better-auth/oauth-provider": "1.7.5",
@@ -35,7 +24,6 @@
 		"vitest": "^4.1.11",
 		"wrangler": "4.127.0"
 	},
-	"private": true,
 	"scripts": {
 		"cf-typegen": "wrangler types",
 		"check": "tsc && tsc -p frontend && npm run build:spa && wrangler deploy --dry-run",

@@ -31,12 +31,6 @@
 			"secret_name": "ADMIN_EMAIL"
 		}
 	],
-	"kv_namespaces": [
-		{
-			"binding": "AUTH_STORAGE",
-			"id": "a11ecdbbb85a465c944dc9b15523d1eb"
-		}
-	],
 	"d1_databases": [
 		{
 			"binding": "AUTH_DB",
