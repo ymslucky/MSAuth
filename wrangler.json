@@ -10,12 +10,18 @@
 		"BETTER_AUTH_URL": "https://auth.msxor.com"
 	},
 	"routes": [
-		{ "pattern": "auth.msxor.com", "custom_domain": true }
+		{
+			"pattern": "auth.msxor.com",
+			"custom_domain": true
+		}
 	],
 	"assets": {
 		"directory": "./frontend/dist",
 		"not_found_handling": "single-page-application",
-		"run_worker_first": ["/api/*", "/.well-known/*"]
+		"run_worker_first": [
+			"/api/*",
+			"/.well-known/*"
+		]
 	},
 	"secrets_store_secrets": [
 		{
@@ -38,15 +44,20 @@
 		{
 			"binding": "AUTH_DB",
 			"database_name": "msauth-db",
-			"database_id": "9f3f6e94-a8c3-4b85-a669-0184108ee034"
+			"database_id": "bf5101d7-8f93-451e-9c10-73150ccc1c05"
 		}
 	],
 	"ratelimits": [
 		{
 			"name": "RATE_LIMITER",
 			"namespace_id": "1001",
-			"simple": { "limit": 60, "period": 60 }
+			"simple": {
+				"limit": 60,
+				"period": 60
+			}
 		}
 	],
-	"compatibility_flags": ["nodejs_compat"]
+	"compatibility_flags": [
+		"nodejs_compat"
+	]
 }
