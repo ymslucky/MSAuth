@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Share2, ShieldOff } from "lucide-react";
-import { api, del, errorMessage, isValidExpiry, post } from "../../api";
+import { api, del, errorMessage, isValidExpiry, post, toDatetimeLocal } from "../../api";
 import { useT } from "../../i18n";
 import { navigate } from "../../router";
 import { useOptimisticList } from "../../optimistic";
 import { useTableState } from "../../table";
+import { buildAuthorizationDetail, parseListInput } from "../../rar";
 import {
 	Badge, Button, Card, EmptyState, ErrorState, Field,
 	MonoId, PageHeader, SkeletonTable, Table, TablePager, When,
@@ -15,6 +16,13 @@ import { usePaletteSource, type PaletteEntry } from "../../palette-ui";
 import type { AgentRow } from "./Agents";
 
 const AGENT_SCOPES = ["mcp:invoke", "agent:delegate"];
+
+interface ResourceRow {
+	id: string;
+	identifier: string;
+	name: string;
+	disabled: number | null;
+}
 
 interface DelegationRow {
 	id: string;
@@ -34,6 +42,7 @@ export function Delegations() {
 	const notice = useNotice();
 	const [items, setItems] = useState<DelegationRow[] | null>(null);
 	const [agents, setAgents] = useState<AgentRow[]>([]);
+	const [resources, setResources] = useState<ResourceRow[]>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
 	const [creating, setCreating] = useState(false);
@@ -45,6 +54,9 @@ export function Delegations() {
 		pageSize: 25,
 	});
 
+	// Parents for chaining: live, unexpired, with room for one more hop.
+	const parents = useMemo(() => (items ?? []).filter(row => !row.revokedAt && row.expiresAt > Date.now() && row.depth < 4), [items]);
+
 	const reload = () => api<{ items: DelegationRow[] }>("/api/v1/delegations")
 		.then(result => { setItems(result.items ?? []); setError(null); })
 		.catch(cause => setError(errorMessage(cause)));
@@ -52,6 +64,7 @@ export function Delegations() {
 		setItems(null);
 		void reload();
 		api<{ items: AgentRow[] }>("/api/v1/agents").then(result => setAgents((result.items ?? []).filter(agent => agent.status === "active" && agent.clientId && agent.dpopJkt))).catch(() => undefined);
+		api<{ items: ResourceRow[] }>("/api/v1/resources").then(result => setResources((result.items ?? []).filter(resource => !resource.disabled))).catch(() => undefined);
 	}, [attempt]);
 
 	async function run(action: () => Promise<unknown>, successMessage?: string) {
@@ -116,7 +129,7 @@ export function Delegations() {
 								<tr key={row.id}>
 									<td>{row.agentName}</td>
 									<td><MonoId value={row.resource} wide mask={false} /></td>
-									<td>{row.scopes.join(", ")}<div className="cell-sub mono">{JSON.stringify(row.authorizationDetails)}</div></td>
+									<td>{row.scopes.join(", ")}<div className="cell-sub mono">{row.authorizationDetails.map(detail => `${detail.actions.join(" / ")} · ${detail.identifiers.join(" / ")}`).join(" | ")}</div></td>
 									<td>{row.depth}{row.depth > 0 && <div className="cell-sub">{t("chain")}</div>}</td>
 									<td className="muted"><When value={row.expiresAt} /></td>
 									<td>{row.revokedAt ? <Badge tone="bad">{t("revoked")}</Badge> : row.expiresAt < Date.now() ? <Badge tone="warn">{t("expired")}</Badge> : <Badge tone="ok">{t("live")}</Badge>}</td>
@@ -142,7 +155,7 @@ export function Delegations() {
 				)}
 				</Card>
 			{creating && (
-				<DelegationForm agents={agents} pending={saving} onClose={() => setCreating(false)} onSave={input => {
+				<DelegationForm agents={agents} resources={resources} parents={parents} pending={saving} onClose={() => setCreating(false)} onSave={input => {
 					setSaving(true);
 					void run(async () => {
 						await post("/api/v1/delegations", input);
@@ -155,26 +168,50 @@ export function Delegations() {
 	);
 }
 
-function DelegationForm(props: { agents: AgentRow[]; pending: boolean; onClose: () => void; onSave: (input: Record<string, unknown>) => void }) {
+function DelegationForm(props: {
+	agents: AgentRow[];
+	resources: ResourceRow[];
+	parents: DelegationRow[];
+	pending: boolean;
+	onClose: () => void;
+	onSave: (input: Record<string, unknown>) => void;
+}) {
 	const t = useT();
 	const [agentId, setAgentId] = useState(props.agents[0]?.id ?? "");
 	const [resource, setResource] = useState("");
+	const [actionsText, setActionsText] = useState("");
+	const [identifiersText, setIdentifiersText] = useState("");
 	const [scopes, setScopes] = useState<string[]>(["mcp:invoke"]);
 	const [parentId, setParentId] = useState("");
-	const [expiresAt, setExpiresAt] = useState(() => new Date(Date.now() + 86400000).toISOString().slice(0, 16));
+	const [expiresAt, setExpiresAt] = useState(() => toDatetimeLocal(Date.now() + 86400000));
 	const [expiryError, setExpiryError] = useState<string | null>(null);
+	const [rarError, setRarError] = useState<"actions" | "identifiers" | null>(null);
 	const bindable = props.agents.length > 0;
+	const parent = props.parents.find(row => row.id === parentId) ?? null;
+	const eligibleParents = props.parents.filter(row => row.agentId === agentId && row.resource === resource);
+
+	const rarErrorMessage = t("Enter 1–32 comma-separated values — no blanks or *.");
 	const submit = () => {
+		const built = buildAuthorizationDetail(resource.trim(), parseListInput(actionsText), parseListInput(identifiersText));
+		// "resource" can't fail here — the submit button is disabled until a
+		// registered resource is chosen — so only the two list fields error.
+		if (!built.ok) {
+			if (built.error !== "resource") setRarError(built.error);
+			return;
+		}
+		setRarError(null);
 		if (!isValidExpiry(expiresAt)) {
 			setExpiryError(t("Expiry must be between one minute and 30 days from now."));
 			return;
 		}
+		setExpiryError(null);
 		props.onSave({
 			agentId,
 			resource: resource.trim(),
 			scopes,
+			authorizationDetails: [built.detail],
 			expiresAt: new Date(expiresAt).getTime(),
-			...(parentId.trim() ? { parentId: parentId.trim() } : {}),
+			...(parentId ? { parentId } : {}),
 		});
 	};
 	return (
@@ -187,11 +224,19 @@ function DelegationForm(props: { agents: AgentRow[]; pending: boolean; onClose: 
 			) : (
 				<>
 					<Field label={t("Agent")}>
-						<select value={agentId} onChange={event => setAgentId(event.target.value)}>
+						<select value={agentId} onChange={event => { setAgentId(event.target.value); setParentId(""); }}>
 							{props.agents.map(agent => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
 						</select>
 					</Field>
-					<Field label={t("Resource identifier")}><input value={resource} onChange={event => setResource(event.target.value)} placeholder="https://mcp.example.com/mcp" spellCheck={false} /></Field>
+					<Field
+						label={t("Resource identifier")}
+						hint={props.resources.length === 0 ? t("No resources registered.") : t("The resource must also be linked to the agent's OAuth client.")}
+					>
+						<select value={resource} onChange={event => { setResource(event.target.value); setParentId(""); }}>
+							<option value="" disabled>{t("Choose a registered resource")}</option>
+							{props.resources.map(entry => <option key={entry.id} value={entry.identifier}>{entry.name ? `${entry.name} — ${entry.identifier}` : entry.identifier}</option>)}
+						</select>
+					</Field>
 					<div className="field">
 						<span>{t("Scopes")}</span>
 						{AGENT_SCOPES.map(scope => (
@@ -205,8 +250,45 @@ function DelegationForm(props: { agents: AgentRow[]; pending: boolean; onClose: 
 							</label>
 						))}
 					</div>
-					<Field label={t("Parent delegation (optional)")} hint={t("Children may only narrow the parent's authority and expiry.")}>
-						<input value={parentId} onChange={event => setParentId(event.target.value)} spellCheck={false} />
+					<Field
+						label={t("Actions")}
+						hint={t("Comma-separated MCP actions, e.g. tools/list, tools/call.")}
+						error={rarError === "actions" ? rarErrorMessage : null}
+					>
+						<input
+							value={actionsText}
+							onChange={event => { setActionsText(event.target.value); setRarError(current => current === "actions" ? null : current); }}
+							placeholder="tools/list, tools/call"
+							spellCheck={false}
+						/>
+					</Field>
+					<Field
+						label={t("Tool identifiers")}
+						hint={t("Comma-separated MCP tool names this delegation may call.")}
+						error={rarError === "identifiers" ? rarErrorMessage : null}
+					>
+						<input
+							value={identifiersText}
+							onChange={event => { setIdentifiersText(event.target.value); setRarError(current => current === "identifiers" ? null : current); }}
+							placeholder="search_docs, send_email"
+							spellCheck={false}
+						/>
+					</Field>
+					<Field
+						label={t("Parent delegation (optional)")}
+						hint={t("Children may only narrow the parent's authority and expiry.")}
+					>
+						<select value={parentId} onChange={event => {
+							setParentId(event.target.value);
+							const chosen = props.parents.find(row => row.id === event.target.value);
+							if (chosen && new Date(expiresAt).getTime() > chosen.expiresAt) setExpiresAt(toDatetimeLocal(chosen.expiresAt));
+						}}>
+							<option value="">{t("None (root delegation)")}</option>
+							{eligibleParents.map(row => (
+								<option key={row.id} value={row.id}>{row.agentName} · {row.scopes.join(", ")} · {t("Depth")} {row.depth}</option>
+							))}
+							{eligibleParents.length === 0 && <option value="" disabled>{t("No eligible parent for this agent and resource.")}</option>}
+						</select>
 					</Field>
 					<Field
 						label={t("Expires at")}
@@ -217,6 +299,7 @@ function DelegationForm(props: { agents: AgentRow[]; pending: boolean; onClose: 
 						<input
 							type="datetime-local"
 							value={expiresAt}
+							max={parent ? toDatetimeLocal(parent.expiresAt) : undefined}
 							onChange={event => setExpiresAt(event.target.value)}
 							onBlur={() => { if (expiresAt && !isValidExpiry(expiresAt)) setExpiryError(t("Expiry must be between one minute and 30 days from now.")); }}
 						/>
@@ -225,7 +308,7 @@ function DelegationForm(props: { agents: AgentRow[]; pending: boolean; onClose: 
 						<Button
 							kind="primary"
 							busy={props.pending}
-							disabled={!agentId || !resource.trim() || scopes.length === 0}
+							disabled={!agentId || !resource || scopes.length === 0}
 							onClick={submit}
 						>{t("Grant")}</Button>
 						<Button kind="ghost" disabled={props.pending} onClick={props.onClose}>{t("Cancel")}</Button>

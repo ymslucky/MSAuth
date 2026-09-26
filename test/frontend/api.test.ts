@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { api, errorMessage } from "../../frontend/src/api";
+import { api, errorMessage, toDatetimeLocal } from "../../frontend/src/api";
 
 function stubFetch(calls: { url: string; init: RequestInit }[]) {
 	vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
@@ -20,6 +20,21 @@ describe("errorMessage — the one failure-surfacing helper every page renders",
 	it("stringifies non-Error throwables", () => {
 		expect(errorMessage("plain")).toBe("plain");
 		expect(errorMessage(42)).toBe("42");
+	});
+});
+
+describe("toDatetimeLocal — epoch → datetime-local input value in local time", () => {
+	it("formats in the machine's local zone, minute precision, zero-padded", () => {
+		// 2026-03-05T06:07:08.900Z is 14:07:08.900 in UTC+8.
+		const epoch = Date.UTC(2026, 2, 5, 6, 7, 8, 900);
+		// Shift the instant by the zone offset, then read it with UTC getters —
+		// that yields the local wall-clock without depending on the host zone.
+		const offset = new Date(epoch).getTimezoneOffset();
+		const wall = new Date(epoch + -offset * 60_000);
+		const pad = (n: number) => String(n).padStart(2, "0");
+		const expected = `${wall.getUTCFullYear()}-${pad(wall.getUTCMonth() + 1)}-${pad(wall.getUTCDate())}T${pad(wall.getUTCHours())}:${pad(wall.getUTCMinutes())}`;
+		expect(toDatetimeLocal(epoch)).toBe(expected);
+		expect(toDatetimeLocal(epoch)).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
 	});
 });
 

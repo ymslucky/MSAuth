@@ -65,6 +65,13 @@ export function isValidExpiry(value: string, now: number = Date.now()): boolean 
 	return time >= now + 60_000 && time <= now + 30 * 86_400_000;
 }
 
+/** Millisecond epoch → datetime-local input value (local time, minute precision). */
+export function toDatetimeLocal(value: number): string {
+	const date = new Date(value);
+	const pad = (n: number) => String(n).padStart(2, "0");
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 const DETAIL_SUMMARY_CAP = 240;
 
 /**
