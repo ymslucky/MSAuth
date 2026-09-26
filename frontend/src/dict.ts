@@ -311,6 +311,12 @@ const toasts = {
 	"User suspended.": "用户已封禁。",
 	"User unsuspended.": "已解除封禁。",
 	"Settings saved.": "设置已保存。",
+	"Dynamic client registrations": "动态注册的客户端",
+	"OAuth clients that self-registered via RFC 7591. Revoking disables the client immediately.": "通过 RFC 7591 自注册的 OAuth 客户端。吊销会立即禁用该客户端。",
+	"No self-registered clients.": "没有自注册的客户端。",
+	"Redirect URIs": "重定向 URI",
+	"Revoke this registration? The client loses access immediately.": "确定吊销该注册应用？客户端将立即失去访问能力。",
+	"Registration revoked.": "注册应用已吊销。",
 	"Domain added.": "域名已添加。",
 	"Domain verified.": "域名已验证。",
 };

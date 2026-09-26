@@ -53,6 +53,7 @@ const successKeys = [
 	"User suspended.",
 	"User unsuspended.",
 	"Settings saved.",
+	"Registration revoked.",
 	"Domain added.",
 	"Domain verified.",
 ];
@@ -72,11 +73,13 @@ describe("notice system wiring contract", () => {
 	});
 
 	it("routes mutation failures through error toasts, not inline notes", () => {
-		// One setError(errorMessage(cause)) is allowed per page — the list-load
-		// catch, rendered in-place by ErrorState. Any second occurrence means a
-		// mutation handler is bypassing the notice system.
+		// One setError(errorMessage(cause)) per data-loading component (the page
+		// may host several) — rendered in-place by ErrorState. More within one
+		// component means a mutation handler is bypassing the notice system.
 		const violators = mutatingPages
-			.filter(([, source]) => source.split("setError(errorMessage(cause))").length - 1 > 1)
+			.filter(([, source]) => source
+				.split(/\n(?=function )/)
+				.some(chunk => chunk.split("setError(errorMessage(cause))").length - 1 > 1))
 			.map(([name]) => name);
 		expect(violators).toEqual([]);
 	});
