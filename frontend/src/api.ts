@@ -15,8 +15,10 @@ export async function api<T = Record<string, unknown>>(path: string, init?: Requ
 	const response = await fetch(path, requestInit);
 	const parsed = await response.json().catch(() => ({}));
 	if (!response.ok) {
-		const detail = parsed as { error?: string; message?: string; error_description?: string };
-		throw new Error(detail.error_description ?? detail.message ?? detail.error ?? `HTTP ${response.status}`);
+		const detail = parsed as { error?: string; message?: string; error_description?: string; requestId?: string };
+		const base = detail.error_description ?? detail.message ?? detail.error ?? `HTTP ${response.status}`;
+		// 5xx payloads carry the log-correlation id from platform.ts onError.
+		throw new Error(detail.requestId ? `${base} (Request ID: ${detail.requestId})` : base);
 	}
 	return parsed as T;
 }

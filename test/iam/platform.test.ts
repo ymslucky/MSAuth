@@ -120,6 +120,13 @@ describe("IAM platform boundaries", () => {
     expect((await request("/api/v1/alerts", otherCookie)).status).toBe(200);
     expect((await request("/api/v1/domains", otherCookie)).status).toBe(200);
   });
+  it("treats user-search wildcards literally instead of as LIKE patterns", async () => {
+    await login("ab_cd@example.com");
+    await login("abxcd@example.com");
+    const res = await request("/api/v1/users?q=" + encodeURIComponent("ab_cd"));
+    const body = await res.json() as { items: { email: string }[] };
+    expect(body.items.map(row => row.email)).toEqual(["ab_cd@example.com"]);
+  });
   it("never falls back to SPA HTML for unknown API routes", async () => {
     const res = await request("/api/v1/does-not-exist");
     expect(res.status).toBe(404);

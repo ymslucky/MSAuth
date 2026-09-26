@@ -54,8 +54,15 @@ export async function createAuth(env: Bindings) {
   ]);
   if (authSecret.length < 32) throw new Error("BETTER_AUTH_SECRET must contain at least 32 characters");
   const allowlist = adminEmails.split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
-  const users = await env.AUTH_DB.prepare('SELECT id, email FROM "user" WHERE emailVerified = 1').all<{ id: string; email: string }>();
-  const adminIds = users.results.filter(user => allowlist.includes(user.email.toLowerCase())).map(user => user.id);
+  // Filter by the allowlist itself — a full scan of every verified user per
+  // request is wasted work once the allowlist is a handful of emails.
+  let adminIds: string[] = [];
+  if (allowlist.length) {
+    const placeholders = allowlist.map(() => "?").join(",");
+    const admins = await env.AUTH_DB.prepare(`SELECT id FROM "user" WHERE emailVerified = 1 AND lower(email) IN (${placeholders})`)
+      .bind(...allowlist).all<{ id: string }>();
+    adminIds = admins.results.map(user => user.id);
+  }
   return betterAuth({
     appName: "MSAuth", baseURL, basePath: "/api/auth", secret: authSecret,
     database: env.AUTH_DB,

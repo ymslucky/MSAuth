@@ -185,8 +185,13 @@ export default function Console() {
 			.catch(() => setGone(true));
 	}, []);
 
+	// Navigate from an effect — assigning location during render would abort
+	// the React update before the fallback message ever paints.
+	useEffect(() => {
+		if (gone) window.location.href = "/login";
+	}, [gone]);
+
 	if (gone) {
-		window.location.href = "/login";
 		return <div className="auth-shell"><p className="muted">{t("Redirecting to sign-in…")}</p></div>;
 	}
 	if (!context) {

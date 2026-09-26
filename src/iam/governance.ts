@@ -42,9 +42,11 @@ governanceRoutes.get("/users", async c => {
   requireOperator(c);
   const paging = page(c);
   const q = (c.req.query("q") ?? "").slice(0, 100);
-  const items = await c.env.AUTH_DB.prepare('SELECT id, name, email, emailVerified, image, banned, twoFactorEnabled, createdAt FROM "user" WHERE email LIKE ? OR name LIKE ? ORDER BY createdAt DESC LIMIT ? OFFSET ?')
-    .bind(`%${q}%`, `%${q}%`, paging.limit, paging.offset).all();
-  const count = await c.env.AUTH_DB.prepare('SELECT COUNT(*) AS total FROM "user" WHERE email LIKE ? OR name LIKE ?').bind(`%${q}%`, `%${q}%`).first();
+  // Escape LIKE metacharacters so searches like "ab_cd" match literally.
+  const pattern = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
+  const items = await c.env.AUTH_DB.prepare(`SELECT id, name, email, emailVerified, image, banned, twoFactorEnabled, createdAt FROM "user" WHERE email LIKE ? ESCAPE '\\' OR name LIKE ? ESCAPE '\\' ORDER BY createdAt DESC LIMIT ? OFFSET ?`)
+    .bind(pattern, pattern, paging.limit, paging.offset).all();
+  const count = await c.env.AUTH_DB.prepare(`SELECT COUNT(*) AS total FROM "user" WHERE email LIKE ? ESCAPE '\\' OR name LIKE ? ESCAPE '\\'`).bind(pattern, pattern).first();
   return c.json({ items: items.results, ...count, page: paging.number });
 });
 

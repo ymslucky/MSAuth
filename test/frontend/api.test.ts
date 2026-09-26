@@ -57,6 +57,14 @@ describe("api fetch wrapper", () => {
 		expect(calls[0].init.body).toBe(JSON.stringify({ email: "a@b.c" }));
 	});
 
+	it("surfaces the server requestId on 5xx failures for support lookup", async () => {
+		vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(
+			JSON.stringify({ error: "internal_error", requestId: "req_abc123" }),
+			{ status: 500, headers: { "content-type": "application/json" } },
+		))));
+		await expect(api("/api/v1/overview")).rejects.toThrow("req_abc123");
+	});
+
 	it("keeps content-type on body-less DELETEs (session revocation hits auth endpoints)", async () => {
 		const calls: { url: string; init: RequestInit }[] = [];
 		stubFetch(calls);
