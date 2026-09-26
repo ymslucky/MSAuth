@@ -105,7 +105,7 @@ const NAV = [
 ];
 
 export interface ConsoleContext {
-	user: { id: string; name: string; email: string; image: string | null };
+	user: { id: string; name: string; email: string; image: string | null; twoFactorEnabled?: boolean };
 	operator: boolean;
 }
 

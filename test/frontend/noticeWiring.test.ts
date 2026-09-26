@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import accountSource from "../../frontend/src/pages/console/Account.tsx?raw";
 import applicationsSource from "../../frontend/src/pages/console/Applications.tsx?raw";
 import agentsSource from "../../frontend/src/pages/console/Agents.tsx?raw";
 import alertsSource from "../../frontend/src/pages/console/Alerts.tsx?raw";
@@ -20,6 +21,7 @@ import usersSource from "../../frontend/src/pages/console/Users.tsx?raw";
 // Pages that mutate data must be wired to the notice system. Read-only pages
 // (Audit, Overview), the layout shell (Console) and the demo catalog are exempt.
 const mutatingPages: Array<[string, string]> = [
+	["Account", accountSource],
 	["Applications", applicationsSource],
 	["Agents", agentsSource],
 	["Alerts", alertsSource],
@@ -36,6 +38,12 @@ const mutatingPages: Array<[string, string]> = [
 // Success copy lives in the dict's toasts section — every key must actually
 // fire from a page, or the message is designed-but-dead.
 const successKeys = [
+	"Two-factor enabled.",
+	"Two-factor disabled.",
+	"Backup codes regenerated.",
+	"Passkey added.",
+	"Passkey renamed.",
+	"Passkey removed.",
 	"Application created.",
 	"Application updated.",
 	"Client secret rotated.",

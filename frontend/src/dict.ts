@@ -102,6 +102,12 @@ const auth = {
 	"or": "或",
 	"Continue with GitHub": "使用 GitHub 继续",
 	"GitHub sign-in is not configured": "GitHub 登录尚未配置",
+	// two-factor challenge + passkey (login)
+	"Two-factor authentication is on for this account.": "此账户已开启双因素认证。",
+	"Backup code": "备份代码",
+	"Use a backup code": "使用备份代码",
+	"Use an authenticator code": "使用验证器代码",
+	"Sign in with a passkey": "使用 Passkey 登录",
 	"Authorize application": "授权应用",
 	"is requesting access to your identity.": "正在请求访问你的身份。",
 	"Resource:": "资源：",
@@ -319,6 +325,13 @@ const toasts = {
 	"Registration revoked.": "注册应用已吊销。",
 	"Domain added.": "域名已添加。",
 	"Domain verified.": "域名已验证。",
+	// account security (console /account)
+	"Two-factor enabled.": "双因素认证已启用。",
+	"Two-factor disabled.": "双因素认证已停用。",
+	"Backup codes regenerated.": "备份代码已重新生成。",
+	"Passkey added.": "Passkey 已添加。",
+	"Passkey renamed.": "Passkey 已重命名。",
+	"Passkey removed.": "Passkey 已移除。",
 };
 
 const dev = {
@@ -447,6 +460,32 @@ const account = {
 	"Change password": "修改密码",
 	"Password changes apply to accounts with a password credential; GitHub-only accounts keep using GitHub to sign in.": "密码修改仅适用于设置了密码的账户；仅使用 GitHub 登录的账户请继续通过 GitHub 登录。",
 	"Password updated.": "密码已更新。",
+	// two-factor (console /account)
+	"Two-factor authentication": "双因素认证",
+	"Add a second factor for sign-in with an authenticator app.": "为登录添加第二重验证（验证器应用）。",
+	"Two-factor authentication is active on this account.": "此账户已启用双因素认证。",
+	"Authenticator URI": "验证器 URI",
+	"Scan this URI with your authenticator app, then enter a code to activate.": "用验证器应用扫描此 URI，然后输入验证码以激活。",
+	"Save these single-use codes somewhere safe — they are shown only once.": "请把这些一次性代码保存到安全的地方——它们只显示这一次。",
+	"Authenticator code": "验证器代码",
+	"Activate": "激活",
+	"Begin setup": "开始设置",
+	"Regenerate backup codes": "重新生成备份代码",
+	"Backup codes": "备份代码",
+	"Disable": "停用",
+	"Confirms this change for accounts with a password; GitHub-only accounts can leave it empty.": "设有密码的账户需输入密码确认；仅使用 GitHub 登录的账户可留空。",
+	// passkeys (console /account)
+	"Passkeys": "Passkey",
+	"Passkey": "Passkey",
+	"Sign in with biometrics or a security key instead of a password.": "改用生物识别或安全密钥登录，无需输入密码。",
+	"This browser does not support passkeys.": "此浏览器不支持 Passkey。",
+	"No passkeys registered yet.": "还没有注册任何 Passkey。",
+	"Name (optional)": "名称（可选）",
+	"A label to recognize this passkey later.": "便于日后识别这个 Passkey 的标签。",
+	"Add passkey": "添加 Passkey",
+	"Rename": "重命名",
+	"Remove": "移除",
+	"Remove this passkey?": "移除这个 Passkey？",
 };
 
 /** Audit action codes, keyed by the exact string the backend writes to auditEvent. */

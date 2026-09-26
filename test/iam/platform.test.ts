@@ -326,3 +326,79 @@ describe("Session lifecycle (SPA auth gate contract)", () => {
     expect((anon as { user?: unknown } | null)?.user).toBeUndefined();
   });
 });
+
+/** RFC 6238 TOTP generator (SHA-1, 6 digits, 30s period) for two-factor tests. */
+async function totp(secretBase32: string, at: number = Date.now()): Promise<string> {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = 0;
+  let value = 0;
+  const key: number[] = [];
+  for (const char of secretBase32.replace(/=+$/, "")) {
+    const index = alphabet.indexOf(char.toUpperCase());
+    if (index < 0) continue;
+    value = (value << 5) | index;
+    bits += 5;
+    if (bits >= 8) {
+      key.push((value >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+  const counter = Math.floor(at / 1000 / 30);
+  const message = new ArrayBuffer(8);
+  new DataView(message).setBigUint64(0, BigInt(counter));
+  const cryptoKey = await crypto.subtle.importKey("raw", new Uint8Array(key), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+  const hmac = new Uint8Array(await crypto.subtle.sign("HMAC", cryptoKey, message));
+  const offset = hmac[hmac.length - 1] & 0xf;
+  const binary = ((hmac[offset] & 0x7f) << 24) | (hmac[offset + 1] << 16) | (hmac[offset + 2] << 8) | hmac[offset + 3];
+  return String(binary % 1_000_000).padStart(6, "0");
+}
+
+describe("Two-factor authentication (TOTP sign-in challenge)", () => {
+  it("enables TOTP, demands a code on the next sign-in, and completes the challenge", async () => {
+    const email = "totp@example.com";
+    const { cookie } = await login(email);
+    const enableRes = await request("/api/auth/two-factor/enable", cookie, "POST", { password: "test-passphrase-123!", method: "totp" });
+    expect(enableRes.status, await enableRes.clone().text()).toBe(200);
+    const enableBody = await enableRes.json() as { totpURI?: string };
+    expect(enableBody.totpURI, JSON.stringify(enableBody)).toBeTruthy();
+    const uri = new URL(enableBody.totpURI!.replace("otpauth://", "https://otpauth.invalid/"));
+    const secret = uri.searchParams.get("secret");
+    expect(secret).toBeTruthy();
+
+    // Confirming the code (session path) marks the factor verified and rotates
+    // the session (the old one is deleted), so adopt the fresh cookie.
+    const verified = await request("/api/auth/two-factor/verify-totp", cookie, "POST", { code: await totp(secret!) });
+    expect(verified.status, await verified.clone().text()).toBe(200);
+    const freshCookie = verified.headers.getSetCookie().map(value => value.split(";")[0]).join("; ") || cookie;
+    const session = await request("/api/auth/get-session", freshCookie);
+    expect(((await session.json()) as { user?: { twoFactorEnabled?: boolean } }).user?.twoFactorEnabled).toBe(true);
+
+    // The next password sign-in stops at the challenge instead of a session.
+    const auth = await createAuth(bindings);
+    const challenge = await auth.handler(new Request(origin + "/api/auth/sign-in/email", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin },
+      body: JSON.stringify({ email, password: "test-passphrase-123!" }),
+    }));
+    expect(challenge.status).toBe(200);
+    const challengeBody = await challenge.json() as { twoFactorRedirect?: boolean; twoFactorMethods?: string[] };
+    expect(challengeBody.twoFactorRedirect).toBe(true);
+    expect(challengeBody.twoFactorMethods).toContain("totp");
+
+    // The challenge cookie alone grants nothing…
+    const challengeCookie = challenge.headers.getSetCookie().map(value => value.split(";")[0]).join("; ");
+    expect((await request("/api/v1/overview", challengeCookie)).status).toBe(401);
+
+    // …but a valid TOTP code completes sign-in and yields a real session.
+    const done = await request("/api/auth/two-factor/verify-totp", challengeCookie, "POST", { code: await totp(secret!) });
+    expect(done.status, await done.clone().text()).toBe(200);
+    const doneBody = await done.json() as { token?: string; user?: { email: string } };
+    expect(doneBody.user?.email).toBe(email);
+    const completedCookie = done.headers.getSetCookie().map(value => value.split(";")[0]).join("; ");
+    expect((await request("/api/v1/overview", completedCookie)).status).toBe(200);
+
+    // A wrong code is rejected.
+    const bad = await request("/api/auth/two-factor/verify-totp", challengeCookie, "POST", { code: "000000" });
+    expect(bad.status).toBe(401);
+  });
+});
