@@ -23,6 +23,7 @@ import usersSource from "../../frontend/src/pages/console/Users.tsx?raw";
 import userDetailSource from "../../frontend/src/pages/console/UserDetail.tsx?raw";
 import settingsSource from "../../frontend/src/pages/console/Settings.tsx?raw";
 import domainsSource from "../../frontend/src/pages/console/Domains.tsx?raw";
+import accountSource from "../../frontend/src/pages/console/Account.tsx?raw";
 
 /** Every module that renders copy through t(). Keep in sync with the file tree. */
 const SOURCES: Record<string, string> = {
@@ -49,6 +50,7 @@ const SOURCES: Record<string, string> = {
 	"pages/console/UserDetail.tsx": userDetailSource,
 	"pages/console/Settings.tsx": settingsSource,
 	"pages/console/Domains.tsx": domainsSource,
+	"pages/console/Account.tsx": accountSource,
 };
 
 const T_LITERAL = /\bt\("((?:[^"\\]|\\.)*)"/g;

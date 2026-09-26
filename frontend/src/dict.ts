@@ -423,6 +423,26 @@ const docsArea = {
 		"每枚令牌绑定且仅绑定一个 HTTPS 资源标识，拒绝扩大范围。",
 };
 
+const account = {
+	// profile + credentials (console /account)
+	"Account": "账户",
+	"Your profile and sign-in credentials.": "你的个人资料与登录凭据。",
+	"Display name": "显示名称",
+	"Shown in the console and on consent screens.": "显示在控制台和授权确认页。",
+	"Email": "邮箱",
+	"Sign-in identity — managed by your sign-in provider.": "登录身份 — 由你的登录方式管理。",
+	"Profile updated.": "资料已更新。",
+	"Current password": "当前密码",
+	"New password": "新密码",
+	"Confirm new password": "确认新密码",
+	"New password must be at least 8 characters.": "新密码至少需要 8 个字符。",
+	"Passwords do not match.": "两次输入的密码不一致。",
+	"Sign out other sessions": "退出其他会话",
+	"Change password": "修改密码",
+	"Password changes apply to accounts with a password credential; GitHub-only accounts keep using GitHub to sign in.": "密码修改仅适用于设置了密码的账户；仅使用 GitHub 登录的账户请继续通过 GitHub 登录。",
+	"Password updated.": "密码已更新。",
+};
+
 /** Audit action codes, keyed by the exact string the backend writes to auditEvent. */
 const actions = {
 	// src/iam/agents.ts
@@ -463,6 +483,7 @@ export const zh: Record<string, string> = {
 	...agents,
 	...security,
 	...admin,
+	...account,
 	...toasts,
 	...dev,
 	...docsArea,

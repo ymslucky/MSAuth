@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
 	AppWindow, BellRing, Bot, Copy, Earth, GitBranch, KeyRound, Languages, LayoutDashboard,
 	LogOut, MonitorSmartphone, Moon, ScrollText, Search, Share2, SlidersHorizontal, Sun,
-	SunMoon, Users, Globe,
+	SunMoon, UserRound, Users, Globe,
 } from "lucide-react";
 import { api } from "../../api";
 import { LangSegmented, useLang, useT } from "../../i18n";
@@ -31,12 +31,14 @@ const UsersPage = lazy(() => import("./Users").then(m => ({ default: m.Users }))
 const Settings = lazy(() => import("./Settings").then(m => ({ default: m.Settings })));
 const Domains = lazy(() => import("./Domains").then(m => ({ default: m.Domains })));
 const UserDetail = lazy(() => import("./UserDetail").then(m => ({ default: m.UserDetail })));
+const Account = lazy(() => import("./Account").then(m => ({ default: m.Account })));
 // Documentation-as-code catalog — direct URL only, linked nowhere public.
 const Catalog = lazy(() => import("./Catalog"));
 
 /** Path → dynamic chunk loader, shared with the sidebar's hover preloading. */
 const PRELOADS: Record<string, () => Promise<unknown>> = {
 	"/": () => import("./Overview"),
+	"/account": () => import("./Account"),
 	"/applications": () => import("./Applications"),
 	"/keys": () => import("./Keys"),
 	"/resources": () => import("./Resources"),
@@ -68,7 +70,7 @@ function PageFallback() {
 }
 
 const NAV = [
-	{ group: "", items: [{ label: "Overview", to: "/", icon: LayoutDashboard }] },
+	{ group: "", items: [{ label: "Overview", to: "/", icon: LayoutDashboard }, { label: "Account", to: "/account", icon: UserRound }] },
 	{
 		group: "Developer",
 		items: [
@@ -282,6 +284,7 @@ function renderPage(path: string, context: ConsoleContext, t: (key: string) => s
 	}
 	switch (path) {
 		case "/": return <Overview />;
+		case "/account": return <Account user={context.user} />;
 		case "/applications": return <Applications />;
 		case "/keys": return <Keys />;
 		case "/resources": return <Resources operator={context.operator} />;
