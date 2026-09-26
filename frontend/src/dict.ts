@@ -554,6 +554,7 @@ const errors = {
 	"Unable to create session": "无法创建会话",
 	"Failed to update passkey": "更新 Passkey 失败",
 	"Previously registered": "此验证器此前已注册过",
+	"Auth cancelled": "已取消认证",
 	"Passkey registration requires an authenticated session": "注册 Passkey 需要先登录",
 	// platform.ts guards + fetch layer
 	"rate_limited": "请求过于频繁，请稍后再试。",

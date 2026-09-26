@@ -12,7 +12,8 @@
 - **Agent 授权**：DPoP 令牌绑定、RAR 细粒度权限（`mcp_tool`）、RFC 8693 Token Exchange
   委托链（只可收窄、深度 ≤ 4、令牌 ≤ 5 分钟、aud 锁定单一 HTTPS 资源）
 - **开发者控制台 SPA**：OAuth 应用、API Key、资源注册、Agent 注册与委托管理、
-  审计日志、会话与安全告警、用户与平台设置、域名验证
+  审计日志、会话与安全告警、用户与平台设置、域名验证、
+  账户中心（资料、改密、两步验证绑定、Passkey 管理）
 - **Agent SDK**（`sdk/`）：把 PKCE + DPoP + Token Exchange 封装成几行代码，运行时无关
 - **安全**：管理 API 仅接受浏览器会话（剥离 Authorization / x-api-key）、同源变更校验、
   按 IP 限速、CSP、每步变更写审计

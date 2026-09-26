@@ -26,6 +26,20 @@ export function isPasskeySupported(): boolean {
 	return typeof window !== "undefined" && "PublicKeyCredential" in window;
 }
 
+/**
+ * DOM exceptions from the ceremony → the passkey plugin's own error strings
+ * (which the zh dict translates). NotAllowedError covers both a dismissed
+ * prompt and a timeout; InvalidStateError means this authenticator already
+ * holds the credential. Unknown causes pass through untouched.
+ */
+export function normalizeWebAuthnError(cause: unknown): unknown {
+	if (cause instanceof DOMException) {
+		if (cause.name === "NotAllowedError") return new Error("Auth cancelled");
+		if (cause.name === "InvalidStateError") return new Error("Previously registered");
+	}
+	return cause;
+}
+
 interface CeremonyResponse {
 	response: Record<string, ArrayBuffer | null | undefined | string[]>;
 	clientExtensionResults?: Record<string, unknown>;
@@ -84,22 +98,27 @@ interface RegistrationOptions extends AuthenticationOptions {
 export async function authenticateWithPasskey(): Promise<void> {
 	if (!isPasskeySupported()) throw new Error("Passkeys are not supported in this browser");
 	const options = await api<AuthenticationOptions>("/api/auth/passkey/generate-authenticate-options");
-	const credential = await navigator.credentials.get({
-		publicKey: {
-			challenge: b64urlToBytes(options.challenge),
-			rpId: options.rp?.id,
-			timeout: options.timeout,
-			userVerification: (options.userVerification as UserVerificationRequirement) ?? "preferred",
-			...(options.allowCredentials ? {
-				allowCredentials: options.allowCredentials.map(descriptor => ({
-					id: b64urlToBytes(descriptor.id),
-					type: "public-key" as const,
-					...(descriptor.transports ? { transports: descriptor.transports as AuthenticatorTransport[] } : {}),
-				})),
-			} : {}),
-			...(options.extensions ? { extensions: options.extensions } : {}),
-		},
-	}) as unknown as SerializableCredential | null;
+	let credential: SerializableCredential | null;
+	try {
+		credential = await navigator.credentials.get({
+			publicKey: {
+				challenge: b64urlToBytes(options.challenge),
+				rpId: options.rp?.id,
+				timeout: options.timeout,
+				userVerification: (options.userVerification as UserVerificationRequirement) ?? "preferred",
+				...(options.allowCredentials ? {
+					allowCredentials: options.allowCredentials.map(descriptor => ({
+						id: b64urlToBytes(descriptor.id),
+						type: "public-key" as const,
+						...(descriptor.transports ? { transports: descriptor.transports as AuthenticatorTransport[] } : {}),
+					})),
+				} : {}),
+				...(options.extensions ? { extensions: options.extensions } : {}),
+			},
+		}) as unknown as SerializableCredential | null;
+	} catch (cause) {
+		throw normalizeWebAuthnError(cause);
+	}
 	if (!credential) throw new Error("No passkey was provided");
 	await post("/api/auth/passkey/verify-authentication", { response: serializeAuthentication(credential) });
 }
@@ -108,29 +127,39 @@ export async function authenticateWithPasskey(): Promise<void> {
 export async function registerPasskey(name?: string): Promise<void> {
 	if (!isPasskeySupported()) throw new Error("Passkeys are not supported in this browser");
 	const query = name ? `?name=${encodeURIComponent(name)}` : "";
-	const options = await api<RegistrationOptions>(`/api/auth/passkey/generate-register-options${query}`);
-	const credential = await navigator.credentials.create({
-		publicKey: {
-			challenge: b64urlToBytes(options.challenge),
-			rp: options.rp as PublicKeyCredentialRpEntity,
-			user: {
-				id: b64urlToBytes(options.user.id),
-				name: options.user.name,
-				displayName: options.user.displayName,
+	let options: RegistrationOptions;
+	try {
+		options = await api<RegistrationOptions>(`/api/auth/passkey/generate-register-options${query}`);
+	} catch (cause) {
+		throw normalizeWebAuthnError(cause);
+	}
+	let credential: SerializableCredential | null;
+	try {
+		credential = await navigator.credentials.create({
+			publicKey: {
+				challenge: b64urlToBytes(options.challenge),
+				rp: options.rp as PublicKeyCredentialRpEntity,
+				user: {
+					id: b64urlToBytes(options.user.id),
+					name: options.user.name,
+					displayName: options.user.displayName,
+				},
+				pubKeyCredParams: options.pubKeyCredParams.map(param => ({ type: "public-key" as const, alg: param.alg })),
+				timeout: options.timeout,
+				...(options.excludeCredentials ? {
+					excludeCredentials: options.excludeCredentials.map(descriptor => ({
+						id: b64urlToBytes(descriptor.id),
+						type: "public-key" as const,
+						...(descriptor.transports ? { transports: descriptor.transports as AuthenticatorTransport[] } : {}),
+					})),
+				} : {}),
+				...(options.authenticatorSelection ? { authenticatorSelection: options.authenticatorSelection as AuthenticatorSelectionCriteria } : {}),
+				attestation: (options.attestation as AttestationConveyancePreference) ?? "none",
 			},
-			pubKeyCredParams: options.pubKeyCredParams.map(param => ({ type: "public-key" as const, alg: param.alg })),
-			timeout: options.timeout,
-			...(options.excludeCredentials ? {
-				excludeCredentials: options.excludeCredentials.map(descriptor => ({
-					id: b64urlToBytes(descriptor.id),
-					type: "public-key" as const,
-					...(descriptor.transports ? { transports: descriptor.transports as AuthenticatorTransport[] } : {}),
-				})),
-			} : {}),
-			...(options.authenticatorSelection ? { authenticatorSelection: options.authenticatorSelection as AuthenticatorSelectionCriteria } : {}),
-			attestation: (options.attestation as AttestationConveyancePreference) ?? "none",
-		},
-	}) as unknown as SerializableCredential | null;
+		}) as unknown as SerializableCredential | null;
+	} catch (cause) {
+		throw normalizeWebAuthnError(cause);
+	}
 	if (!credential) throw new Error("No passkey was created");
 	await post("/api/auth/passkey/verify-registration", {
 		response: serializeRegistration(credential),
