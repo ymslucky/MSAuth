@@ -1,6 +1,6 @@
 import { memo, useState, type CSSProperties, type ReactNode } from "react";
 import { Check, ChevronDown, ChevronUp, ChevronsUpDown, Copy } from "lucide-react";
-import { useActionLabel, useLang, useT } from "./i18n";
+import { useActionLabel, useLang, useT, tMessage } from "./i18n";
 import { EmptyIllustration, type EmptyArt } from "./illustrations";
 import { fullTimestamp, maskId } from "./api";
 import { formatWhen } from "./when";
@@ -115,18 +115,20 @@ export function ActionTag(props: { code: string }) {
 
 /** Inline mutation-failure note (fetch failures use `ErrorState` instead). */
 export function ErrorNote(props: { message?: string | null }) {
+	const { lang } = useLang();
 	if (!props.message) return null;
-	return <p className="error-note" role="alert">{props.message}</p>;
+	return <p className="error-note" role="alert">{tMessage(props.message, lang)}</p>;
 }
 
 /** Card for failed page loads, with a Retry affordance. */
 export function ErrorState(props: { message?: string | null; onRetry?: () => void }) {
 	const t = useT();
+	const { lang } = useLang();
 	return (
 		<div className="error-card" role="alert">
 			<div>
 				<strong>{t("Something went wrong.")}</strong>
-				{props.message && <p>{props.message}</p>}
+				{props.message && <p>{tMessage(props.message, lang)}</p>}
 			</div>
 			{props.onRetry && <Button kind="ghost" onClick={props.onRetry}>{t("Retry")}</Button>}
 		</div>

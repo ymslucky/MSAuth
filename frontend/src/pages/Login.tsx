@@ -176,7 +176,7 @@ export default function Login() {
 							<button className="btn block ghost" type="button" disabled={busy} onClick={backToCredentials}>{t("Back")}</button>
 						</>
 					)}
-					{error && <p className="error-note" role="alert">{error}</p>}
+					{error && <p className="error-note" role="alert">{t(error)}</p>}
 				</form>
 				<p className="login-docs-row">
 					<Link to="/docs" className="login-docs-link">{t("Integration guide")}</Link>

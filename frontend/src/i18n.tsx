@@ -81,6 +81,16 @@ export function useLang(): { lang: Lang; setLang: (lang: Lang) => void } {
 }
 
 /**
+ * Server error message → user-facing text. Chinese lookup with raw fallback
+ * (unknown messages stay English); EN mode passes through. Idempotent —
+ * already-translated t() strings round-trip unchanged.
+ */
+export function tMessage(message: string, lang: Lang = "zh"): string {
+	if (lang !== "zh") return message;
+	return zh[message] ?? message;
+}
+
+/**
  * Audit action code → label. Chinese label when translated, raw code as
  * fallback (and in EN mode, since codes are technical identifiers).
  */

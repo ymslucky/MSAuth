@@ -516,6 +516,56 @@ const actions = {
 	"resource.linked": "关联客户端与资源",
 };
 
+/**
+ * Server error strings, keyed by the exact message the backend emits: Better
+ * Auth base/2FA/passkey error codes (src errors surface via `detail.message`
+ * through api.ts) plus platform guards and browser network failures. Looked
+ * up by tMessage at render time; unknown messages pass through in English.
+ */
+const errors = {
+	// @better-auth/core BASE_ERROR_CODES (the ones users can actually trigger)
+	"User not found": "用户不存在",
+	"Invalid password": "密码不正确",
+	"Invalid email": "邮箱不正确",
+	"Invalid email or password": "邮箱或密码不正确",
+	"Password too short": "密码太短",
+	"Password too long": "密码太长",
+	"User already exists.": "用户已存在。",
+	"Session expired. Re-authenticate to perform this action.": "会话已过期，请重新登录后再执行此操作。",
+	"Credential account not found": "该账户没有设置密码登录方式",
+	"Invalid origin": "请求来源不受信任",
+	// better-auth two-factor
+	"OTP not enabled": "OTP 未启用",
+	"OTP has expired": "OTP 已过期",
+	"TOTP not enabled": "TOTP 未启用",
+	"TOTP is already enabled": "TOTP 已启用",
+	"Two factor isn't enabled": "双因素认证尚未启用",
+	"Backup codes aren't enabled": "备份代码未启用",
+	"Invalid backup code": "备份代码不正确",
+	"Invalid code": "验证码不正确",
+	"Too many attempts. Please request a new code.": "尝试次数过多，请重新获取验证码。",
+	"Too many failed verification attempts. Your account is temporarily locked. Please try again later.": "验证失败次数过多，账户已临时锁定，请稍后再试。",
+	// @better-auth/passkey
+	"Challenge not found": "挑战已失效，请重试",
+	"You are not allowed to register this passkey": "无权注册此 Passkey",
+	"Failed to verify registration": "注册验证失败",
+	"Passkey not found": "Passkey 不存在",
+	"Authentication failed": "认证失败",
+	"Unable to create session": "无法创建会话",
+	"Failed to update passkey": "更新 Passkey 失败",
+	"Previously registered": "此验证器此前已注册过",
+	"Passkey registration requires an authenticated session": "注册 Passkey 需要先登录",
+	// platform.ts guards + fetch layer
+	"rate_limited": "请求过于频繁，请稍后再试。",
+	"payload_too_large": "请求体过大。",
+	"registration_disabled": "注册已关闭。",
+	"unauthorized": "未登录或会话已过期。",
+	"invalid_origin": "请求来源不受信任。",
+	"not_found": "资源不存在。",
+	"internal_error": "服务内部错误。",
+	"Failed to fetch": "网络请求失败，请检查网络连接。",
+};
+
 /** English string is the key; zh maps it to Simplified Chinese. Missing keys fall back to English. */
 export const zh: Record<string, string> = {
 	...common,
@@ -533,4 +583,5 @@ export const zh: Record<string, string> = {
 	...dev,
 	...docsArea,
 	...actions,
+	...errors,
 };

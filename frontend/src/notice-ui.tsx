@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CheckCircle2, CircleAlert, Info, X } from "lucide-react";
-import { useT } from "./i18n";
+import { useT, useLang, tMessage } from "./i18n";
 import { capVisibleToasts, noticeTtl, type NoticeTone } from "./notice";
 import { Confirm } from "./dialog";
 
@@ -46,6 +46,7 @@ let noticeSeq = 0;
 
 export function NoticeProvider(props: { children: ReactNode }) {
 	const t = useT();
+	const { lang } = useLang();
 	const [toasts, setToasts] = useState<ToastItem[]>([]);
 	const [confirmState, setConfirmState] = useState<ConfirmOptions | null>(null);
 	const confirmResolve = useRef<((confirmed: boolean) => void) | null>(null);
@@ -96,7 +97,7 @@ export function NoticeProvider(props: { children: ReactNode }) {
 					return (
 						<div key={item.id} className={`toast ${item.tone}`} onClick={() => dismiss(item.id)}>
 							<Icon size={15} strokeWidth={2} aria-hidden />
-							<span className="toast-text">{item.text}</span>
+							<span className="toast-text">{tMessage(item.text, lang)}</span>
 							{item.actionLabel && (
 								<button
 									type="button"
