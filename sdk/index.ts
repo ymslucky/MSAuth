@@ -6,7 +6,7 @@
  * refresh rotation and RFC 8693 token exchange against an MSAuth delegation.
  */
 
-import { SignJWT, calculateJwkThumbprint, exportJWK, generateKeyPair } from "jose";
+import { SignJWT, calculateJwkThumbprint, exportJWK, generateKeyPair, importJWK } from "jose";
 
 export interface AgentOptions {
   issuer: string;
@@ -29,6 +29,10 @@ export interface TokenSet {
   token_type?: string;
   expires_in?: number;
   scope?: string;
+  /** Present on RFC 8693 exchange responses. */
+  issued_token_type?: string;
+  /** Present on RFC 8693 exchange responses (the narrowed RAR authority). */
+  authorization_details?: AuthorizationDetail[];
 }
 
 export interface AuthorizationDetail {
@@ -69,6 +73,7 @@ function httpsUrl(value: string, label: string): string {
 export class AgentClient {
   private discovered: { token_endpoint?: string } | undefined;
   private tokens: (TokenSet & { expiresAt?: number }) | undefined;
+  private refreshInFlight?: Promise<TokenSet>;
 
   private constructor(
     readonly issuer: string,
@@ -82,9 +87,14 @@ export class AgentClient {
   static async create(options: AgentOptions): Promise<AgentClient> {
     const issuer = httpsUrl(options.issuer, "issuer");
     const resource = httpsUrl(options.resource, "resource");
-    const keyPair = await generateKeyPair("ES256", { extractable: true });
-    const jwk = await exportJWK(keyPair.publicKey);
-    return new AgentClient(new URL(issuer).origin, options.clientId, new URL(resource).href, keyPair, await calculateJwkThumbprint(jwk));
+    const generated = await generateKeyPair("ES256", { extractable: true });
+    // Re-import the private key as non-extractable: signing never needs the
+    // key material, so an XSS must not be able to export it either.
+    const privateJwk = await exportJWK(generated.privateKey);
+    // ES256 yields an EC key — importJWK's Uint8Array branch (oct keys) cannot occur.
+    const privateKey = await importJWK(privateJwk, "ES256") as CryptoKey;
+    const jwk = await exportJWK(generated.publicKey);
+    return new AgentClient(new URL(issuer).origin, options.clientId, new URL(resource).href, { publicKey: generated.publicKey, privateKey }, await calculateJwkThumbprint(jwk));
   }
 
   /** Builds the PKCE authorization redirect with an exact resource and the DPoP thumbprint. */
@@ -111,12 +121,15 @@ export class AgentClient {
   async complete(callbackUrl: string, flow: AuthorizationFlow): Promise<TokenSet> {
     const url = new URL(callbackUrl);
     if (url.searchParams.get("state") !== flow.state) throw new Error("Authorization state mismatch");
+    // RFC 9207: if the AS declares its issuer on the response, verify it.
+    const issuedBy = url.searchParams.get("iss");
+    if (issuedBy && issuedBy !== this.issuer) throw new Error("Authorization response issuer mismatch");
     const error = url.searchParams.get("error");
     if (error) throw new Error(`Authorization failed: ${error}${url.searchParams.get("error_description") ? ": " + url.searchParams.get("error_description") : ""}`);
     const code = url.searchParams.get("code");
     if (!code) throw new Error("Missing authorization code");
     const endpoint = await this.tokenEndpoint();
-    return this.request(endpoint, new URLSearchParams({
+    const tokens = await this.tokenRequest(endpoint, new URLSearchParams({
       grant_type: "authorization_code",
       client_id: this.clientId,
       code,
@@ -124,6 +137,8 @@ export class AgentClient {
       redirect_uri: flow.redirectUri,
       resource: this.resource,
     }));
+    this.storeTokens(tokens);
+    return tokens;
   }
 
   /** Signs a request-bound DPoP proof; the private key never leaves this instance. */
@@ -160,19 +175,35 @@ export class AgentClient {
 
   /** Rotates the access token using the refresh token (the server rotates it on every use). */
   async refresh(): Promise<TokenSet> {
+    if (this.refreshInFlight) return this.refreshInFlight;
     if (!this.tokens?.refresh_token) throw new Error("No refresh token available");
-    const endpoint = await this.tokenEndpoint();
-    return this.request(endpoint, new URLSearchParams({
-      grant_type: "refresh_token",
-      client_id: this.clientId,
-      refresh_token: this.tokens.refresh_token,
-      resource: this.resource,
-    }));
+    const previous = this.tokens;
+    const run = (async () => {
+      const endpoint = await this.tokenEndpoint();
+      const rotated = await this.tokenRequest(endpoint, new URLSearchParams({
+        grant_type: "refresh_token",
+        client_id: this.clientId,
+        refresh_token: previous.refresh_token!,
+        resource: this.resource,
+      }));
+      // Conforming ASes rotate; if the response omits the refresh token, keep the old one.
+      const merged = { ...rotated, refresh_token: rotated.refresh_token ?? previous.refresh_token };
+      this.storeTokens(merged);
+      return merged;
+    })();
+    this.refreshInFlight = run;
+    try {
+      return await run;
+    } finally {
+      this.refreshInFlight = undefined;
+    }
   }
 
   /**
    * RFC 8693 token exchange: swaps a user-approved subject token for a
    * short-lived, DPoP-bound token scoped to one MSAuth delegation.
+   * The delegated token is RETURNED, not stored — the user token set (with
+   * its refresh token) stays intact for renewing the subject credential.
    */
   async exchange(delegationId: string, subjectToken: string, options?: ExchangeOptions): Promise<TokenSet> {
     const endpoint = await this.tokenEndpoint();
@@ -186,7 +217,7 @@ export class AgentClient {
     };
     if (options?.scope?.length) fields.scope = options.scope.join(" ");
     if (options?.authorizationDetails?.length) fields.authorization_details = JSON.stringify(options.authorizationDetails);
-    return this.request(endpoint, new URLSearchParams(fields));
+    return this.tokenRequest(endpoint, new URLSearchParams(fields));
   }
 
   private async tokenEndpoint(): Promise<string> {
@@ -209,7 +240,12 @@ export class AgentClient {
     return this.tokens.access_token;
   }
 
-  private async request(endpoint: string, body: URLSearchParams): Promise<TokenSet> {
+  private storeTokens(tokens: TokenSet) {
+    this.tokens = { ...tokens, expiresAt: tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : undefined };
+  }
+
+  /** POSTs a token request with a DPoP proof. Never mutates the stored token set. */
+  private async tokenRequest(endpoint: string, body: URLSearchParams): Promise<TokenSet> {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded", dpop: await this.proof("POST", endpoint) },
@@ -219,8 +255,7 @@ export class AgentClient {
     if (!response.ok || !result?.access_token) {
       throw new Error(`Token request failed (${response.status}): ${JSON.stringify(result)}`);
     }
-    this.tokens = { ...result, expiresAt: result.expires_in ? Date.now() + result.expires_in * 1000 : undefined };
-    return this.tokens;
+    return result;
   }
 }
 
@@ -232,22 +267,32 @@ export function createProtectedResourceMetadata(resource: string, authorizationS
   };
 }
 
-/** Resource-server gate for one MCP tool call: audience, expiry and RAR authority. */
+/**
+ * Resource-server gate for one MCP tool call: audience, validity window and
+ * RAR authority. Operates on decoded claims only — it does NOT verify the
+ * JWT signature or its DPoP binding. Resource servers that accept tokens
+ * from the network MUST also verify the signature against the AS JWKS and
+ * enforce the DPoP binding (scheme `DPoP` + proof + cnf.jkt + ath) before
+ * trusting these claims; this function is the last gate, not the only one.
+ */
 export function authorizeToolCall(
-  claims: { aud?: unknown; exp?: unknown; authorization_details?: unknown },
+  claims: { aud?: unknown; exp?: unknown; nbf?: unknown; authorization_details?: unknown },
   resource: string,
   identifier: string,
   action: string,
 ): void {
   const audience = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
   if (!audience.includes(resource)) throw new Error("Token audience does not include this resource");
+  if (typeof claims.nbf === "number" && claims.nbf * 1000 > Date.now()) throw new Error("Token is not yet valid");
   if (typeof claims.exp !== "number" || claims.exp * 1000 <= Date.now()) throw new Error("Token is expired");
-  const details = claims.authorization_details as AuthorizationDetail[] | undefined;
+  // Malformed claims fail closed — a string-shaped or partial
+  // authorization_details must be a rejection, never a TypeError.
+  const details = Array.isArray(claims.authorization_details) ? claims.authorization_details as AuthorizationDetail[] : undefined;
   const granted = details?.some(detail =>
-    detail.type === "mcp_tool" &&
-    detail.locations.includes(resource) &&
-    detail.actions.includes(action) &&
-    detail.identifiers.includes(identifier),
+    detail?.type === "mcp_tool" &&
+    Array.isArray(detail.locations) && detail.locations.includes(resource) &&
+    Array.isArray(detail.actions) && detail.actions.includes(action) &&
+    Array.isArray(detail.identifiers) && detail.identifiers.includes(identifier),
   );
   if (!granted) throw new Error(`No grant for ${action} on ${identifier} at ${resource}`);
 }
