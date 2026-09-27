@@ -17,7 +17,11 @@ developerRoutes.post("/applications", async c => {
   const input = await body(c);
   const name = text(input.name, "name");
   let redirects: string[];
-  try { redirects = list(input.redirectUris, "redirectUris").map(validateRedirect); }
+  let postLogouts: string[] = [];
+  try {
+    redirects = list(input.redirectUris, "redirectUris").map(validateRedirect);
+    postLogouts = list(input.postLogoutRedirectUris ?? [], "postLogoutRedirectUris").map(validateRedirect);
+  }
   catch { throw new HTTPException(400, { message: "Use exact HTTPS or loopback callback URLs" }); }
   if (!redirects.length) throw new HTTPException(400, { message: "At least one callback URL is required" });
   const result = await c.get("auth").api.createOAuthClient({
@@ -29,8 +33,18 @@ developerRoutes.post("/applications", async c => {
       grant_types: ["authorization_code", "refresh_token", EXCHANGE_GRANT],
       response_types: ["code"], scope: OAUTH_SCOPES.join(" "),
       dpop_bound_access_tokens: input.dpop === true,
+      post_logout_redirect_uris: postLogouts.length ? postLogouts : undefined,
     },
   });
+  // enable_end_session is a provider-restricted field the owner-facing create
+  // schema refuses, so opt in through the admin endpoint — it still requires
+  // the session to own the client.
+  if (input.enableEndSession === true) {
+    await c.get("auth").api.adminUpdateOAuthClient({
+      headers: c.req.raw.headers,
+      body: { client_id: result.client_id, update: { enable_end_session: true } },
+    });
+  }
   await audit(c, "application.created", "application", result.client_id, { name });
   return c.json(result, 201);
 });
@@ -41,9 +55,20 @@ developerRoutes.patch("/applications/:id", async c => {
   try { redirects = list(input.redirectUris, "redirectUris").map(validateRedirect); }
   catch { throw new HTTPException(400, { message: "Invalid callback URLs" }); }
   if (!redirects.length) throw new HTTPException(400, { message: "At least one callback URL is required" });
-  const result = await c.get("auth").api.updateOAuthClient({
+  const update: {
+    client_name: string; redirect_uris: string[];
+    post_logout_redirect_uris?: string[]; enable_end_session?: boolean;
+  } = { client_name: text(input.name, "name"), redirect_uris: redirects };
+  if (input.postLogoutRedirectUris !== undefined) {
+    let postLogouts: string[];
+    try { postLogouts = list(input.postLogoutRedirectUris, "postLogoutRedirectUris").map(validateRedirect); }
+    catch { throw new HTTPException(400, { message: "Invalid post-logout URLs" }); }
+    update.post_logout_redirect_uris = postLogouts;
+  }
+  if (typeof input.enableEndSession === "boolean") update.enable_end_session = input.enableEndSession;
+  const result = await c.get("auth").api.adminUpdateOAuthClient({
     headers: c.req.raw.headers,
-    body: { client_id: c.req.param("id"), update: { client_name: text(input.name, "name"), redirect_uris: redirects } },
+    body: { client_id: c.req.param("id"), update },
   });
   await audit(c, "application.updated", "application", c.req.param("id"));
   return c.json(result);

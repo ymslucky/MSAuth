@@ -18,6 +18,8 @@ interface AppRow {
 	client_id: string;
 	client_name: string | null;
 	redirect_uris: string[] | null;
+	post_logout_redirect_uris?: string[] | null;
+	enable_end_session?: boolean | null;
 	grant_types: string[] | null;
 	disabled: number | null;
 	userId: string | null;
@@ -176,7 +178,13 @@ export function Applications() {
 						const target = editing;
 						void runOptimistic(
 							list => list.map(item => item.client_id === target.client_id
-								? { ...item, client_name: input.name, redirect_uris: input.redirectUris }
+								? {
+									...item,
+									client_name: input.name,
+									redirect_uris: input.redirectUris,
+									post_logout_redirect_uris: input.postLogoutRedirectUris,
+									enable_end_session: input.enableEndSession,
+								}
 								: item),
 							() => patch(`/api/v1/applications/${target.client_id}`, input),
 							t("Application updated."),
@@ -196,11 +204,16 @@ function AppForm(props: {
 	initial?: AppRow;
 	pending: boolean;
 	onClose: () => void;
-	onSave: (input: { name: string; redirectUris: string[]; confidential: boolean; dpop: boolean }) => void;
+	onSave: (input: {
+		name: string; redirectUris: string[]; postLogoutRedirectUris: string[];
+		enableEndSession: boolean; confidential: boolean; dpop: boolean;
+	}) => void;
 }) {
 	const t = useT();
 	const [name, setName] = useState(props.initial?.client_name ?? "");
 	const [redirects, setRedirects] = useState((props.initial?.redirect_uris ?? []).join("\n"));
+	const [postLogouts, setPostLogouts] = useState((props.initial?.post_logout_redirect_uris ?? []).join("\n"));
+	const [endSession, setEndSession] = useState(props.initial?.enable_end_session === true);
 	const [confidential, setConfidential] = useState(false);
 	const [dpop, setDpop] = useState(true);
 	return (
@@ -211,20 +224,33 @@ function AppForm(props: {
 			<Field label={t("Callback URLs")} hint={t("One per line. Exact HTTPS URLs, or http loopback for native apps.")}>
 				<textarea rows={3} value={redirects} onChange={event => setRedirects(event.target.value)} spellCheck={false} />
 			</Field>
-			{!props.initial && (
-				<div className="checks">
-					<label className="check-row">
-						<input type="checkbox" checked={confidential} onChange={event => setConfidential(event.target.checked)} /> {t("Confidential client (client secret)")}
-					</label>
-					<label className="check-row">
-						<input type="checkbox" checked={dpop} onChange={event => setDpop(event.target.checked)} /> {t("Require DPoP-bound tokens")}
-					</label>
-				</div>
-			)}
+			<Field
+				label={t("Post-logout URLs")}
+				hint={t("One per line. Federated logout redirects only to exact matches, as registered.")}
+			>
+				<textarea rows={2} value={postLogouts} onChange={event => setPostLogouts(event.target.value)} spellCheck={false} />
+			</Field>
+			<div className="checks">
+				<label className="check-row">
+					<input type="checkbox" checked={endSession} onChange={event => setEndSession(event.target.checked)} /> {t("Allow federated logout (end-session)")}
+				</label>
+				{!props.initial && (
+					<>
+						<label className="check-row">
+							<input type="checkbox" checked={confidential} onChange={event => setConfidential(event.target.checked)} /> {t("Confidential client (client secret)")}
+						</label>
+						<label className="check-row">
+							<input type="checkbox" checked={dpop} onChange={event => setDpop(event.target.checked)} /> {t("Require DPoP-bound tokens")}
+						</label>
+					</>
+				)}
+			</div>
 			<div className="btn-row">
 				<Button kind="primary" busy={props.pending} disabled={!name.trim() || !redirects.trim()} onClick={() => props.onSave({
 					name: name.trim(),
 					redirectUris: redirects.split("\n").map(value => value.trim()).filter(Boolean),
+					postLogoutRedirectUris: postLogouts.split("\n").map(value => value.trim()).filter(Boolean),
+					enableEndSession: endSession,
 					confidential, dpop,
 				})}>{t("Save")}</Button>
 				<Button kind="ghost" disabled={props.pending} onClick={props.onClose}>{t("Cancel")}</Button>

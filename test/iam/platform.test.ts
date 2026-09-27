@@ -189,6 +189,46 @@ describe("OAuth and Agent integration", () => {
     expect((await request("/api/v1/keys/" + key.id, ownerCookie, "DELETE")).status).toBe(200);
   });
 
+  it("gates OIDC end-session logout behind the application's opt-in flag", async () => {
+    const logoutUser = await login("end-session@example.com");
+    // SafeUrlSchema normalizes registrations to canonical form, so the
+    // post-logout URL must be requested exactly as registered (trailing slash).
+    const postLogout = "https://rp.example.com/";
+    const endSession = (clientId: string, cookie = logoutUser.cookie) => app.request(
+      origin + "/api/auth/oauth2/end-session?" + new URLSearchParams({
+        client_id: clientId, post_logout_redirect_uri: postLogout,
+      }),
+      { headers: { cookie, accept: "text/html" } }, bindings,
+    );
+    const create = await request("/api/v1/applications", ownerCookie, "POST", {
+      name: "Portal", redirectUris: ["https://rp.example.com/auth/callback"],
+      postLogoutRedirectUris: [postLogout],
+    });
+    expect(create.status, await create.clone().text()).toBe(201);
+    const client = await create.json() as { client_id: string };
+    // Opt-in is required: without the flag the provider refuses RP-initiated logout.
+    expect((await endSession(client.client_id)).status).toBe(401);
+    const patch = await request("/api/v1/applications/" + client.client_id, ownerCookie, "PATCH", {
+      name: "Portal", redirectUris: ["https://rp.example.com/auth/callback"], enableEndSession: true,
+    });
+    expect(patch.status, await patch.clone().text()).toBe(200);
+    // With the flag, the provider confirms with the active session before logout.
+    const page = await endSession(client.client_id);
+    expect(page.status, await page.clone().text()).toBe(200);
+    expect(await page.text()).toContain("data-oidc-logout-confirmation");
+    const confirmCookie = page.headers.getSetCookie().map(value => value.split(";")[0]).join("; ");
+    const cookie = [logoutUser.cookie, confirmCookie].filter(Boolean).join("; ");
+    const confirm = await app.request(origin + "/api/auth/oauth2/end-session/confirm", {
+      method: "POST",
+      headers: { cookie, "content-type": "application/x-www-form-urlencoded", accept: "text/html", origin },
+      body: new URLSearchParams({ action: "confirm" }),
+    }, bindings);
+    expect(confirm.status, await confirm.clone().text()).toBe(302);
+    expect(confirm.headers.get("location")).toBe(postLogout);
+    const session = await request("/api/auth/get-session", cookie);
+    expect(await session.text()).toBe("null");
+  });
+
   it("runs PKCE consent, DPoP, RAR exchange, replay rejection and refresh rotation", async () => {
     const resource = "https://mcp.example.com/mcp";
     const pair = await generateKeyPair("ES256", { extractable: true });
