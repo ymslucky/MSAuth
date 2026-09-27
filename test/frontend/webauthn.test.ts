@@ -118,12 +118,12 @@ describe("isPasskeySupported — gate before touching the WebAuthn API", () => {
 describe("normalizeWebAuthnError — DOM exceptions → server-localizable messages", () => {
 	it("maps a dismissed or timed-out ceremony to the passkey 'Auth cancelled' message", () => {
 		const error = new DOMException("The operation either timed out or was not allowed", "NotAllowedError");
-		expect(normalizeWebAuthnError(error).message).toBe("Auth cancelled");
+		expect((normalizeWebAuthnError(error) as Error).message).toBe("Auth cancelled");
 	});
 
 	it("maps an existing-credential rejection to 'Previously registered'", () => {
 		const error = new DOMException("The authenticator already contains a credential", "InvalidStateError");
-		expect(normalizeWebAuthnError(error).message).toBe("Previously registered");
+		expect((normalizeWebAuthnError(error) as Error).message).toBe("Previously registered");
 	});
 
 	it("passes unknown errors through unchanged", () => {

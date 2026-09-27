@@ -1,5 +1,8 @@
 {
-	"compatibility_date": "2025-10-08",
+	"compatibility_date": "2026-08-01",
+	"observability": {
+		"enabled": true
+	},
 	"main": "src/platform.ts",
 	"name": "msauth",
 	"upload_source_maps": true,

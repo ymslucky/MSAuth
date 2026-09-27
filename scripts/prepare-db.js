@@ -15,13 +15,13 @@ function sh(command) {
 }
 
 function listDatabases() {
-	try {
-		const out = sh("npx wrangler d1 list --json");
-		const parsed = JSON.parse(out || "[]");
-		return Array.isArray(parsed) ? parsed : [];
-	} catch {
-		return [];
-	}
+	// No silent catch: a transient `wrangler d1 list` failure must abort the
+	// deploy instead of looking like "database missing" — that would create a
+	// fresh empty database and repoint wrangler.json away from the real data.
+	const out = sh("npx wrangler d1 list --json");
+	const parsed = JSON.parse(out || "[]");
+	if (!Array.isArray(parsed)) throw new Error("unexpected wrangler d1 list output");
+	return parsed;
 }
 
 function createDatabase() {
