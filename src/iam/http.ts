@@ -34,7 +34,13 @@ export function auditStatement(c: Context<AppEnv>, action: string, type: string,
 }
 
 export async function audit(c: Context<AppEnv>, action: string, type: string, id: string, detail: unknown = {}) {
-  await auditStatement(c, action, type, id, detail).run();
+  try {
+    await auditStatement(c, action, type, id, detail).run();
+  } catch (error) {
+    // The mutation already happened — make the lost audit row observable.
+    console.error(JSON.stringify({ requestId: c.get("requestId"), kind: "audit_write_failed", action, resourceType: type, resourceId: id }));
+    throw error;
+  }
 }
 
 export function page(c: Context<AppEnv>) {

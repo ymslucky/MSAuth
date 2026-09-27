@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { AppEnv } from "./types";
-import { audit, body, list, text, requireOperator } from "./http";
+import { audit, auditStatement, body, list, text, requireOperator } from "./http";
 import { validateRedirect, validateResource } from "../agent/policy";
 import { EXCHANGE_GRANT } from "../agent/exchange";
 import { OAUTH_SCOPES } from "./auth";
@@ -75,8 +75,13 @@ developerRoutes.patch("/applications/:id", async c => {
   });
   if (clearPostLogouts) {
     // Owner-scoped clear — unreachable for non-owners (adminUpdate already 403s).
-    await c.env.AUTH_DB.prepare("UPDATE oauthClient SET postLogoutRedirectUris = NULL WHERE clientId = ? AND userId = ?")
-      .bind(c.req.param("id"), c.get("identity").user.id).run();
+    // Clear + audit share one D1 batch (transaction) so the trail cannot be lost.
+    await c.env.AUTH_DB.batch([
+      c.env.AUTH_DB.prepare("UPDATE oauthClient SET postLogoutRedirectUris = NULL WHERE clientId = ? AND userId = ?")
+        .bind(c.req.param("id"), c.get("identity").user.id),
+      auditStatement(c, "application.updated", "application", c.req.param("id")),
+    ]);
+    return c.json(result);
   }
   await audit(c, "application.updated", "application", c.req.param("id"));
   return c.json(result);
@@ -158,8 +163,12 @@ developerRoutes.get("/registrations", async c => {
 developerRoutes.delete("/registrations/:id", async c => {
   requireOperator(c);
   const id = c.req.param("id");
-  const result = await c.env.AUTH_DB.prepare("UPDATE oauthClient SET disabled = 1 WHERE clientId = ? AND userId IS NULL").bind(id).run();
-  if (!result.meta.changes) throw new HTTPException(404, { message: "Registration not found" });
-  await audit(c, "registration.revoked", "application", id);
+  const pending = await c.env.AUTH_DB.prepare("SELECT clientId FROM oauthClient WHERE clientId = ? AND userId IS NULL AND disabled = 0").bind(id).first();
+  if (!pending) throw new HTTPException(404, { message: "Registration not found" });
+  // Disable + audit share one D1 batch (transaction) so the trail cannot be lost.
+  await c.env.AUTH_DB.batch([
+    c.env.AUTH_DB.prepare("UPDATE oauthClient SET disabled = 1 WHERE clientId = ? AND userId IS NULL").bind(id),
+    auditStatement(c, "registration.revoked", "application", id),
+  ]);
   return c.json({ ok: true });
 });

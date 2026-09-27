@@ -71,6 +71,11 @@ app.use("/api/v1/*", async (c, next) => {
   c.set("auth", auth);
   c.set("identity", identity);
   c.set("operator", await isOperator(c.env, identity.user.email, identity.user.emailVerified));
+  // Per-principal soft budget for management traffic (auth endpoints above are
+  // throttled per IP+path instead). Simple limits are eventually consistent.
+  if (!(await c.env.RATE_LIMITER.limit({ key: identity.user.id })).success) {
+    return c.json({ error: "rate_limited" }, 429);
+  }
   await next();
 });
 app.route("/api/v1", agentRoutes);

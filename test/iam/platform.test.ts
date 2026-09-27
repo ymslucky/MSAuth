@@ -72,6 +72,9 @@ describe("Platform security middleware", () => {
     expect(res.status).toBe(413);
   });
   it("gates dynamic client registration behind the platform switch", async () => {
+    // Seeded closed — anonymous DCR is an explicit operator opt-in.
+    const initial = await request("/api/v1/settings", ownerCookie);
+    expect(((await initial.json()) as { dcrEnabled?: boolean }).dcrEnabled).toBe(false);
     await request("/api/v1/settings", ownerCookie, "PATCH", { dcrEnabled: false });
     expect((await request("/api/auth/oauth2/register", "", "POST", {})).status).toBe(403);
     await request("/api/v1/settings", ownerCookie, "PATCH", { dcrEnabled: true });
@@ -238,6 +241,50 @@ describe("OAuth and Agent integration", () => {
     const row = ((await list.json()) as { items: Array<{ client_id: string; post_logout_redirect_uris?: string[] | null }> })
       .items.find(item => item.client_id === client.client_id);
     expect(row?.post_logout_redirect_uris ?? []).toEqual([]);
+  });
+
+  it("lets operators review and revoke anonymous dynamic registrations", async () => {
+    expect((await request("/api/v1/registrations", otherCookie)).status).toBe(403);
+    const register = await request("/api/auth/oauth2/register", "", "POST", {
+      redirect_uris: ["https://anonymous.example.com/callback"], client_name: "Anonymous CLI",
+      token_endpoint_auth_method: "none",
+    });
+    expect([200, 201], await register.clone().text()).toContain(register.status);
+    const client = await register.json() as { client_id: string };
+    expect(client.client_id).toBeTruthy();
+    const registrations = await request("/api/v1/registrations", ownerCookie);
+    const row = ((await registrations.json()) as { items: Array<{ clientId: string; disabled: number }> })
+      .items.find(item => item.clientId === client.client_id);
+    expect(row?.disabled).toBe(0);
+    expect((await request("/api/v1/registrations/" + client.client_id, ownerCookie, "DELETE")).status).toBe(200);
+    expect((await request("/api/v1/registrations/" + client.client_id, ownerCookie, "DELETE")).status).toBe(404);
+    const after = await request("/api/v1/registrations", ownerCookie);
+    const revoked = ((await after.json()) as { items: Array<{ clientId: string; disabled: number }> })
+      .items.find(item => item.clientId === client.client_id);
+    expect(revoked?.disabled).toBe(1);
+    const auditRes = await request("/api/v1/audit?actor=" + ownerId + "&resource=" + client.client_id);
+    const auditBody = await auditRes.json() as { items: { action: string }[] };
+    expect(auditBody.items.some(item => item.action === "registration.revoked")).toBe(true);
+  });
+
+  it("rotates confidential client secrets one-way and records the audit trail", async () => {
+    const create = await request("/api/v1/applications", ownerCookie, "POST", {
+      name: "Confidential CLI", redirectUris: ["https://cli.example.com/callback"], confidential: true,
+    });
+    expect(create.status, await create.clone().text()).toBe(201);
+    const client = await create.json() as { client_id: string; client_secret?: string };
+    expect(client.client_secret).toMatch(/^msa_cs_/);
+    const rotate = await request("/api/v1/applications/" + client.client_id + "/rotate", ownerCookie, "POST", {});
+    expect(rotate.status, await rotate.clone().text()).toBe(200);
+    const rotated = await rotate.json() as { client_secret: string };
+    expect(rotated.client_secret).toMatch(/^msa_cs_/);
+    expect(rotated.client_secret).not.toBe(client.client_secret);
+    // the revealed secret never appears again in listings
+    const list = await request("/api/v1/applications", ownerCookie);
+    expect(JSON.stringify(await list.json())).not.toContain(rotated.client_secret);
+    const auditRes = await request("/api/v1/audit?actor=" + ownerId + "&resource=" + client.client_id);
+    const auditBody = await auditRes.json() as { items: { action: string }[] };
+    expect(auditBody.items.some(item => item.action === "application.secret_rotated")).toBe(true);
   });
 
   it("runs PKCE consent, DPoP, RAR exchange, replay rejection and refresh rotation", async () => {
@@ -451,5 +498,22 @@ describe("Two-factor authentication (TOTP sign-in challenge)", () => {
     // A wrong code is rejected.
     const bad = await request("/api/auth/two-factor/verify-totp", challengeCookie, "POST", { code: "000000" });
     expect(bad.status).toBe(401);
+  });
+});
+
+describe("Management API rate limiting", () => {
+  // Kept last so earlier suites stay well inside the 50/60s test budget
+  // (the owner session makes ~45 /api/v1 calls across this file).
+  it("rate limits the management API per principal, isolating other sessions", async () => {
+    const fresh = await login("rate-limit@example.com");
+    let limited = 0;
+    for (let i = 0; i < 55 && limited === 0; i++) {
+      const res = await request("/api/v1/sessions", fresh.cookie);
+      if (res.status === 429) limited = i;
+    }
+    expect(limited).toBeGreaterThan(0);
+    expect(limited).toBeLessThanOrEqual(50);
+    // budgets are per identity — another principal is unaffected
+    expect((await request("/api/v1/sessions", otherCookie)).status).toBe(200);
   });
 });

@@ -99,8 +99,16 @@ export function exchangeExtension(env: Bindings): OAuthProviderExtension {
           },
           tokenResponse: { issued_token_type: ACCESS_TOKEN_TYPE, authorization_details: details },
         });
-        await env.AUTH_DB.prepare("INSERT INTO auditEvent (id, actorId, action, resourceType, resourceId, detail, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)")
-          .bind(crypto.randomUUID(), grant.ownerId, "token.exchanged", "delegation", grant.id, JSON.stringify({ agentId: grant.agentId, resource: grant.resource, scopes: requested }), Date.now()).run();
+        try {
+          await env.AUTH_DB.prepare("INSERT INTO auditEvent (id, actorId, action, resourceType, resourceId, detail, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)")
+            .bind(crypto.randomUUID(), grant.ownerId, "token.exchanged", "delegation", grant.id, JSON.stringify({ agentId: grant.agentId, resource: grant.resource, scopes: requested }), Date.now()).run();
+        } catch (error) {
+          // The token is already issued, but audit loss must not pass silently:
+          // log context, then fail the response — the client's retry re-issues a
+          // ≤5-minute token (same narrowed authority) and re-attempts the write.
+          console.error(JSON.stringify({ kind: "audit_write_failed", action: "token.exchanged", delegationId: grant.id, actorId: grant.ownerId }));
+          throw error;
+        }
         return result;
       },
     },
