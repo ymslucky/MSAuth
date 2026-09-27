@@ -45,31 +45,55 @@ export function authPlugins(baseURL: string, env?: Bindings, adminIds: string[] 
   ];
 }
 
-/** Secrets and administrator membership are resolved per request, never cached indefinitely. */
+/**
+ * Instances are keyed by every input they were built from (base URL, resolved
+ * secrets, admin allowlist membership), so a secret rotation, an allowlist
+ * change or an emailVerified flip produces a new key and a fresh instance —
+ * the per-request freshness guarantees hold; only the factory rebuild is
+ * amortized across requests with identical inputs.
+ */
+const instanceCache = new Map<string, Awaited<ReturnType<typeof buildAuth>>>();
+
+async function instanceKey(parts: unknown[]): Promise<string> {
+	const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(parts)));
+	return btoa(String.fromCharCode(...new Uint8Array(digest)));
+}
+
 export async function createAuth(env: Bindings) {
-  const baseURL = new URL(env.BETTER_AUTH_URL).origin;
-  const [authSecret, clientId, clientSecret, adminEmails] = await Promise.all([
-    secret(env.BETTER_AUTH_SECRET), secret(env.GITHUB_CLIENT_ID),
-    secret(env.GITHUB_CLIENT_SECRET), secret(env.ADMIN_EMAIL),
-  ]);
-  if (authSecret.length < 32) throw new Error("BETTER_AUTH_SECRET must contain at least 32 characters");
-  // The kill switch is a test-only escape hatch: reserved test/local origins
-  // may honor it, so a stray RATE_LIMIT_DISABLED var can never silence the
-  // limiter in production.
-  const hostname = new URL(baseURL).hostname;
-  const honorKillSwitch = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]" || hostname.endsWith(".test");
-  const rateLimitDisabled = env.RATE_LIMIT_DISABLED === "1" && honorKillSwitch;
-  const allowlist = adminEmails.split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
-  // Filter by the allowlist itself — a full scan of every verified user per
-  // request is wasted work once the allowlist is a handful of emails.
-  let adminIds: string[] = [];
-  if (allowlist.length) {
-    const placeholders = allowlist.map(() => "?").join(",");
-    const admins = await env.AUTH_DB.prepare(`SELECT id FROM "user" WHERE emailVerified = 1 AND lower(email) IN (${placeholders})`)
-      .bind(...allowlist).all<{ id: string }>();
-    adminIds = admins.results.map(user => user.id);
-  }
-  return betterAuth({
+	const baseURL = new URL(env.BETTER_AUTH_URL).origin;
+	const [authSecret, clientId, clientSecret, adminEmails] = await Promise.all([
+		secret(env.BETTER_AUTH_SECRET), secret(env.GITHUB_CLIENT_ID),
+		secret(env.GITHUB_CLIENT_SECRET), secret(env.ADMIN_EMAIL),
+	]);
+	if (authSecret.length < 32) throw new Error("BETTER_AUTH_SECRET must contain at least 32 characters");
+	// The kill switch is a test-only escape hatch: reserved test/local origins
+	// may honor it, so a stray RATE_LIMIT_DISABLED var can never silence the
+	// limiter in production.
+	const hostname = new URL(baseURL).hostname;
+	const honorKillSwitch = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]" || hostname.endsWith(".test");
+	const rateLimitDisabled = env.RATE_LIMIT_DISABLED === "1" && honorKillSwitch;
+	const allowlist = adminEmails.split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
+	// Filter by the allowlist itself — a full scan of every verified user per
+	// request is wasted work once the allowlist is a handful of emails.
+	let adminIds: string[] = [];
+	if (allowlist.length) {
+		const placeholders = allowlist.map(() => "?").join(",");
+		const admins = await env.AUTH_DB.prepare(`SELECT id FROM "user" WHERE emailVerified = 1 AND lower(email) IN (${placeholders})`)
+			.bind(...allowlist).all<{ id: string }>();
+		adminIds = admins.results.map(user => user.id);
+	}
+	const cacheKey = await instanceKey([baseURL, authSecret, clientId, clientSecret, adminEmails, rateLimitDisabled, adminIds]);
+	const cached = instanceCache.get(cacheKey);
+	if (cached) return cached;
+	const instance = buildAuth(env, baseURL, authSecret, clientId, clientSecret, allowlist, adminIds, rateLimitDisabled);
+	// Small keyed cache — in practice one entry per deployed configuration.
+	if (instanceCache.size >= 8) instanceCache.clear();
+	instanceCache.set(cacheKey, instance);
+	return instance;
+}
+
+function buildAuth(env: Bindings, baseURL: string, authSecret: string, clientId: string, clientSecret: string, allowlist: string[], adminIds: string[], rateLimitDisabled: boolean) {
+	return betterAuth({
     appName: "MSAuth", baseURL, basePath: "/api/auth", secret: authSecret,
     database: env.AUTH_DB,
     trustedOrigins: [baseURL],

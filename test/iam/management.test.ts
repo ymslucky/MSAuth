@@ -127,6 +127,16 @@ describe("Management semantics", () => {
     expect(((await createAuth(bindings)).options.rateLimit as { enabled: boolean }).enabled).toBe(false);
   });
 
+  it("amortizes instance construction per input set without stale reuse", async () => {
+    const first = await createAuth(bindings);
+    const second = await createAuth(bindings);
+    // same resolved inputs -> same instance (no factory rebuild on the hot path)
+    expect(second).toBe(first);
+    // any input change (here: the admin allowlist) must yield a fresh instance
+    const other = await createAuth({ ...bindings, ADMIN_EMAIL: "someone-else@example.com" });
+    expect(other).not.toBe(first);
+  });
+
   it("declares explicit SameSite/Path attributes on session cookies", async () => {
     const auth = await createAuth(bindings);
     const res = await auth.handler(new Request(origin + "/api/auth/sign-in/email", {
