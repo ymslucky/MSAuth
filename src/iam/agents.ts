@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { calculateJwkThumbprint, importJWK } from "jose";
 import type { AppEnv } from "./types";
-import { auditStatement, body, list, text } from "./http";
+import { auditStatement, body, invalidInput, isUniqueViolation, list, text } from "./http";
 import { activeDelegation, type Delegation } from "../agent/exchange";
 import { narrowAuthorization, parseAuthorization, subset, validateResource } from "../agent/policy";
 import { OAUTH_SCOPES } from "./auth";
@@ -36,11 +36,18 @@ agentRoutes.post("/agents", async c => {
       dpopJkt = await calculateJwkThumbprint(jwk);
     } catch { throw new HTTPException(400, { message: "Invalid public key" }); }
   }
-  await c.env.AUTH_DB.batch([
-    c.env.AUTH_DB.prepare("INSERT INTO agent (id, ownerId, name, description, clientId, dpopJkt, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)")
-      .bind(id, ownerId, name, description, clientId, dpopJkt, Date.now()),
-    auditStatement(c, "agent.created", "agent", id, { name, clientId, dpopJkt }),
-  ]);
+  try {
+    await c.env.AUTH_DB.batch([
+      c.env.AUTH_DB.prepare("INSERT INTO agent (id, ownerId, name, description, clientId, dpopJkt, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        .bind(id, ownerId, name, description, clientId, dpopJkt, Date.now()),
+      auditStatement(c, "agent.created", "agent", id, { name, clientId, dpopJkt }),
+    ]);
+  } catch (error) {
+    // clientId is globally unique (agent_client_idx) — racing registrations
+    // are a conflict, not a server error.
+    if (isUniqueViolation(error)) throw new HTTPException(409, { message: "This application is already registered as an agent" });
+    throw error;
+  }
   return c.json({ id, ownerId, name, description, clientId, dpopJkt, status: "active" }, 201);
 });
 
@@ -79,7 +86,7 @@ agentRoutes.post("/delegations", async c => {
   let resource: string;
   let details;
   try { resource = validateResource(text(input.resource, "resource", 2048)); details = parseAuthorization(input.authorizationDetails); }
-  catch { throw new HTTPException(400, { message: "Invalid resource or authorization details" }); }
+  catch (error) { throw invalidInput("resource or authorization details", error); }
   if (details.some(detail => detail.locations.length !== 1 || detail.locations[0] !== resource)) throw new HTTPException(400, { message: "Every permission must target the exact resource" });
   const resourceRow = await c.env.AUTH_DB.prepare("SELECT r.id FROM oauthResource r JOIN oauthClientResource cr ON cr.resourceId = r.identifier WHERE r.identifier = ? AND cr.clientId = ? AND r.disabled = 0")
     .bind(resource, agent.clientId).first();

@@ -256,8 +256,15 @@ describe("OAuth and Agent integration", () => {
     const row = ((await registrations.json()) as { items: Array<{ clientId: string; disabled: number }> })
       .items.find(item => item.clientId === client.client_id);
     expect(row?.disabled).toBe(0);
+    // tokens already issued to the anonymous client die with the registration
+    await env.AUTH_DB.prepare("INSERT INTO oauthRefreshToken (id, token, clientId, userId, expiresAt, createdAt, scopes) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .bind(crypto.randomUUID(), "rt-anon", client.client_id, ownerId, Date.now() + 86400000, Date.now(), "openid").run();
+    await env.AUTH_DB.prepare("INSERT INTO oauthAccessToken (id, token, clientId, expiresAt, createdAt, scopes) VALUES (?, ?, ?, ?, ?, ?)")
+      .bind(crypto.randomUUID(), "at-anon", client.client_id, Date.now() + 300000, Date.now(), "openid").run();
     expect((await request("/api/v1/registrations/" + client.client_id, ownerCookie, "DELETE")).status).toBe(200);
     expect((await request("/api/v1/registrations/" + client.client_id, ownerCookie, "DELETE")).status).toBe(404);
+    expect(await env.AUTH_DB.prepare("SELECT id FROM oauthRefreshToken WHERE clientId = ?").bind(client.client_id).first()).toBeNull();
+    expect(await env.AUTH_DB.prepare("SELECT id FROM oauthAccessToken WHERE clientId = ?").bind(client.client_id).first()).toBeNull();
     const after = await request("/api/v1/registrations", ownerCookie);
     const revoked = ((await after.json()) as { items: Array<{ clientId: string; disabled: number }> })
       .items.find(item => item.clientId === client.client_id);

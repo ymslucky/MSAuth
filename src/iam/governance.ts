@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { AppEnv } from "./types";
-import { audit, auditStatement, body, page, requireOperator, text } from "./http";
+import { audit, auditStatement, body, isUniqueViolation, page, requireOperator, text } from "./http";
 
 export const governanceRoutes = new Hono<AppEnv>();
 
@@ -103,7 +103,15 @@ governanceRoutes.get("/alerts", async c => {
 });
 
 governanceRoutes.post("/alerts/:id/acknowledge", async c => {
-  await c.env.AUTH_DB.prepare("UPDATE securityAlert SET acknowledgedAt = ? WHERE id = ? AND userId = ?").bind(Date.now(), c.req.param("id"), c.get("identity").user.id).run();
+  const id = c.req.param("id");
+  const pending = await c.env.AUTH_DB.prepare("SELECT id FROM securityAlert WHERE id = ? AND userId = ? AND acknowledgedAt IS NULL")
+    .bind(id, c.get("identity").user.id).first();
+  if (!pending) throw new HTTPException(404, { message: "Alert not found" });
+  // Acknowledge + audit share one D1 batch (transaction) — every mutation lands on the ledger.
+  await c.env.AUTH_DB.batch([
+    c.env.AUTH_DB.prepare("UPDATE securityAlert SET acknowledgedAt = ? WHERE id = ? AND userId = ?").bind(Date.now(), id, c.get("identity").user.id),
+    auditStatement(c, "alert.acknowledged", "alert", id),
+  ]);
   return c.json({ ok: true });
 });
 
@@ -136,11 +144,28 @@ governanceRoutes.post("/domains", async c => {
   if (!/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(hostname)) throw new HTTPException(400, { message: "Enter a public domain name" });
   const id = crypto.randomUUID();
   const challenge = "msauth-verification=" + crypto.randomUUID();
-  await c.env.AUTH_DB.batch([
-    c.env.AUTH_DB.prepare("INSERT INTO verifiedDomain (id, ownerId, hostname, challenge, createdAt) VALUES (?, ?, ?, ?, ?)").bind(id, c.get("identity").user.id, hostname, challenge, Date.now()),
-    auditStatement(c, "domain.added", "domain", id, { hostname }),
-  ]);
+  try {
+    await c.env.AUTH_DB.batch([
+      c.env.AUTH_DB.prepare("INSERT INTO verifiedDomain (id, ownerId, hostname, challenge, createdAt) VALUES (?, ?, ?, ?, ?)").bind(id, c.get("identity").user.id, hostname, challenge, Date.now()),
+      auditStatement(c, "domain.added", "domain", id, { hostname }),
+    ]);
+  } catch (error) {
+    // hostname is globally UNIQUE — a collision is a conflict, not a server error
+    if (isUniqueViolation(error)) throw new HTTPException(409, { message: "Hostname already registered" });
+    throw error;
+  }
   return c.json({ id, hostname, challenge, record: "_msauth." + hostname }, 201);
+});
+
+governanceRoutes.delete("/domains/:id", async c => {
+  const row = await c.env.AUTH_DB.prepare("SELECT id FROM verifiedDomain WHERE id = ? AND ownerId = ?").bind(c.req.param("id"), c.get("identity").user.id).first();
+  if (!row) throw new HTTPException(404, { message: "Domain not found" });
+  // Removal frees the hostname for re-registration; the audit row records the release.
+  await c.env.AUTH_DB.batch([
+    c.env.AUTH_DB.prepare("DELETE FROM verifiedDomain WHERE id = ?").bind(c.req.param("id")),
+    auditStatement(c, "domain.removed", "domain", c.req.param("id")),
+  ]);
+  return c.json({ ok: true });
 });
 
 governanceRoutes.post("/domains/:id/verify", async c => {

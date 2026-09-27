@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { AppEnv } from "./types";
-import { audit, auditStatement, body, list, text, requireOperator } from "./http";
+import { audit, auditStatement, body, invalidInput, list, text, requireOperator } from "./http";
 import { validateRedirect, validateResource } from "../agent/policy";
 import { EXCHANGE_GRANT } from "../agent/exchange";
 import { OAUTH_SCOPES } from "./auth";
@@ -22,7 +22,7 @@ developerRoutes.post("/applications", async c => {
     redirects = list(input.redirectUris, "redirectUris").map(validateRedirect);
     postLogouts = list(input.postLogoutRedirectUris ?? [], "postLogoutRedirectUris").map(validateRedirect);
   }
-  catch { throw new HTTPException(400, { message: "Use exact HTTPS or loopback callback URLs" }); }
+  catch (error) { throw invalidInput("callback URLs", error); }
   if (!redirects.length) throw new HTTPException(400, { message: "At least one callback URL is required" });
   const result = await c.get("auth").api.createOAuthClient({
     headers: c.req.raw.headers,
@@ -53,7 +53,7 @@ developerRoutes.patch("/applications/:id", async c => {
   const input = await body(c);
   let redirects: string[];
   try { redirects = list(input.redirectUris, "redirectUris").map(validateRedirect); }
-  catch { throw new HTTPException(400, { message: "Invalid callback URLs" }); }
+  catch (error) { throw invalidInput("callback URLs", error); }
   if (!redirects.length) throw new HTTPException(400, { message: "At least one callback URL is required" });
   const update: {
     client_name: string; redirect_uris: string[];
@@ -63,7 +63,7 @@ developerRoutes.patch("/applications/:id", async c => {
   if (input.postLogoutRedirectUris !== undefined) {
     let postLogouts: string[];
     try { postLogouts = list(input.postLogoutRedirectUris, "postLogoutRedirectUris").map(validateRedirect); }
-    catch { throw new HTTPException(400, { message: "Invalid post-logout URLs" }); }
+    catch (error) { throw invalidInput("post-logout URLs", error); }
     // The provider schema rejects empty arrays (min 1), so clearing is ours.
     if (postLogouts.length) update.post_logout_redirect_uris = postLogouts;
     else clearPostLogouts = true;
@@ -121,7 +121,10 @@ developerRoutes.delete("/keys/:id", async c => {
 });
 
 developerRoutes.get("/resources", async c => {
-  const result = await c.env.AUTH_DB.prepare("SELECT id, identifier, name, accessTokenTtl, allowedScopes, dpopBoundAccessTokensRequired, disabled FROM oauthResource ORDER BY name").all();
+  // Disabled resources are operator business — plain users only need live
+  // entries to build delegations, so the directory hides dead targets.
+  const visible = c.get("operator") ? "1 = 1" : "(disabled IS NULL OR disabled = 0)";
+  const result = await c.env.AUTH_DB.prepare(`SELECT id, identifier, name, accessTokenTtl, allowedScopes, dpopBoundAccessTokensRequired, disabled FROM oauthResource WHERE ${visible} ORDER BY name`).all();
   return c.json({ items: result.results });
 });
 
@@ -130,7 +133,7 @@ developerRoutes.post("/resources", async c => {
   const input = await body(c);
   let identifier: string;
   try { identifier = validateResource(text(input.identifier, "identifier", 2048)); }
-  catch { throw new HTTPException(400, { message: "An exact HTTPS resource identifier is required" }); }
+  catch (error) { throw invalidInput("resource identifier", error); }
   const resource = await c.get("auth").api.adminCreateOAuthResource({
     headers: c.req.raw.headers,
     // offline_access must survive resource narrowing: the provider intersects
@@ -165,9 +168,12 @@ developerRoutes.delete("/registrations/:id", async c => {
   const id = c.req.param("id");
   const pending = await c.env.AUTH_DB.prepare("SELECT clientId FROM oauthClient WHERE clientId = ? AND userId IS NULL AND disabled = 0").bind(id).first();
   if (!pending) throw new HTTPException(404, { message: "Registration not found" });
-  // Disable + audit share one D1 batch (transaction) so the trail cannot be lost.
+  // Disable + token purge + audit share one D1 batch (transaction): a revoked
+  // registration must not leave live refresh/access tokens behind.
   await c.env.AUTH_DB.batch([
     c.env.AUTH_DB.prepare("UPDATE oauthClient SET disabled = 1 WHERE clientId = ? AND userId IS NULL").bind(id),
+    c.env.AUTH_DB.prepare("DELETE FROM oauthRefreshToken WHERE clientId = ?").bind(id),
+    c.env.AUTH_DB.prepare("DELETE FROM oauthAccessToken WHERE clientId = ?").bind(id),
     auditStatement(c, "registration.revoked", "application", id),
   ]);
   return c.json({ ok: true });

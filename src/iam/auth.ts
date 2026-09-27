@@ -53,6 +53,12 @@ export async function createAuth(env: Bindings) {
     secret(env.GITHUB_CLIENT_SECRET), secret(env.ADMIN_EMAIL),
   ]);
   if (authSecret.length < 32) throw new Error("BETTER_AUTH_SECRET must contain at least 32 characters");
+  // The kill switch is a test-only escape hatch: reserved test/local origins
+  // may honor it, so a stray RATE_LIMIT_DISABLED var can never silence the
+  // limiter in production.
+  const hostname = new URL(baseURL).hostname;
+  const honorKillSwitch = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]" || hostname.endsWith(".test");
+  const rateLimitDisabled = env.RATE_LIMIT_DISABLED === "1" && honorKillSwitch;
   const allowlist = adminEmails.split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
   // Filter by the allowlist itself — a full scan of every verified user per
   // request is wasted work once the allowlist is a handful of emails.
@@ -75,9 +81,11 @@ export async function createAuth(env: Bindings) {
       // Preserve the provider's deterministic replay-reservation IDs.
       database: { generateId: () => crypto.randomUUID() },
       useSecureCookies: baseURL.startsWith("https:"),
+      // Explicit where we would otherwise depend on framework defaults drifting.
+      defaultCookieAttributes: { path: "/", sameSite: "lax" },
       ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
     },
-    rateLimit: { enabled: env.RATE_LIMIT_DISABLED !== "1", storage: "database", window: 60, max: 60 },
+    rateLimit: { enabled: !rateLimitDisabled, storage: "database", window: 60, max: 60 },
     disabledPaths: ["/token"],
     databaseHooks: {
       user: { create: { before: async (user) => {
