@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { post } from "../api";
-import { oauthQueryFromLocation } from "../oauthQuery";
+import { oauthQueryExpired, oauthQueryFromLocation, restartAuthorizePath } from "../oauthQuery";
 import { useT } from "../i18n";
 import { CopyButton } from "../ui";
 import { projectSphere } from "../echo";
@@ -52,6 +52,16 @@ export default function Consent() {
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	// The signed consent query expires with the code lifetime; a stale one is
+	// re-minted by replaying /authorize (the session carries, so consent
+	// returns immediately with a fresh signature).
+	useEffect(() => {
+		const params = new URLSearchParams(window.location.search);
+		if (!params.has("sig") || !oauthQueryExpired(window.location.search)) return;
+		const path = restartAuthorizePath(window.location.search);
+		if (path) window.location.replace(path);
+	}, []);
+
 	async function decide(accept: boolean) {
 		setBusy(true);
 		setError(null);
@@ -64,6 +74,13 @@ export default function Consent() {
 			if (!target) throw new Error(result.error ?? t("Consent response did not include a redirect"));
 			window.location.href = target;
 		} catch (cause) {
+			if (cause instanceof Error && cause.message.includes("invalid_signature")) {
+				const path = restartAuthorizePath(window.location.search);
+				if (path) {
+					window.location.replace(path);
+					return;
+				}
+			}
 			setError(cause instanceof Error ? cause.message : String(cause));
 			setBusy(false);
 		}

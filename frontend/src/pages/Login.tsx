@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Fingerprint } from "lucide-react";
 import { errorMessage, post } from "../api";
-import { oauthQueryFromLocation } from "../oauthQuery";
+import { oauthQueryExpired, oauthQueryFromLocation, restartAuthorizePath } from "../oauthQuery";
 import { LangSegmented, useT } from "../i18n";
 import { ThemeToggle, scenePalette, useTheme } from "../theme";
 import { Button } from "../ui";
@@ -10,6 +10,22 @@ import { mountLoginScene } from "../scene";
 import { authenticateWithPasskey, isPasskeySupported } from "../webauthn";
 
 type TwoFactorMode = "totp" | "backup";
+
+/**
+ * The signed login query is what resumes a pending OAuth request, but the
+ * provider only honors it while its short signature window is open. A stale
+ * query is re-minted by replaying the original /authorize request.
+ */
+function oauthQueryStale(): boolean {
+	return Boolean(oauthQueryFromLocation(window.location.search)) && oauthQueryExpired(window.location.search);
+}
+
+function restartStaleOauthFlow(): boolean {
+	const path = restartAuthorizePath(window.location.search);
+	if (!path) return false;
+	window.location.replace(path);
+	return true;
+}
 
 export default function Login() {
 	const t = useT();
@@ -33,6 +49,12 @@ export default function Login() {
 		return mountLoginScene(canvas, scenePalette(resolved));
 	}, [resolved]);
 
+	// An expired resume query can never succeed — re-mint it before the user
+	// submits into a guaranteed invalid_signature.
+	useEffect(() => {
+		if (oauthQueryStale()) restartStaleOauthFlow();
+	}, []);
+
 	async function signInEmail() {
 		setBusy(true);
 		setError(null);
@@ -47,6 +69,7 @@ export default function Login() {
 			}
 			window.location.href = "/";
 		} catch (cause) {
+			if (errorMessage(cause).includes("invalid_signature") && restartStaleOauthFlow()) return;
 			setError(cause instanceof Error ? cause.message : String(cause));
 			setBusy(false);
 		}
@@ -96,6 +119,7 @@ export default function Login() {
 			if (!url) throw new Error(t("GitHub sign-in is not configured"));
 			window.location.href = url;
 		} catch (cause) {
+			if (errorMessage(cause).includes("invalid_signature") && restartStaleOauthFlow()) return;
 			setError(cause instanceof Error ? cause.message : String(cause));
 			setBusy(false);
 		}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { oauthQueryFromLocation } from "../../frontend/src/oauthQuery";
+import { oauthQueryExpired, oauthQueryFromLocation, restartAuthorizePath } from "../../frontend/src/oauthQuery";
 
 // Signed consent query exactly as @better-auth/oauth-provider 1.7.5 emits it:
 // `ba_param` is a REPEATED parameter enumerating every signed name.
@@ -66,5 +66,41 @@ describe("oauthQueryFromLocation", () => {
 
 	it("returns undefined when signed parameter names are absent", () => {
 		expect(oauthQueryFromLocation("client_id=abc&sig=s")).toBeUndefined();
+	});
+});
+
+describe("oauthQueryExpired", () => {
+	const q = "client_id=abc&exp=100&ba_iat=40000&ba_param=client_id&ba_param=exp&ba_param=ba_iat&sig=s";
+
+	it("stays false inside the signature window (minus the skew guard)", () => {
+		expect(oauthQueryExpired(q, 50_000)).toBe(false);
+		expect(oauthQueryExpired(q, 89_999)).toBe(false);
+	});
+
+	it("turns true once exp passes, or when exp is missing", () => {
+		expect(oauthQueryExpired(q, 90_001)).toBe(true);
+		expect(oauthQueryExpired(q, 500_000)).toBe(true);
+		expect(oauthQueryExpired("client_id=abc&sig=s", 0)).toBe(true);
+	});
+});
+
+describe("restartAuthorizePath", () => {
+	it("rebuilds /authorize from a signed query, dropping internal parameters", () => {
+		const q = "response_type=code&client_id=abc&redirect_uri=https%3A%2F%2Frp.example.com%2Fcb" +
+			"&scope=openid+profile&state=xyz&resource=https%3A%2F%2Fmcp.example.com&prompt=login" +
+			"&exp=100&ba_iat=40000&ba_pl=42&ba_param=response_type&ba_param=exp&sig=s";
+		expect(restartAuthorizePath(q)).toBe("/api/auth/oauth2/authorize?" + new URLSearchParams([
+			["response_type", "code"],
+			["client_id", "abc"],
+			["redirect_uri", "https://rp.example.com/cb"],
+			["scope", "openid profile"],
+			["state", "xyz"],
+			["resource", "https://mcp.example.com"],
+			["prompt", "login"],
+		]).toString());
+	});
+
+	it("returns null without a signature", () => {
+		expect(restartAuthorizePath("client_id=abc&exp=100")).toBeNull();
 	});
 });
