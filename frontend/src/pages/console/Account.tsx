@@ -135,6 +135,7 @@ function TwoFactorCard(props: { enabled: boolean; onChange: (enabled: boolean) =
 	const [password, setPassword] = useState("");
 	const [totpURI, setTotpURI] = useState("");
 	const [backupCodes, setBackupCodes] = useState<string[]>([]);
+	const [codesShown, setCodesShown] = useState(false);
 	const [code, setCode] = useState("");
 	const [pending, setPending] = useState(false);
 
@@ -143,6 +144,7 @@ function TwoFactorCard(props: { enabled: boolean; onChange: (enabled: boolean) =
 		setPassword("");
 		setTotpURI("");
 		setBackupCodes([]);
+		setCodesShown(false);
 		setCode("");
 	}
 
@@ -224,13 +226,25 @@ function TwoFactorCard(props: { enabled: boolean; onChange: (enabled: boolean) =
 						<Button kind="ghost" onClick={copyUri}>{t("Copy")}</Button>
 					</div>
 					{backupCodes.length > 0 && (
-						<>
-							<p className="muted">{t("Save these single-use codes somewhere safe — they are shown only once.")}</p>
-							<div className="backup-codes">
-								{backupCodes.map(entry => <code key={entry}>{entry}</code>)}
-							</div>
-						</>
-					)}
+					<>
+						<p className="muted">{t("Save these single-use codes somewhere safe — they are shown only once.")}</p>
+						<div className="backup-codes">
+							{codesShown
+								? backupCodes.map(entry => <code key={entry}>{entry}</code>)
+								: backupCodes.map((entry, index) => <code key={index} aria-label={t("Backup codes are hidden")}>{"•••• ••••"}</code>)}
+						</div>
+						<div className="btn-row">
+							<Button kind="ghost" onClick={() => setCodesShown(value => !value)}>
+								{codesShown ? t("Hide backup codes") : t("Show backup codes")}
+							</Button>
+							{codesShown && (
+								<Button kind="ghost" onClick={() => navigator.clipboard.writeText(backupCodes.join("\n")).then(() => notice.toast("info", t("Copied"))).catch(() => undefined)}>
+									{t("Copy all codes")}
+								</Button>
+							)}
+						</div>
+					</>
+				)}
 					<Field label={t("Authenticator code")}>
 						<input inputMode="numeric" autoComplete="one-time-code" value={code} onChange={event => setCode(event.target.value)} />
 					</Field>

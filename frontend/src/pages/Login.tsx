@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Fingerprint } from "lucide-react";
 import { errorMessage, post } from "../api";
 import { oauthQueryExpired, oauthQueryFromLocation, restartAuthorizePath } from "../oauthQuery";
+import { consumeReturnTo, rememberReturnTo } from "../gate";
 import { LangSegmented, useT } from "../i18n";
 import { ThemeToggle, scenePalette, useTheme } from "../theme";
 import { Button } from "../ui";
@@ -25,6 +26,21 @@ function restartStaleOauthFlow(): boolean {
 	if (!path) return false;
 	window.location.replace(path);
 	return true;
+}
+
+/**
+ * Where to land once a session exists but the provider did not hand back a
+ * target (passkey and two-factor verify have no signed-query resume): replay
+ * the pending /authorize — with the session attached it returns a fresh
+ * consent signature — or fall back to the remembered deep link.
+ */
+function continueAfterSignIn(): void {
+	const restart = restartAuthorizePath(window.location.search);
+	if (restart) {
+		window.location.replace(restart);
+		return;
+	}
+	window.location.href = consumeReturnTo() ?? "/";
 }
 
 export default function Login() {
@@ -53,13 +69,15 @@ export default function Login() {
 	// submits into a guaranteed invalid_signature.
 	useEffect(() => {
 		if (oauthQueryStale()) restartStaleOauthFlow();
+		// capture the deep link that landed the visitor on the login view
+		rememberReturnTo(window.location.pathname, window.location.search);
 	}, []);
 
 	async function signInEmail() {
 		setBusy(true);
 		setError(null);
 		try {
-			const result = await post<{ twoFactorRedirect?: boolean }>("/api/auth/sign-in/email", { email, password, oauth_query: oauthQueryFromLocation(window.location.search) });
+			const result = await post<{ twoFactorRedirect?: boolean; url?: string }>("/api/auth/sign-in/email", { email, password, oauth_query: oauthQueryFromLocation(window.location.search) });
 			if (result.twoFactorRedirect) {
 				setStage("twofactor");
 				setTwoFactorMode("totp");
@@ -67,7 +85,13 @@ export default function Login() {
 				setBusy(false);
 				return;
 			}
-			window.location.href = "/";
+			// The provider verified the signed query against the new session and
+			// resumed the request itself — trust its target (consent or RP callback).
+			if (result.url) {
+				window.location.href = result.url;
+				return;
+			}
+			continueAfterSignIn();
 		} catch (cause) {
 			if (errorMessage(cause).includes("invalid_signature") && restartStaleOauthFlow()) return;
 			setError(cause instanceof Error ? cause.message : String(cause));
@@ -81,7 +105,7 @@ export default function Login() {
 		try {
 			// Either endpoint settles the challenge cookie into a real session.
 			await post(twoFactorMode === "totp" ? "/api/auth/two-factor/verify-totp" : "/api/auth/two-factor/verify-backup-code", { code: code.trim() });
-			window.location.href = "/";
+			continueAfterSignIn();
 		} catch (cause) {
 			setError(cause instanceof Error ? cause.message : String(cause));
 			setBusy(false);
@@ -93,7 +117,7 @@ export default function Login() {
 		setError(null);
 		try {
 			await authenticateWithPasskey();
-			window.location.href = "/";
+			continueAfterSignIn();
 		} catch (cause) {
 			setError(errorMessage(cause));
 			setBusy(false);

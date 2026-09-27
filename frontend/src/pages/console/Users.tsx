@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Ban, Users as UsersIcon } from "lucide-react";
 import { api, errorMessage, post } from "../../api";
 import { useT } from "../../i18n";
@@ -40,11 +40,20 @@ export function Users() {
 	const [pendingId, setPendingId] = useState<string | null>(null);
 	const optimistic = useOptimisticList<UserRow>(items, setItems);
 
+	// Server-paginated requests race when paging/typing fast — only the
+	// newest request may commit its results.
+	const loadSeq = useRef(0);
 	const reload = () => {
+		const seq = ++loadSeq.current;
 		const params = new URLSearchParams({ page: String(page), ...(query.trim() ? { q: query.trim() } : {}) });
 		return api<{ items: UserRow[]; total?: number }>(`/api/v1/users?${params}`)
-			.then(result => { setItems(result.items ?? []); setTotal(result.total ?? result.items?.length ?? 0); setError(null); })
-			.catch(cause => setError(errorMessage(cause)));
+			.then(result => {
+				if (seq !== loadSeq.current) return;
+				setItems(result.items ?? []);
+				setTotal(result.total ?? result.items?.length ?? 0);
+				setError(null);
+			})
+			.catch(cause => { if (seq === loadSeq.current) setError(errorMessage(cause)); });
 	};
 	useEffect(() => {
 		setItems(null);

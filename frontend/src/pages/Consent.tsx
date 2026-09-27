@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { post } from "../api";
 import { oauthQueryExpired, oauthQueryFromLocation, restartAuthorizePath } from "../oauthQuery";
-import { useT } from "../i18n";
+import { useT, useLang, tMessage } from "../i18n";
 import { CopyButton } from "../ui";
 import { projectSphere } from "../echo";
 
@@ -48,6 +48,7 @@ function ConsentEcho() {
 
 export default function Consent() {
 	const t = useT();
+	const { lang } = useLang();
 	const [request] = useState(readRequest);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -70,7 +71,7 @@ export default function Consent() {
 				accept,
 				oauth_query: oauthQueryFromLocation(window.location.search),
 			});
-			const target = accept ? result.redirect_uri ?? result.url : result.redirect_uri ?? result.url;
+			const target = result.redirect_uri ?? result.url;
 			if (!target) throw new Error(result.error ?? t("Consent response did not include a redirect"));
 			window.location.href = target;
 		} catch (cause) {
@@ -121,7 +122,7 @@ export default function Consent() {
 						{t("Deny")}
 					</button>
 				</div>
-				{error && <p className="error-note" role="alert">{error}</p>}
+				{error && <p className="error-note" role="alert">{tMessage(error, lang)}</p>}
 			</div>
 		</div>
 	);

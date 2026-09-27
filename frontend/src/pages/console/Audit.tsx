@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, errorMessage, summarizeAuditDetail } from "../../api";
 import { useT } from "../../i18n";
 import { toggledSet, useTableState } from "../../table";
@@ -34,13 +34,22 @@ export function Audit(props: { operator: boolean }) {
 	const [loading, setLoading] = useState(true);
 	const [attempt, setAttempt] = useState(0);
 
+	// Server-paginated requests race when paging/filtering fast — only the
+	// newest request may commit its results.
+	const loadSeq = useRef(0);
 	useEffect(() => {
+		const seq = ++loadSeq.current;
 		setLoading(true);
 		const query = new URLSearchParams({ page: String(page), ...(actor.trim() ? { actor: actor.trim() } : {}), ...(resource.trim() ? { resource: resource.trim() } : {}) });
 		api<{ items: AuditRow[]; total: number }>(`/api/v1/audit?${query}`)
-			.then(result => { setItems(result.items ?? []); setTotal(result.total ?? 0); setError(null); })
-			.catch(cause => setError(errorMessage(cause)))
-			.finally(() => setLoading(false));
+			.then(result => {
+				if (seq !== loadSeq.current) return;
+				setItems(result.items ?? []);
+				setTotal(result.total ?? 0);
+				setError(null);
+			})
+			.catch(cause => { if (seq === loadSeq.current) setError(errorMessage(cause)); })
+			.finally(() => { if (seq === loadSeq.current) setLoading(false); });
 	}, [page, actor, resource, attempt]);
 
 	const accessors = useMemo(() => ({
