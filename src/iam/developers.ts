@@ -59,17 +59,25 @@ developerRoutes.patch("/applications/:id", async c => {
     client_name: string; redirect_uris: string[];
     post_logout_redirect_uris?: string[]; enable_end_session?: boolean;
   } = { client_name: text(input.name, "name"), redirect_uris: redirects };
+  let clearPostLogouts = false;
   if (input.postLogoutRedirectUris !== undefined) {
     let postLogouts: string[];
     try { postLogouts = list(input.postLogoutRedirectUris, "postLogoutRedirectUris").map(validateRedirect); }
     catch { throw new HTTPException(400, { message: "Invalid post-logout URLs" }); }
-    update.post_logout_redirect_uris = postLogouts;
+    // The provider schema rejects empty arrays (min 1), so clearing is ours.
+    if (postLogouts.length) update.post_logout_redirect_uris = postLogouts;
+    else clearPostLogouts = true;
   }
   if (typeof input.enableEndSession === "boolean") update.enable_end_session = input.enableEndSession;
   const result = await c.get("auth").api.adminUpdateOAuthClient({
     headers: c.req.raw.headers,
     body: { client_id: c.req.param("id"), update },
   });
+  if (clearPostLogouts) {
+    // Owner-scoped clear — unreachable for non-owners (adminUpdate already 403s).
+    await c.env.AUTH_DB.prepare("UPDATE oauthClient SET postLogoutRedirectUris = NULL WHERE clientId = ? AND userId = ?")
+      .bind(c.req.param("id"), c.get("identity").user.id).run();
+  }
   await audit(c, "application.updated", "application", c.req.param("id"));
   return c.json(result);
 });

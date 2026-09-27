@@ -227,6 +227,17 @@ describe("OAuth and Agent integration", () => {
     expect(confirm.headers.get("location")).toBe(postLogout);
     const session = await request("/api/auth/get-session", cookie);
     expect(await session.text()).toBe("null");
+    // Clearing the post-logout list must be accepted (the provider schema
+    // rejects empty arrays, so the console route owns the clear).
+    const clear = await request("/api/v1/applications/" + client.client_id, ownerCookie, "PATCH", {
+      name: "Portal", redirectUris: ["https://rp.example.com/auth/callback"],
+      postLogoutRedirectUris: [], enableEndSession: true,
+    });
+    expect(clear.status, await clear.clone().text()).toBe(200);
+    const list = await request("/api/v1/applications", ownerCookie);
+    const row = ((await list.json()) as { items: Array<{ client_id: string; post_logout_redirect_uris?: string[] | null }> })
+      .items.find(item => item.client_id === client.client_id);
+    expect(row?.post_logout_redirect_uris ?? []).toEqual([]);
   });
 
   it("runs PKCE consent, DPoP, RAR exchange, replay rejection and refresh rotation", async () => {
