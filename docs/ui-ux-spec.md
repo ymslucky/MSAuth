@@ -114,7 +114,7 @@ Avatar 分类渐变）为跨主题常量。实现为 `index.css` 中 `:root[data
 | action / hover / subtle | `#05348B` / `#04286C` / `#E6EBF6` | `#216185` / `#1A4E6B` / `#E1ECF2` |
 | 点缀替换 | accent-orange → 琥珀 `#8A5500` / vivid `#F9A647` / 底 `#FDF2DE` | accent-purple → 苔绿 `#57560F` / vivid `#959434` / 底 `#F1F1DD` |
 | identity-from / identity-to | `#0A4394` / `#042A6E` | `#2A74A4` / `#143D61` |
-| logo-from / logo-to / logo-dot | `#1457C7` / `#031F55` / `#05348B` | `#3A86B8` / `#17466B` / `#216185` |
+| logo-from / logo-to | `#1457C7` / `#031F55` | `#3A86B8` / `#17466B` |
 
 > 种子色（用户提供）：花与月 = `#05348B` + `#F9A647` + `#EDCFAB`；
 > 灯塔 = `#216185` + `#959434` + `#B5CFD4`。
@@ -143,8 +143,14 @@ Avatar 分类渐变）为跨主题常量。实现为 `index.css` 中 `:root[data
 --color-success / --color-warning / --color-danger / --color-info：见 3.1 语义行（各含 -vivid 装饰档）
 --color-accent-purple / --color-accent-orange：点缀语义（§6.8 数据可视化、委托场景）
 --color-identity-from / --color-identity-to：身份卡单色相渐变（§3.1.1 随主题）
---color-logo-from / --color-logo-to / --color-logo-dot：Logo 渐变与中心点（§3.1.1 随主题）
+--color-logo-from / --color-logo-to：Logo 渐变（§3.1.1 随主题）
 ```
+
+**品牌标识（v1.2.5：「M + 验证点」字标）**：32×32 网格，主色渐变圆角方块
+（rx 8）之上绘白色字形——描边圆角「M」（`M9.5 21.5 V12.5 L16 17 L22.5 12.5 V21.5`，
+stroke 3）+ 谷底悬浮圆点（16, 21.5, r 2）。M = MSAuth 身份，圆点 = 验证通过 /
+钥匙孔；16px favicon 下依然可辨。字形为纯白跨主题常量，仅底块渐变随主题；
+favicon 为静态 data URI（群青渐变），见 `index.html`。
 
 ### 3.3 画布背景
 
@@ -387,11 +393,21 @@ Avatar 分类渐变）为跨主题常量。实现为 `index.css` 中 `:root[data
 统一约束：viewBox 固定、`role="img"` + `aria-label` 描述结论
 （如「活跃会话 3，当前设备占 1」）；动画仅入场一次；颜色取 accent primitive。
 
+**编辑感图表语法（v1.2.5，参考 lieflat-charts 的 Mono 视觉语法）**：
+
+- **发丝线网格**：横向刻度线一律 1px `line` 色，不使用色块网格
+- **可数刻度 + 真实单位**：纵轴每格对应真实计数（1 格 = 1 次登录），左轴 mono 数字，
+  单位旁注「次/日」置于图左上角
+- **账本式逐日刻度**：每日基线下方一根 3px 短刻度线，日期 mono 标签每 4 日 + 末日
+- **峰值旁注**：最高日顶部 mono 注记「峰值 n 次 · MM-DD」，不引入新颜色
+- **受控视线落点**：常态只有主色一个色相；失败红 `danger-vivid` 仅在确有失败时出现
+- **Glance 大数字读数**：卡片层级给出合计大数字（t-stat）+ 真实单位文字
+
 | 组件 | 规格 |
 |---|---|
-| **Donut**（环形进度） | SVG 圆环：轨道 `gray-100` 8px，值弧 `action`/accent 8px 圆头；中心可叠大数字；尺寸 64/80 |
-| **Sparkbar**（登录活跃柱状，v1.2.4） | 近 14 天逐日堆叠柱：成功段 `action`（下）、失败段 `danger-vivid`（上）；柱宽自适应圆角 2px；最高日对齐高 96；hover `<title>` 显「MM-DD 成功 n · 失败 m」；稀疏 mono 轴标（每 4 日 `MM-DD`）；数据源 `/api/account/login-stats`（audit_events 按 UTC 日聚合，缺省日补零） |
-| **AreaTrend**（面积折线，Phase 5） | 平滑折线 `action` 2px + 线性渐变填充 `blue-500/20→0`；轴 `ink-4` caption；hover 数据点待 Phase 5 |
+| **Donut**（环形进度） | SVG 圆环：轨道 `line` 发丝 8px，值弧 `action`/accent 8px 圆头；中心可叠大数字；尺寸 64/80 |
+| **Sparkbar**（登录活跃柱状，v1.2.4/§6.8 语法 v1.2.5） | 近 14 天逐日堆叠柱：成功段 `action`（下）、失败段 `danger-vivid`（上，仅有失败时）；柱宽自适应圆角 2px；发丝线网格 + 可数左轴（1 格 = 1 次，mono）+ 基线逐日刻度 + 峰值旁注；hover `<title>` 显「MM-DD 成功 n · 失败 m」；数据源 `/api/account/login-stats`（audit_events 按 UTC 日聚合，缺省日补零） |
+| **AreaTrend**（面积折线，Phase 5） | 平滑折线 `action` 2px + 线性渐变填充 `action/20→0`；发丝线轴 + mono 刻度；hover 数据点待 Phase 5 |
 
 ---
 
@@ -419,7 +435,7 @@ Bento 网格（`md:2 / lg:3 / xl:4` 列，gap 20–24，流式全宽）：
 | 活跃会话 | 1 | **群青** | 群青图标砖 + `text-stat` 大数字 = 会话总数 + Donut（当前 1/N，群青弧）+ caption + quiet 链接「管理会话 →」 |
 | 登录方式 | 1 | **plum 李子** | plum 图标砖 + 大数字 = 已启用方式数；李子色启用态胶囊（密码/GitHub） |
 | 账户信息 | xl:2 | **teal 青碧** | teal 图标砖 + Row 列表（ID 可复制 / 创建时间 / 最近登录） |
-| 登录活跃 | xl:2 | **群青** | 群青图标砖（TrendingUp）+ Sparkbar 近 14 天堆叠柱（成功群青/失败红）+ caption「近 14 天成功 n 次 · 失败 m 次」 |
+| 登录活跃 | xl:2 | **群青** | 群青图标砖（TrendingUp）+ Sparkbar 近 14 天堆叠柱（§6.8 编辑感语法：发丝网格/可数刻度/峰值旁注）+ Glance 大数字读数「n 次成功登录 · 失败 m 次」 |
 | 快捷操作 | xl:2 | **terracotta 赤陶** | terracotta 图标砖 + 两个横向 secondary 按钮（带彩色图标：修改密码 plum / 管理设备 群青） |
 
 分色遵守 §5.1：accent 只落在图标砖/眉标/图形上，数字与正文保持 ink。
@@ -553,3 +569,4 @@ toast + 行移除。「撤销其他」→ Dialog 显示数量 → toast「已撤
 | v1.2.2 | 2026-10-04 | 用户反馈修订（去 AI 感 + 留白）：①配色整体重调——主色亮蓝 #3B82F6 → 群青 #3B5BDB、画布冷灰 → 暖纸灰 #F5F5F2、墨色 → 深海军 #1D2433、点缀降饱和为哑光 plum/terracotta/teal、身份卡改单色相深浅渐变（禁彩虹渐变）②留白全面放大——卡内边距 20→24/28+、Bento gap 16→20–24、页面纵向间距 24→32、认证页纵向 py-14 |
 | v1.2.3 | 2026-10-04 | 主题系统（用户指定种子色）：新增 §3.1.1 三主题切换——默认「群青」+ 新增「花与月」（#05348B/#F9A647/#EDCFAB）与「灯塔」（#216185/#959434/#B5CFD4）；`html[data-theme]` + localStorage 持久化；侧栏 Palette 切换按钮；selection/光晕/焦点光环/骨架屏改 color-mix 派生随主题；新增 identity/logo 渐变令牌 |
 | v1.2.4 | 2026-10-04 | 数据可视化增强（用户反馈「缺少数据可视化」）：新增 Sparkbar 登录活跃卡——API 新增 `GET /api/account/login-stats`（audit_events 按 UTC 日聚合近 14 天登录成功/失败，actor_id 与 target_id 取 COALESCE），Sparkbar 纯 SVG 堆叠柱（§6.8/§7.3），概览页 Bento 扩为 6 卡 |
+| v1.2.5 | 2026-10-04 | ①品牌标识重设计（用户需求「简洁有标识度，主题 MS/ID/Auth」）：「M + 验证点」白色字标替换菱形，favicon 同步（§3.2）；移除 logo-dot 令牌 ②图表语法升级（用户参考 lieflat-charts）：§6.8 新增编辑感图表语法——发丝线网格、可数刻度（1 格 = 1 次）+ 真实单位旁注、账本式逐日刻度、峰值旁注、受控视线落点（失败红仅实有失败时）、Glance 大数字读数；Donut 轨道改发丝 line 色 |

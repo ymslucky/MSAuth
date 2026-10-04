@@ -33,7 +33,6 @@
   --color-identity-to: #2b3a8c;
   --color-logo-from: #4a6be6;
   --color-logo-to: #2e3f9e;
-  --color-logo-dot: #3450b8;
 
   /* 点缀（plum/terracotta，哑光）+ 语义色：文字级保证白底 ≥4.5:1；-vivid 供图标点/图表 */
   --color-accent-purple: #7048a8; /* plum 文字级 */
@@ -94,7 +93,6 @@
   --color-identity-to: #042a6e;
   --color-logo-from: #1457c7;
   --color-logo-to: #031f55;
-  --color-logo-dot: #05348b;
 }
 
 :root[data-theme='lighthouse'] {
@@ -116,7 +114,6 @@
   --color-identity-to: #143d61;
   --color-logo-from: #3a86b8;
   --color-logo-to: #17466b;
-  --color-logo-dot: #216185;
 }
 
 @layer base {
@@ -265,6 +262,16 @@
     font: 500 11px var(--font-mono);
     fill: var(--color-ink-4);
     letter-spacing: 0.02em;
+  }
+  /* 可数左轴刻度 + 单位旁注（mono 小字） */
+  .sparkbar-tick {
+    font: 500 10px var(--font-mono);
+    fill: var(--color-ink-4);
+  }
+  /* 峰值旁注 */
+  .sparkbar-note {
+    font: 500 11px var(--font-mono);
+    fill: var(--color-ink-3);
   }
 
   /* 骨架屏（SPEC §6.3）*/

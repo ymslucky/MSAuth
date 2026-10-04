@@ -200,20 +200,16 @@ export default function AccountIndexPage() {
           </div>
           <div className="mt-4">
             {statsQuery.isLoading ? (
-              <Skeleton className="h-[116px] w-full" aria-hidden="true" />
+              <Skeleton className="h-[124px] w-full" aria-hidden="true" />
             ) : (
               <Sparkbar data={statDays} label={`近 14 天登录活跃：成功 ${statSuccess} 次，失败 ${statFailure} 次`} />
             )}
           </div>
-          <div className="mt-2 flex items-center gap-4">
-            <span className="t-caption inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-action" aria-hidden="true" />
-              成功 {statSuccess} 次
-            </span>
-            <span className="t-caption inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-danger-vivid" aria-hidden="true" />
-              失败 {statFailure} 次
-            </span>
+          {/* Glance 大数字读数（§6.8 编辑感语法） */}
+          <div className="mt-3 flex items-baseline gap-2 border-t border-line pt-3">
+            <p className="t-stat">{statSuccess}</p>
+            <p className="t-caption">次成功登录</p>
+            {statFailure > 0 && <p className="t-caption ml-auto text-danger">失败 {statFailure} 次</p>}
           </div>
         </Card>
 

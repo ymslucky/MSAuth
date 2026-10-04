@@ -1,5 +1,5 @@
 /**
- * Donut 环形进度（SPEC §6.8）：纯 SVG，灰轨道 + accent 值弧，入场弧线展开一次。
+ * Donut 环形进度（SPEC §6.8）：纯 SVG，发丝灰轨道 + accent 值弧，入场弧线展开一次。
  * role="img" + 结论性 aria-label（不以颜色为唯一信息载体，WCAG 1.4.1 / 4.1.2）。
  */
 import type { CSSProperties, ReactNode } from 'react';
@@ -30,7 +30,7 @@ export function Donut({
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }} role="img" aria-label={label}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-surface-input)" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-line)" strokeWidth={stroke} />
         <circle
           className="donut-arc"
           cx={size / 2}

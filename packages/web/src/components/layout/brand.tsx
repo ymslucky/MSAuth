@@ -1,4 +1,7 @@
-/** 品牌标识：主色渐变圆角方块 + 白色菱形（SPEC §5.2，渐变随主题 §3.1.1） */
+/**
+ * 品牌标识（SPEC §3.2 v1.2.5）：「M + 验证点」字标——白色描边 M + 谷底悬浮圆点，
+ * M = MSAuth 身份，圆点 = 验证通过/钥匙孔；底块渐变随主题（§3.1.1）。
+ */
 export function BrandMark({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" className="shrink-0">
@@ -9,9 +12,16 @@ export function BrandMark({ size = 28 }: { size?: number }) {
           <stop offset="1" style={{ stopColor: 'var(--color-logo-to)' }} />
         </linearGradient>
       </defs>
-      <rect width="32" height="32" rx="9" fill="url(#msauth-brand)" />
-      <path d="M16 7l7.8 9-7.8 9-7.8-9z" fill="#ffffff" />
-      <circle cx="16" cy="16" r="2.4" style={{ fill: 'var(--color-logo-dot)' }} />
+      <rect width="32" height="32" rx="8" fill="url(#msauth-brand)" />
+      <path
+        d="M9.5 21.5 V12.5 L16 17 L22.5 12.5 V21.5"
+        fill="none"
+        stroke="#ffffff"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="16" cy="21.5" r="2" fill="#ffffff" />
     </svg>
   );
 }
