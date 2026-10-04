@@ -58,11 +58,15 @@ function SidebarContent({ onNavigate, iconOnly = false }: { onNavigate?: () => v
             title={item.label}
             className={({ isActive }) =>
               iconOnly
-                ? `flex h-12 w-12 items-center justify-center rounded-xl transition-colors duration-[140ms] ${
-                    isActive ? 'bg-action text-white shadow-card' : 'text-ink-3 hover:bg-canvas hover:text-ink'
+                ? `flex h-12 w-12 items-center justify-center rounded-full ${
+                    isActive
+                      ? 'bg-action-subtle text-action-hover'
+                      : 'text-ink-3 m3-state hover:text-ink'
                   }`
-                : `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-[140ms] ${
-                    isActive ? 'bg-action text-white shadow-card' : 'text-ink-3 hover:bg-canvas hover:text-ink'
+                : `flex items-center gap-2.5 rounded-full px-4 py-2.5 text-sm font-medium ${
+                    isActive
+                      ? 'bg-action-subtle text-action-hover'
+                      : 'text-ink-3 m3-state hover:text-ink'
                   }`
             }
           >
@@ -112,7 +116,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
       title="退出登录"
       disabled={logoutMutation.isPending}
       onClick={() => logoutMutation.mutate()}
-      className={`flex items-center justify-center rounded-xl text-ink-3 transition-colors duration-[140ms] hover:bg-danger-bg hover:text-danger disabled:opacity-40 ${
+      className={`flex items-center justify-center rounded-full text-ink-3 m3-state-danger hover:text-danger disabled:opacity-40 ${
         iconOnly ? 'h-12 w-12' : 'h-11 w-full gap-2 text-sm font-medium'
       }`}
     >
@@ -134,13 +138,13 @@ export function AppShell({ children }: { children?: ReactNode }) {
         </aside>
 
         {/* 移动端顶栏 + 抽屉 */}
-        <div className="card-float fixed inset-x-3 top-3 z-[100] flex items-center justify-between rounded-xl px-3 py-2 md:hidden">
+        <div className="card-float fixed inset-x-3 top-3 z-[100] flex items-center justify-between rounded-full px-3 py-2 md:hidden">
           <button
             type="button"
             aria-label={drawerOpen ? '关闭菜单' : '打开菜单'}
             aria-expanded={drawerOpen}
             onClick={() => setDrawerOpen((v) => !v)}
-            className="flex h-11 w-11 items-center justify-center rounded-xl text-ink-2"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-ink-2 m3-state"
           >
             {drawerOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -150,7 +154,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
             aria-label="退出登录"
             disabled={logoutMutation.isPending}
             onClick={() => logoutMutation.mutate()}
-            className="flex h-11 w-11 items-center justify-center rounded-xl text-ink-3 hover:text-danger disabled:opacity-40"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-ink-3 m3-state-danger hover:text-danger disabled:opacity-40"
           >
             <LogOut size={18} strokeWidth={1.75} aria-hidden="true" />
           </button>

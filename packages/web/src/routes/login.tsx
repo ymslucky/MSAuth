@@ -123,7 +123,7 @@ export default function LoginPage() {
 
       <a
         href="/api/auth/github"
-        className="inline-flex h-10 w-full items-center justify-center gap-2.5 rounded-xl border border-line bg-surface text-sm font-medium text-ink-2 transition-colors duration-[140ms] hover:bg-canvas"
+        className="inline-flex h-10 w-full items-center justify-center gap-2.5 rounded-full bg-action-subtle text-sm font-medium text-ink m3-tonal-hover"
       >
         <GithubIcon />
         使用 GitHub 登录

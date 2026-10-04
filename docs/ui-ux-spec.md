@@ -41,11 +41,15 @@ MSAuth 是面向个人与家人朋友的自托管身份平台。浏览器端完�
 
 ---
 
-## 2. 设计原则
+## 2. 设计原则（v1.3 起以 Material Design 3 为参考基线）
 
-1. **画布与卡片两层景深**：浅灰画布承载白色卡片；层级靠阴影深浅（不是模糊度）
-   表达，浮层（toast/dialog）阴影最重。
-2. **蓝色即交互**：亮蓝只用于可交互元素与主数据强调；紫/橙/红仅作
+0. **MD3 基线**：色彩角色（primary / primary-container / surface-container 阶 / error）、
+   形状标度（medium 12 / large 16 / extra-large 28）、状态层（hover 8% 混色）、
+   emphasized 缓动、导航栏胶囊活动指示——均按 M3 语义落地，同时保留既有三主题与
+   编辑感图表语法。
+1. **色调高度（tonal elevation）**：浅色画布（M3 surface）承载 surface-container-low
+   卡片；层级以表面色调差为主、极轻阴影为辅（非描边、非模糊）。
+2. **主色即交互**：primary 只用于可交互元素与主数据强调；plum/terracotta/teal 仅作
    语义点缀（分类/状态/趋势），不参与主交互。
 3. **数据优先**：概览类页面用 Bento 网格组织「大数字 + 图形 + 说明」统计卡；
    数字用 Display 粗体大号，说明用 caption 灰色。
@@ -158,18 +162,19 @@ favicon 为静态 data URI（群青渐变），见 `index.html`。
 （`radial 900px 400px @ (50%, -10%) color-mix(action 7%) → transparent`，随主题，
 仅此一处），不参与对比度计算。
 
-### 3.4 卡片材质（elevation 体系）
+### 3.4 卡片材质（v1.3：M3 tonal elevation）
 
-实底白色，**无 backdrop-filter**。三档阴影：
+**色调高度优先**：卡片底 = `--color-surface-container-low`（比画布浅一档的表面容器色，
+随主题），**无描边、无 backdrop-filter**，配极轻阴影表达浮起：
 
 | 档位 | 类名 | 阴影 | 用途 |
 |---|---|---|---|
-| 1 | `.card` | `0 1px 2px rgb(15 23 42/0.04), 0 8px 24px -12px rgb(15 23 42/0.10)` | 页面卡片 |
-| 2 | `.card-float` | `0 2px 4px rgb(15 23 42/0.05), 0 16px 40px -16px rgb(15 23 42/0.16)` | toast、下拉、抽屉 |
-| 3 | `.card-modal` | `0 4px 8px rgb(15 23 42/0.06), 0 24px 64px -24px rgb(15 23 42/0.24)` | 模态对话框 |
+| 1 | `.card` | `0 1px 2px rgb(15 23 42/0.03), 0 6px 16px -10px rgb(15 23 42/0.07)` | 页面卡片 |
+| 2 | `.card-float` | `0 2px 4px rgb(15 23 42/0.05), 0 16px 40px -16px rgb(15 23 42/0.14)` | toast、下拉、抽屉、顶栏 |
+| 3 | `.card-modal` | `0 4px 8px rgb(15 23 42/0.06), 0 24px 64px -24px rgb(15 23 42/0.20)` | 模态对话框 |
 
-共同规格：`background: --color-surface`；描边 `1px --color-line`（可选，卡片默认有，
-浮层可省）。可点击卡片 hover：阴影升一档 + `translateY(-2px)`。
+共同规格：`background: --color-surface-container-low`；卡内分隔仍用 `1px --color-line`
+发丝线。可点击卡片 hover：阴影升一档 + `translateY(-2px)`。
 
 ### 3.5 字体策略（行业规范：中文不加载 webfont）
 
@@ -247,6 +252,7 @@ favicon 为静态 data URI（群青渐变），见 `index.html`。
 | `dur-slow` | 360ms |
 | `ease-out-soft` | `cubic-bezier(0.22, 0.61, 0.36, 1)` |
 | `ease-spring` | `cubic-bezier(0.34, 1.3, 0.5, 1)` |
+| `ease-emphasized` | `cubic-bezier(0.2, 0, 0, 1)`（v1.3，M3 emphasized；状态层/按钮过渡用） |
 
 编排规则：
 
@@ -286,17 +292,18 @@ favicon 为静态 data URI（群青渐变），见 `index.html`。
 → 白色主卡 `.card` 420px 圆角 20（眉标 + Display 标题 + 表单/分隔/GitHub 按钮/
 主按钮）→ 底部切换链接 → 页脚 mono 小字。
 
-### 5.3 应用壳（账户区）
+### 5.3 应用壳（账户区，v1.3 对齐 M3 导航栏）
 
-**左 88px 白色悬浮图标侧栏**：`.card` 圆角 20、与画布留 12–16px（非贴边通栏），
-内部：logo（居中）、**图标导航**（每项 48×48 圆角 12，图标 20；激活态 `action`
-实底白图标 + `shadow-card`，hover `canvas` 底；`aria-label` + `title` 必带）、
-底部头像（40px）+ 角色徽标 + 退出图标按钮（hover danger 浅底）。
-文字标签仅出现在移动端抽屉（`.card-float`，w-64，图标+文字导航项 +
-用户卡显示名/mono 邮箱 + 全宽退出）。
+**左 88px 悬浮图标侧栏（navigation rail）**：`.card`（surface-container-low + 16 圆角）、
+与画布留 12–16px（非贴边通栏），内部：logo（居中）、**图标导航**（每项 48×48 胶囊
+`rounded-full`，图标 20；**激活态 = M3 活动指示**：`action-subtle`（primary-container）
+底 + `action-hover` 图标；非激活 ink-3 + hover 8% 状态层；`aria-label` + `title` 必带）、
+底部头像（40px）+ 角色徽标 + 退出图标按钮（hover danger 8% 状态层）。
+文字标签仅出现在移动端抽屉（`.card-float`，w-64，胶囊图标+文字导航项 +
+用户卡显示名/mono 邮箱 + 全宽退出）；移动端顶栏为胶囊形 `.card-float` 条。
 
 内容区：**流式全宽**（无 max-width），页眉（问候语 Display + caption 副标题 +
-右侧主操作）+ Bento 网格 stagger。<768px 侧栏折叠为顶部白条 + 抽屉（`.card-float`）。
+右侧主操作）+ Bento 网格 stagger。<768px 侧栏折叠为顶部条 + 抽屉（`.card-float`）。
 
 ### 5.4 管理壳（Phase 5）
 
@@ -328,21 +335,22 @@ favicon 为静态 data URI（群青渐变），见 `index.html`。
 | loading | 16px 旋转环，文案不变，交互锁定 |
 | error | danger 描边/文字（表单类） |
 
-### 6.1 Button
+### 6.1 Button（v1.3 对齐 M3 变体）
 
-| 变体 | 样式 | 用途 |
-|---|---|---|
-| `primary` | `action` 实底白字（胶囊感圆角 12）+ hover `action-hover` + 微抬升 | 每页至多 1 |
-| `secondary` | 白底 + `line` 描边 + `ink-2` 字；hover `canvas` 底描边加深 | 次级 |
-| `danger` | 透明底 + danger 描边字；hover danger 浅底 | 破坏性（配 Dialog） |
-| `quiet` | 无底 `ink-3`；hover `action` | 文字级 |
+| 变体 | M3 对应 | 样式 | 用途 |
+|---|---|---|---|
+| `primary` | filled | `action` 实底白字，胶囊（stadium）；hover `action-hover` + 轻影抬升 | 每页至多 1 |
+| `secondary` | tonal | `action-subtle`（primary-container）底 + `action-hover` 字；hover 叠主色 12% 状态层 | 次级 |
+| `danger` | tonal（error） | `danger-bg` 底 danger 字；hover 叠 danger 10% | 破坏性（配 Dialog） |
+| `quiet` | text | 无底 `action` 字；hover 主色 8% 状态层 | 文字级 |
 
-尺寸 40（默认）/32（紧凑）。
+统一：胶囊圆角（rounded-full）、尺寸 40（px 20）/32（px 16）、过渡 150ms emphasized；
+按压 scale 0.98。
 
 ### 6.2 Field / Input
 
 标签 = overline 且 `for` 关联；输入 44 高、`surface-input` 底、1px `line` 描边、
-圆角 12。焦点：描边 `action` + 外扩 4px `blue-500/15%` 光环（150ms）。
+圆角 12。焦点：描边 `action` + 外扩 4px 主色 15% 光环（150ms）。
 错误：danger 描边 + 行内 caption（图标+文案）。必带 HTML 语义属性：
 `autocomplete`、`inputmode`、`aria-invalid`、`aria-describedby`（错误 id）。
 
@@ -574,3 +582,4 @@ toast + 行移除。「撤销其他」→ Dialog 显示数量 → toast「已撤
 | v1.2.5 | 2026-10-04 | ①品牌标识重设计（用户需求「简洁有标识度，主题 MS/ID/Auth」）：「M + 验证点」白色字标替换菱形，favicon 同步（§3.2）；移除 logo-dot 令牌 ②图表语法升级（用户参考 lieflat-charts）：§6.8 新增编辑感图表语法——发丝线网格、可数刻度（1 格 = 1 次）+ 真实单位旁注、账本式逐日刻度、峰值旁注、受控视线落点（失败红仅实有失败时）、Glance 大数字读数；Donut 轨道改发丝 line 色 |
 | v1.2.5a | 2026-10-04 | 修复（用户反馈「文字太大/重叠/越界 + 布局不对称/没铺满」）：Sparkbar 改 ResizeObserver 1:1 渲染（mono 文字不随卡片缩放）、日期标签下标 1,4,7,10,13、峰值旁注锚右上；§7.3 Bento 行满约束（md/lg/xl 每行恰好铺满，快捷操作整行） |
 | v1.2.6 | 2026-10-04 | 图表形态升级（用户反馈「不要柱状图」）：登录活跃由 Sparkbar 堆叠柱改为 **AreaTrend 平滑趋势**（Catmull-Rom 曲线 + 渐变面积 + 顶点白描边小点 + 末值标注 + 基线失败事件红点 + 描线生长入场），编辑感语法与 1:1 尺寸策略全部保留；删除 sparkbar.tsx |
+| v1.3 | 2026-10-04 | **以 Material Design 3 为参考基线重梳**（用户需求）：①色彩/表面——新增 surface-container-low 表面容器阶（三主题各自推导），卡片改 tonal elevation（去描边、极轻影）；②形状标度对齐 M3——卡 20→16（large）、对话框 24→28（extra-large）、按钮/导航项/顶栏全部胶囊化（stadium）；③按钮变体重划——primary=filled、secondary=tonal（primary-container 底）、danger=tonal error、quiet=text，M3 状态层（hover 8%/12% color-mix + emphasized 缓动）替换旧 hover 换底；④导航栏对齐 M3 navigation rail——激活态改 primary-container 胶囊活动指示（替换实底白图标）；⑤SPEC §2/§3.4/§4/§5.3/§6.1 同步 |

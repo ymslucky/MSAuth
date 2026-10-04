@@ -229,14 +229,14 @@ export default function AccountIndexPage() {
           <div className="mx-auto mt-5 grid w-full max-w-3xl gap-3 sm:grid-cols-2">
             <Link
               to="/account/password"
-              className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-line bg-surface text-sm font-medium text-ink-2 transition-colors duration-[140ms] hover:bg-canvas"
+              className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-action-subtle text-sm font-medium text-ink m3-tonal-hover"
             >
               <KeyRound size={16} strokeWidth={1.75} className="text-accent-purple-vivid" aria-hidden="true" />
               修改密码
             </Link>
             <Link
               to="/account/sessions"
-              className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-line bg-surface text-sm font-medium text-ink-2 transition-colors duration-[140ms] hover:bg-canvas"
+              className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-action-subtle text-sm font-medium text-ink m3-tonal-hover"
             >
               <MonitorSmartphone size={16} strokeWidth={1.75} className="text-action" aria-hidden="true" />
               管理登录设备
