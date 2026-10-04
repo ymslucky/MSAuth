@@ -1,16 +1,17 @@
-/** 按钮（SPEC §6.1）：primary / glass / danger / quiet；尺寸 40 / 32 */
+/** 按钮（SPEC §6.1）：primary / secondary / danger / quiet；尺寸 40 / 32 */
 import type { ButtonHTMLAttributes } from 'react';
 
-type Variant = 'primary' | 'glass' | 'danger' | 'quiet';
+type Variant = 'primary' | 'secondary' | 'danger' | 'quiet';
 type Size = 'md' | 'sm';
 
 const variants: Record<Variant, string> = {
   primary:
-    'btn-shine bg-leaf-600 text-white font-semibold shadow-glass-1 hover:bg-leaf-700 active:scale-[0.98]',
-  glass:
-    'glass-2 rounded-xl text-ink-2 font-medium hover:border-leaf-300 hover:text-ink active:scale-[0.98]',
-  danger: 'border border-danger/45 text-danger font-medium hover:bg-danger-bg active:scale-[0.98]',
-  quiet: 'text-ink-3 font-medium hover:text-leaf-600',
+    'bg-action text-white font-semibold shadow-card hover:bg-action-hover hover:-translate-y-px active:translate-y-0 active:scale-[0.98] transition-[background-color,transform] duration-[140ms]',
+  secondary:
+    'bg-surface border border-line text-ink-2 font-medium hover:bg-canvas hover:border-ink-4/40 active:scale-[0.98]',
+  danger:
+    'border border-danger/40 text-danger font-medium hover:bg-danger-bg active:scale-[0.98]',
+  quiet: 'text-ink-3 font-medium hover:text-action',
 };
 
 const sizes: Record<Size, string> = {

@@ -1,15 +1,17 @@
-/** 徽标（SPEC §6.3）：admin 唯一实底 */
+/** 徽标（SPEC §6.3）：admin 唯一实底；语义色用文字级保证对比度 */
 import type { ReactNode } from 'react';
 
-type Tone = 'solid' | 'leaf' | 'neutral' | 'success' | 'danger' | 'warn';
+type Tone = 'solid' | 'blue' | 'neutral' | 'success' | 'danger' | 'warn' | 'info' | 'purple';
 
 const tones: Record<Tone, string> = {
-  solid: 'bg-leaf-600 text-white border-transparent',
-  leaf: 'bg-leaf-50 text-leaf-700 border-leaf-100',
-  neutral: 'bg-canvas-2 text-ink-3 border-line',
-  success: 'bg-leaf-50 text-leaf-700 border-leaf-100',
+  solid: 'bg-action text-white border-transparent',
+  blue: 'bg-action-subtle text-action-hover border-action/15',
+  neutral: 'bg-canvas text-ink-3 border-line',
+  success: 'bg-success-bg text-success border-success/20',
   danger: 'bg-danger-bg text-danger border-danger/20',
-  warn: 'bg-warn-bg text-warn border-warn/25',
+  warn: 'bg-warning-bg text-warning border-warning/25',
+  info: 'bg-info-bg text-info border-info/20',
+  purple: 'bg-accent-purple-bg text-accent-purple border-accent-purple/20',
 };
 
 export function Badge({ tone = 'neutral', dot = false, children }: { tone?: Tone; dot?: boolean; children: ReactNode }) {
@@ -26,6 +28,6 @@ export function Badge({ tone = 'neutral', dot = false, children }: { tone?: Tone
 /** 角色徽标映射 */
 export function RoleBadge({ role }: { role: string }) {
   if (role === 'admin') return <Badge tone="solid">admin</Badge>;
-  if (role === 'member' || role === 'viewer') return <Badge tone="leaf">{role}</Badge>;
+  if (role === 'member' || role === 'viewer') return <Badge tone="blue">{role}</Badge>;
   return <Badge tone="neutral">{role}</Badge>;
 }

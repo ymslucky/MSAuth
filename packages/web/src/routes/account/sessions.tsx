@@ -1,4 +1,4 @@
-/** 会话管理（SPEC §7.4）：设备行卡 + Dialog 确认 + toast 反馈 */
+/** 会话管理（SPEC §7.4）：白卡设备行 + Dialog 确认 + toast 反馈 */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LogOut, Monitor, Smartphone, Tablet } from 'lucide-react';
 import type { SessionListItem } from '@msauth/shared';
@@ -58,16 +58,16 @@ export default function SessionsPage() {
     <div className="stagger space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="overline mb-1">SESSIONS · 会话</p>
           <h1 className="t-display">登录设备</h1>
+          <p className="t-caption mt-1">管理当前登录 MSAuth 的所有设备</p>
         </div>
-        <Button variant="glass" disabled={othersCount === 0} onClick={() => setPending({ type: 'others', count: othersCount })}>
+        <Button variant="secondary" disabled={othersCount === 0} onClick={() => setPending({ type: 'others', count: othersCount })}>
           <LogOut size={16} strokeWidth={1.75} aria-hidden="true" />
           撤销其他会话{othersCount === 0 ? '（无）' : ''}
         </Button>
       </div>
 
-      <div className="glass-1 rounded-card p-2">
+      <div className="card rounded-card p-2">
         {query.isLoading ? (
           <div className="space-y-2 p-3" aria-hidden="true">
             {[0, 1].map((i) => (
@@ -84,14 +84,14 @@ export default function SessionsPage() {
         ) : (
           <ul className="divide-y divide-line">
             {sessions.map((s) => (
-              <li key={s.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl p-3 transition-colors duration-[140ms] hover:bg-leaf-50/40">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-leaf-50 text-leaf-600">
+              <li key={s.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl p-3 transition-colors duration-[140ms] hover:bg-canvas/70">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-action-subtle text-action">
                   <DeviceIcon ua={s.userAgent} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm leading-5 font-semibold text-ink">{summarizeUa(s.userAgent)}</span>
-                    {s.current && <Badge tone="leaf">当前设备</Badge>}
+                    {s.current && <Badge tone="blue">当前设备</Badge>}
                   </div>
                   <div className="mt-1 flex flex-wrap gap-x-4">
                     <span className="t-data" title={s.id}>

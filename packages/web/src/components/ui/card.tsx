@@ -1,7 +1,7 @@
-/** 玻璃卡片（SPEC §6.3） */
+/** 白色悬浮卡片（SPEC §6.3）：.card 大圆角 + 可选头 */
 import type { ReactNode } from 'react';
 
-export function GlassCard({
+export function Card({
   title,
   desc,
   action,
@@ -17,7 +17,7 @@ export function GlassCard({
   padded?: boolean;
 }) {
   return (
-    <section className={`glass-1 rounded-card ${className}`}>
+    <section className={`card rounded-card ${className}`}>
       {(title || action) && (
         <header className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
           <div>

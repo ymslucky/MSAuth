@@ -8,7 +8,7 @@ import { queryClient } from './lib/query';
 import { ToastProvider } from './components/ui/toast';
 import './index.css';
 
-/** 渲染异常兜底：玻璃卡 + 错误信息 + 刷新（避免白屏） */
+/** 渲染异常兜底：白色卡片 + 错误信息 + 刷新（避免白屏） */
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   override state = { error: null as Error | null };
 
@@ -23,15 +23,15 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   override render() {
     if (this.state.error) {
       return (
-        <div className="ambient flex min-h-dvh items-center justify-center px-4">
-          <div className="glass-1 w-full max-w-sm rounded-card p-8 text-center">
+        <div className="flex min-h-dvh items-center justify-center bg-canvas px-4">
+          <div className="card w-full max-w-sm rounded-card p-8 text-center">
             <p className="overline">ERROR · 渲染异常</p>
             <h1 className="t-title mt-1.5">页面出错了</h1>
             <p className="t-caption mt-1.5">渲染发生异常，刷新通常可以解决。</p>
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="btn-shine mt-5 inline-flex h-10 items-center rounded-xl bg-leaf-600 px-4 text-sm font-semibold text-white hover:bg-leaf-700"
+              className="mt-5 inline-flex h-10 items-center rounded-xl bg-action px-4 text-sm font-semibold text-white shadow-card transition-colors hover:bg-action-hover"
             >
               刷新页面
             </button>

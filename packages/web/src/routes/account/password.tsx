@@ -4,7 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import { changePasswordSchema, PASSWORD_POLICY } from '@msauth/shared';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
-import { GlassCard } from '../../components/ui/card';
+import { Card } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Field } from '../../components/ui/input';
 import { useToast } from '../../components/ui/toast';
@@ -52,11 +52,11 @@ export default function PasswordPage() {
   return (
     <div className="stagger space-y-6">
       <div>
-        <p className="overline mb-1">PASSWORD · 安全</p>
         <h1 className="t-display">修改密码</h1>
+        <p className="t-caption mt-1">修改成功后，除当前设备外的所有会话都会被强制退出</p>
       </div>
 
-      <GlassCard title="设置新密码" desc="修改成功后，除当前设备外的所有会话都会被强制退出。">
+      <Card title="设置新密码">
         <form className="max-w-md space-y-4" onSubmit={form.handleSubmit((values) => mutation.mutate(values))} noValidate>
           <Field
             label="当前密码"
@@ -94,7 +94,7 @@ export default function PasswordPage() {
             更新密码
           </Button>
         </form>
-      </GlassCard>
+      </Card>
     </div>
   );
 }

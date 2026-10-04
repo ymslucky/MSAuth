@@ -22,7 +22,7 @@ function GithubIcon() {
   );
 }
 
-/** 卡顶错误条（danger 玻璃条） */
+/** 卡顶错误条（danger 浅底条） */
 function FormBanner({ children }: { children: ReactNode }) {
   return (
     <div role="alert" className="mb-4 flex items-start gap-2.5 rounded-xl border border-danger/25 bg-danger-bg px-3.5 py-2.5 text-sm text-danger">
@@ -72,7 +72,7 @@ export default function LoginPage() {
       footer={
         <>
           还没有账号？{' '}
-          <Link to="/register" className="font-medium text-leaf-600 hover:text-leaf-700 hover:underline">
+          <Link to="/register" className="font-medium text-action hover:text-action-hover hover:underline">
             创建账户
           </Link>
         </>
@@ -123,7 +123,7 @@ export default function LoginPage() {
 
       <a
         href="/api/auth/github"
-        className="glass-2 btn-shine inline-flex h-10 w-full items-center justify-center gap-2.5 rounded-xl text-sm font-medium text-ink-2"
+        className="inline-flex h-10 w-full items-center justify-center gap-2.5 rounded-xl border border-line bg-surface text-sm font-medium text-ink-2 transition-colors duration-[140ms] hover:bg-canvas"
       >
         <GithubIcon />
         使用 GitHub 登录

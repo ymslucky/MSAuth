@@ -49,7 +49,7 @@ export default function RegisterPage() {
       footer={
         <>
           已有账户？{' '}
-          <Link to="/login" className="font-medium text-leaf-600 hover:text-leaf-700 hover:underline">
+          <Link to="/login" className="font-medium text-action hover:text-action-hover hover:underline">
             直接登录
           </Link>
         </>
@@ -87,7 +87,7 @@ export default function RegisterPage() {
           error={form.formState.errors.password?.message}
           hint={
             password.length > 0 ? (
-              <span className={`inline-flex items-center gap-1 ${lengthOk ? 'text-leaf-600' : 'text-ink-3'}`}>
+              <span className={`inline-flex items-center gap-1 ${lengthOk ? 'text-success' : 'text-ink-3'}`}>
                 {lengthOk && <Check size={13} strokeWidth={2.5} aria-hidden="true" />}
                 {lengthOk ? '长度满足要求' : `还需 ${PASSWORD_POLICY.minLength - password.length} 个字符`}
               </span>

@@ -23,7 +23,7 @@ export interface ToastApi {
 }
 
 const TONES: Record<Tone, { icon: typeof Info; color: string; duration: number; role: 'status' | 'alert' }> = {
-  success: { icon: CheckCircle2, color: 'text-leaf-600', duration: 3500, role: 'status' },
+  success: { icon: CheckCircle2, color: 'text-success', duration: 3500, role: 'status' },
   error: { icon: AlertTriangle, color: 'text-danger', duration: 6000, role: 'alert' },
   info: { icon: Info, color: 'text-info', duration: 3500, role: 'status' },
 };
@@ -70,7 +70,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           const conf = TONES[item.tone]!;
           const Icon = conf.icon;
           return (
-            <div key={item.id} role={conf.role} className="anim-toast glass-2 pointer-events-auto flex items-start gap-3 rounded-[14px] p-3.5">
+            <div key={item.id} role={conf.role} className="anim-toast card-float pointer-events-auto flex items-start gap-3 rounded-[14px] p-3.5">
               <Icon size={18} strokeWidth={1.75} className={`mt-0.5 shrink-0 ${conf.color}`} aria-hidden="true" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm leading-5 font-semibold text-ink">{item.title}</p>

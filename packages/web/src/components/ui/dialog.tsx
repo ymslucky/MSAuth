@@ -77,7 +77,7 @@ export function Dialog({
 
   return (
     <div
-      className="fixed inset-0 z-[300] flex items-center justify-center bg-canvas/40 p-4 backdrop-blur-[4px]"
+      className="fixed inset-0 z-[300] flex items-center justify-center bg-ink/30 p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -88,12 +88,12 @@ export function Dialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined}
-        className="anim-pop glass-3 w-full max-w-[420px] rounded-dialog p-6"
+        className="anim-pop card-modal w-full max-w-[420px] rounded-dialog p-6"
       >
         <div className="flex gap-4">
           <div
             className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
-              tone === 'danger' ? 'bg-danger-bg text-danger' : 'bg-leaf-50 text-leaf-600'
+              tone === 'danger' ? 'bg-danger-bg text-danger' : 'bg-action-subtle text-action'
             }`}
             aria-hidden="true"
           >
@@ -111,7 +111,7 @@ export function Dialog({
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-2.5">
-          <Button variant="glass" onClick={onClose} disabled={loading}>
+          <Button variant="secondary" onClick={onClose} disabled={loading}>
             {cancelText}
           </Button>
           <Button variant={tone === 'danger' ? 'danger' : 'primary'} onClick={onConfirm} loading={loading}>

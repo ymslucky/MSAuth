@@ -1,10 +1,10 @@
-/** 头像（SPEC §6.3）：显示名首字 + 名字哈希 → 绿色系渐变 */
+/** 头像（SPEC §6.3）：显示名首字白字 + 名字哈希 → 蓝/紫/橙/天蓝/靛蓝渐变（accent primitive） */
 const GRADIENTS = [
-  'from-leaf-300 to-leaf-500',
-  'from-leaf-500 to-leaf-700',
-  'from-[#b9e0c8] to-leaf-300',
-  'from-leaf-600 to-[#1d5739]',
-  'from-[#d7ecd9] to-leaf-500',
+  'from-[#60a5fa] to-[#2563eb]', // blue
+  'from-[#a78bfa] to-[#7c3aed]', // purple
+  'from-[#fb923c] to-[#ea580c]', // orange
+  'from-[#38bdf8] to-[#0284c7]', // sky
+  'from-[#818cf8] to-[#4f46e5]', // indigo
 ];
 
 function hashIndex(name: string, mod: number): number {

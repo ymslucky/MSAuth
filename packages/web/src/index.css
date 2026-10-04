@@ -4,8 +4,8 @@
 @import '@fontsource-variable/jetbrains-mono';
 
 /*
- * 设计令牌 —— 语义层（SPEC §3.2）
- * primitive 值（milk/ink/leaf 色阶）即下列注释，页面代码只允许用语义类。
+ * 设计令牌 —— 语义层（SPEC v1.2 §3.2）
+ * primitive 值（slate/blue/purple/orange/red 阶）即下列注释，页面代码只允许用语义类。
  */
 @theme {
   /* 字体：拉丁自托管，中文系统栈（SPEC §3.5） */
@@ -13,43 +13,53 @@
   --font-sans: 'Onest Variable', 'PingFang SC', 'HarmonyOS Sans SC', 'MiSans', 'Microsoft YaHei', sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, 'Cascadia Mono', 'SFMono-Regular', monospace;
 
-  /* 底色与文本 */
-  --color-canvas: #fdfcf9; /* milk-50 */
-  --color-canvas-2: #faf7f0; /* milk-100 */
-  --color-surface-input: #f3efe4; /* milk-200 */
-  --color-ink: #1c2b25; /* ink-900 主文本 ≥12:1 */
-  --color-ink-2: #33453c; /* ink-700 */
-  --color-ink-3: #5f7066; /* ink-500 辅助 ≥4.5:1 */
-  --color-ink-4: #8b988f; /* ink-400 占位/禁用 */
-  --color-line: rgb(28 43 37 / 0.1);
+  /* 画布 / 卡面 / 文本（primitive：slate 系 + 浅灰画布） */
+  --color-canvas: #f1f2f6; /* 页面画布 */
+  --color-surface: #ffffff; /* 卡片底 */
+  --color-surface-input: #f4f5f8; /* gray-100 输入框底 */
+  --color-ink: #0f172a; /* slate-900 主文本 ≥14:1 */
+  --color-ink-2: #334155; /* slate-700 */
+  --color-ink-3: #64748b; /* slate-500 辅助 ≥4.5:1 */
+  --color-ink-4: #94a3b8; /* slate-400 占位/图表轴 */
+  --color-line: rgb(15 23 42 / 0.08);
 
-  /* 自然绿（唯一交互色系） */
-  --color-leaf-50: #f0f9f3;
-  --color-leaf-100: #dff2e6;
-  --color-leaf-300: #8fd3ac;
-  --color-leaf-500: #3ba76e;
-  --color-leaf-600: #2c8a58;
-  --color-leaf-700: #237048;
+  /* 亮蓝主色（唯一交互色） */
+  --color-action: #3b82f6; /* blue-500 */
+  --color-action-hover: #2563eb; /* blue-600 */
+  --color-action-subtle: #eff6ff; /* blue-50 */
 
-  /* 语义色（柔化） */
-  --color-warn: #c98a2e;
-  --color-warn-bg: #fbf3e2;
-  --color-danger: #ce4a52;
-  --color-danger-bg: #fbefef;
-  --color-info: #3e8fa8;
-  --color-info-bg: #edf5f8;
+  /* 点缀（紫/橙）+ 语义色：-text 级保证白底 ≥4.5:1；-vivid 供图标点/图表 */
+  --color-accent-purple: #6d28d9; /* violet-700 文字级 */
+  --color-accent-purple-vivid: #8b5cf6;
+  --color-accent-purple-bg: #f5f3ff;
+  --color-accent-orange: #c2410c; /* orange-700 文字级 */
+  --color-accent-orange-vivid: #f97316;
+  --color-accent-orange-bg: #fff7ed;
+  --color-danger: #dc2626; /* red-600 文字级 */
+  --color-danger-vivid: #ef4444;
+  --color-danger-bg: #fef2f2;
+  --color-success: #059669; /* emerald-600 文字级 */
+  --color-success-vivid: #10b981;
+  --color-success-bg: #ecfdf5;
+  --color-warning: #b45309; /* amber-700 文字级 */
+  --color-warning-vivid: #f59e0b;
+  --color-warning-bg: #fffbeb;
+  --color-info: #0369a1; /* sky-700 文字级 */
+  --color-info-vivid: #0ea5e9;
+  --color-info-bg: #f0f9ff;
 
-  /* 阴影阶梯 = 玻璃三档一一对应（SPEC §3.8） */
-  --shadow-glass-1: 0 1px 2px rgb(28 43 37 / 0.04), 0 8px 24px -12px rgb(28 43 37 / 0.1);
-  --shadow-glass-2: 0 2px 4px rgb(28 43 37 / 0.05), 0 16px 40px -16px rgb(28 43 37 / 0.16);
-  --shadow-glass-3: 0 4px 8px rgb(28 43 37 / 0.06), 0 24px 64px -24px rgb(28 43 37 / 0.24);
+  /* 阴影三档 = 卡片/浮层/模态一一对应（SPEC §3.4） */
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px -12px rgb(15 23 42 / 0.1);
+  --shadow-card-hover: 0 2px 4px rgb(15 23 42 / 0.05), 0 12px 32px -12px rgb(15 23 42 / 0.14);
+  --shadow-float: 0 2px 4px rgb(15 23 42 / 0.05), 0 16px 40px -16px rgb(15 23 42 / 0.16);
+  --shadow-modal: 0 4px 8px rgb(15 23 42 / 0.06), 0 24px 64px -24px rgb(15 23 42 / 0.24);
 
   /* 动效令牌（SPEC §4） */
   --ease-out-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.3, 0.5, 1);
 
-  /* 圆角令牌 */
-  --radius-card: 1rem; /* 16 */
+  /* 圆角令牌（SPEC §3.6：大圆角） */
+  --radius-card: 1.25rem; /* 20 */
   --radius-dialog: 1.5rem; /* 24 */
 }
 
@@ -61,61 +71,55 @@
     @apply bg-canvas font-sans text-ink antialiased;
   }
   ::selection {
-    background: rgb(44 138 88 / 0.22);
+    background: rgb(59 130 246 / 0.22);
   }
   /* WCAG 2.4.7：全局焦点可见 */
   :focus-visible {
-    outline: 2px solid var(--color-leaf-600);
+    outline: 2px solid var(--color-action);
     outline-offset: 2px;
   }
 }
 
 @layer components {
-  /* ===== 环境光背景（SPEC §3.3）===== */
-  .ambient {
-    background-image:
-      radial-gradient(880px 520px at 18% -8%, rgb(205 233 214 / 0.4), transparent 60%),
-      radial-gradient(720px 480px at 86% 108%, rgb(243 230 196 / 0.36), transparent 60%);
-    background-attachment: fixed;
-  }
-  /* 认证/同意页加强版：追加光斑 C */
-  .ambient-max {
-    background-image:
-      radial-gradient(880px 520px at 18% -8%, rgb(205 233 214 / 0.4), transparent 60%),
-      radial-gradient(720px 480px at 86% 108%, rgb(243 230 196 / 0.36), transparent 60%),
-      radial-gradient(560px 420px at 60% 30%, rgb(220 239 232 / 0.3), transparent 60%);
-    background-attachment: fixed;
+  /* ===== 认证页顶部淡蓝光晕（SPEC §3.3，唯一允许的背景装饰）===== */
+  .halo-top {
+    background-image: radial-gradient(900px 400px at 50% -10%, rgb(59 130 246 / 0.08), transparent 70%);
   }
 
-  /* ===== 玻璃三档（SPEC §3.4）===== */
-  .glass-1 {
-    background: rgb(255 255 255 / 0.62);
-    -webkit-backdrop-filter: blur(14px) saturate(1.4);
-    backdrop-filter: blur(14px) saturate(1.4);
-    border: 1px solid rgb(28 43 37 / 0.06);
-    box-shadow: var(--shadow-glass-1), inset 0 1px 0 rgb(255 255 255 / 0.9);
+  /* ===== 卡片三档（SPEC §3.4）：实底白 + 柔影，无 backdrop-filter ===== */
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    box-shadow: var(--shadow-card);
   }
-  .glass-2 {
-    background: rgb(255 255 255 / 0.74);
-    -webkit-backdrop-filter: blur(18px) saturate(1.5);
-    backdrop-filter: blur(18px) saturate(1.5);
-    border: 1px solid rgb(28 43 37 / 0.08);
-    box-shadow: var(--shadow-glass-2), inset 0 1px 0 rgb(255 255 255 / 0.9);
+  .card-float {
+    background: var(--color-surface);
+    box-shadow: var(--shadow-float);
   }
-  .glass-3 {
-    background: rgb(255 255 255 / 0.82);
-    -webkit-backdrop-filter: blur(22px) saturate(1.6);
-    backdrop-filter: blur(22px) saturate(1.6);
-    border: 1px solid rgb(28 43 37 / 0.1);
-    box-shadow: var(--shadow-glass-3), inset 0 1px 0 rgb(255 255 255 / 0.9);
+  .card-modal {
+    background: var(--color-surface);
+    box-shadow: var(--shadow-modal);
+  }
+  /* 可点击卡片 hover 抬升（阴影两态类切换，不过渡 box-shadow） */
+  .card-lift {
+    transition:
+      transform 140ms var(--ease-out-soft),
+      box-shadow 140ms var(--ease-out-soft);
+  }
+  .card-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card-hover);
   }
 
   /* ===== 字阶类（SPEC §3.5）===== */
   .t-display {
     @apply font-display text-[30px] leading-[34px] font-bold tracking-[-0.01em] text-ink;
   }
+  .t-stat {
+    @apply font-display text-[32px] leading-9 font-bold tracking-[-0.01em] text-ink;
+  }
   .t-title {
-    @apply font-display text-xl leading-[26px] font-semibold text-ink;
+    @apply font-display text-lg leading-6 font-semibold text-ink;
   }
   .t-caption {
     @apply text-[12.5px] leading-[19px] text-ink-3;
@@ -179,15 +183,15 @@
     animation: toast-in 240ms var(--ease-out-soft) both;
   }
 
-  /* 主按钮/卡片玻璃高光：斜向光带位移（CSP 安全，纯 CSS 类） */
-  .btn-shine {
-    background-image: linear-gradient(115deg, transparent 35%, rgb(255 255 255 / 0.2) 50%, transparent 65%);
-    background-size: 250% 100%;
-    background-position: 100% 0;
-    transition: background-position 260ms var(--ease-out-soft);
+  /* Donut 入场：弧线展开一次（SPEC §4.5，CSP 安全纯 CSS；--donut-len 由组件注入） */
+  @keyframes donut-in {
+    from {
+      stroke-dasharray: 0 var(--donut-len);
+    }
   }
-  .btn-shine:hover {
-    background-position: 0 0;
+  .donut-arc {
+    animation: donut-in 400ms var(--ease-out-soft) both;
+    animation-delay: 120ms;
   }
 
   /* 骨架屏（SPEC §6.3）*/
@@ -197,44 +201,27 @@
     }
   }
   .skeleton {
-    background: linear-gradient(100deg, #f3efe4 40%, #faf7f0 50%, #f3efe4 60%);
+    background: linear-gradient(100deg, #f4f5f8 40%, #fafbfc 50%, #f4f5f8 60%);
     background-size: 200% 100%;
     animation: shimmer 1.4s linear infinite;
     border-radius: 12px;
-  }
-
-  /* ===== 降级：无 backdrop-filter / reduced-transparency → 实底（SPEC §3.4）===== */
-  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .glass-1,
-    .glass-2,
-    .glass-3 {
-      background: var(--color-canvas);
-    }
-  }
-  @media (prefers-reduced-transparency: reduce) {
-    .glass-1,
-    .glass-2,
-    .glass-3 {
-      background: var(--color-canvas);
-      -webkit-backdrop-filter: none;
-      backdrop-filter: none;
-    }
-    .ambient,
-    .ambient-max {
-      background-image: none;
-    }
   }
 
   /* ===== WCAG 2.3.3：动效降级 ===== */
   @media (prefers-reduced-motion: reduce) {
     .stagger > *,
     .anim-pop,
-    .anim-toast {
+    .anim-toast,
+    .donut-arc {
       animation-duration: 140ms;
       animation-timing-function: ease;
+      animation-delay: 0ms;
     }
     .stagger > * {
       animation-name: rise-in;
+    }
+    .card-lift:hover {
+      transform: none;
     }
     *,
     *::before,
