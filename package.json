@@ -8,6 +8,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "dev": "concurrently -kn api,web -c blue,magenta \"pnpm dev:api\" \"pnpm dev:web\"",
     "dev:api": "pnpm --filter @msauth/api dev",
     "dev:web": "pnpm --filter @msauth/web dev",
     "build": "pnpm --filter @msauth/web build",
@@ -19,5 +20,8 @@
     "onlyBuiltDependencies": [
       "esbuild"
     ]
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
   }
 }
