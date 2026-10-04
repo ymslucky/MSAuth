@@ -30,6 +30,32 @@ export const PASSWORD_POLICY = {
   maxLength: 128,
 } as const;
 
+// ===== 密码哈希（Web Crypto PBKDF2，仅用 Web Crypto，不用 Node API） =====
+
+export const PBKDF2_PARAMS = {
+  /** 迭代次数 */
+  iterations: 100_000,
+  /** 摘要算法 */
+  hash: 'SHA-256',
+  /** 盐长度（字节） */
+  saltBytes: 16,
+  /** 派生密钥长度（字节） */
+  keyBytes: 32,
+} as const;
+
+// ===== Cookie =====
+
+/**
+ * Cookie 名称。session/csrf 均带 __Host- 前缀：
+ * 强制 Secure + Path=/ + 不带 Domain，防子域注入。
+ */
+export const COOKIES = {
+  /** 会话 Cookie：HttpOnly，值为 ULID 明文（库中只存 SHA-256 哈希） */
+  session: '__Host-msauth_session',
+  /** CSRF 双提交 Cookie：非 HttpOnly（SPA 需读取后放入 x-csrf-token 头） */
+  csrf: '__Host-msauth_csrf',
+} as const;
+
 // ===== 会话 TTL（秒）—— 需求未指定，当前为假设值，可调整 =====
 
 /** 空闲过期：超过该时长没有携带会话的请求即失效 */
