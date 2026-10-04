@@ -1,0 +1,3 @@
+# pnpm workspace：所有子包位于 packages/ 下
+packages:
+  - "packages/*"

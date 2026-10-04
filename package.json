@@ -1,0 +1,23 @@
+{
+  "name": "msauth",
+  "version": "0.2.0",
+  "private": true,
+  "description": "MSAuth — 面向个人与小型团队的 OAuth 2.1 授权服务器（Cloudflare Workers + D1）",
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:api": "pnpm --filter @msauth/api dev",
+    "dev:web": "pnpm --filter @msauth/web dev",
+    "build": "pnpm --filter @msauth/web build",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "deploy": "pnpm --filter @msauth/api deploy"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}
