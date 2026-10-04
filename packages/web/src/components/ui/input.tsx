@@ -28,7 +28,7 @@ export function Field({ label, error, hint, rightSlot, className = '', id, ...re
           className={`h-11 w-full rounded-xl border bg-surface-input px-3.5 text-sm text-ink placeholder:text-ink-4 transition-[border-color,box-shadow] duration-150 ${
             error
               ? 'border-danger'
-              : 'border-line hover:border-ink-4/60 focus:border-action focus:shadow-[0_0_0_4px_rgb(59_130_246/0.15)]'
+              : 'border-line hover:border-ink-4/60 focus:border-action focus:shadow-[0_0_0_4px_rgb(59_91_219/0.15)]'
           } ${rightSlot ? 'pr-11' : ''} ${className}`}
           {...rest}
         />

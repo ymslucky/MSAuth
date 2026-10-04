@@ -23,7 +23,7 @@ function IconTile({ icon: Icon, className }: { icon: LucideIcon; className: stri
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-line py-3 last:border-0">
+    <div className="flex items-center justify-between gap-4 border-b border-line py-3.5 last:border-0">
       <span className="text-sm text-ink-3">{label}</span>
       <span className="min-w-0 text-right text-sm text-ink">{children}</span>
     </div>
@@ -71,15 +71,15 @@ export default function AccountIndexPage() {
   if (!user) return null;
 
   return (
-    <div className="stagger space-y-6">
+    <div className="stagger space-y-8">
       <div>
         <h1 className="t-display">你好，{user.displayName}</h1>
-        <p className="t-caption mt-1">欢迎回到你的身份中心</p>
+        <p className="t-caption mt-1.5">欢迎回到你的身份中心</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {/* 身份卡：蓝→靛→紫渐变（xl 占 2 列） */}
-        <section className="rounded-card bg-gradient-to-br from-[#3b82f6] via-[#4f46e5] to-[#8b5cf6] p-6 shadow-card md:col-span-2">
+      <div className="grid gap-5 xl:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {/* 身份卡：群青单色相深浅渐变（xl 占 2 列） */}
+        <section className="rounded-card bg-gradient-to-br from-[#3e63d6] to-[#2b3a8c] p-7 shadow-card lg:p-8 md:col-span-2">
           <div className="flex flex-wrap items-center gap-4">
             <div className="rounded-full ring-[3px] ring-white/40">
               <Avatar name={user.displayName} size={56} />
@@ -100,19 +100,19 @@ export default function AccountIndexPage() {
               {user.roles[0] && <p className="mt-0.5 text-[12.5px] text-white/70">{ROLE_LABELS[user.roles[0]]}</p>}
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-1 border-t border-white/20 pt-3">
+          <div className="mt-5 flex items-center gap-1 border-t border-white/20 pt-4">
             <span className="font-mono text-[12px] text-white/70">{user.id}</span>
             <CopyButton value={user.id} className="text-white/60 hover:text-white" />
           </div>
         </section>
 
-        {/* 活跃会话：blue accent + Donut（当前设备 1/N） */}
+        {/* 活跃会话：群青 accent + Donut（当前设备 1/N） */}
         <Card className="flex flex-col">
           <div className="flex items-center gap-3">
             <IconTile icon={MonitorSmartphone} className="bg-action-subtle text-action" />
             <p className="overline text-action-hover">活跃会话</p>
           </div>
-          <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="mt-4 flex items-center justify-between gap-3">
             <div>
               <p className="t-stat">{sessionsQuery.isLoading ? '—' : total}</p>
               <p className="t-caption mt-1">
@@ -123,19 +123,19 @@ export default function AccountIndexPage() {
               <Donut percent={(current / total) * 100} size={64} stroke={7} label={`当前设备 ${current} / 共 ${total} 个会话`} />
             )}
           </div>
-          <Link to="/account/sessions" className="mt-auto pt-4 text-sm font-medium text-action hover:text-action-hover">
+          <Link to="/account/sessions" className="mt-auto pt-5 text-sm font-medium text-action hover:text-action-hover">
             管理会话 →
           </Link>
         </Card>
 
-        {/* 登录方式：purple accent */}
+        {/* 登录方式：plum accent */}
         <Card className="flex flex-col">
           <div className="flex items-center gap-3">
             <IconTile icon={KeyRound} className="bg-accent-purple-bg text-accent-purple-vivid" />
             <p className="overline text-accent-purple">登录方式</p>
           </div>
-          <p className="t-stat mt-3">{methods}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <p className="t-stat mt-4">{methods}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
             <span
               className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium ${
                 user.hasPassword ? 'bg-accent-purple-bg text-accent-purple' : 'bg-canvas text-ink-3'
@@ -162,7 +162,7 @@ export default function AccountIndexPage() {
           )}
         </Card>
 
-        {/* 账户信息：sky accent（xl 占 2 列） */}
+        {/* 账户信息：teal accent（xl 占 2 列） */}
         <Card className="xl:col-span-2">
           <div className="flex items-center gap-3">
             <IconTile icon={Info} className="bg-info-bg text-info-vivid" />
@@ -170,7 +170,7 @@ export default function AccountIndexPage() {
               <h2 className="t-title">账户信息</h2>
             </div>
           </div>
-          <div className="mt-2">
+          <div className="mt-3">
             <Row label="用户 ID">
               <span className="t-data inline-flex items-center">
                 {user.id}
@@ -182,7 +182,7 @@ export default function AccountIndexPage() {
           </div>
         </Card>
 
-        {/* 快捷操作：orange accent（xl 占 2 列，宽屏横排） */}
+        {/* 快捷操作：terracotta accent（xl 占 2 列，宽屏横排） */}
         <Card className="flex flex-col justify-center xl:col-span-2">
           <div className="flex items-center gap-3">
             <IconTile icon={Zap} className="bg-accent-orange-bg text-accent-orange-vivid" />
@@ -190,7 +190,7 @@ export default function AccountIndexPage() {
               <h2 className="t-title">快捷操作</h2>
             </div>
           </div>
-          <div className="mt-4 flex flex-col gap-2.5 xl:flex-row">
+          <div className="mt-5 flex flex-col gap-3 xl:flex-row">
             <Link
               to="/account/password"
               className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-line bg-surface text-sm font-medium text-ink-2 transition-colors duration-[140ms] hover:bg-canvas"

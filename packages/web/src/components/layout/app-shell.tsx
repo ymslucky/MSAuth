@@ -27,18 +27,18 @@ function SidebarContent({ onNavigate, iconOnly = false }: { onNavigate?: () => v
         <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
           <defs>
             <linearGradient id="msauth-blue-nav" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#3b82f6" />
-              <stop offset="1" stopColor="#6366f1" />
+              <stop offset="0" stopColor="#4a6be6" />
+              <stop offset="1" stopColor="#2e3f9e" />
             </linearGradient>
           </defs>
           <rect width="32" height="32" rx="9" fill="url(#msauth-blue-nav)" />
           <path d="M16 7l7.8 9-7.8 9-7.8-9z" fill="#ffffff" />
-          <circle cx="16" cy="16" r="2.4" fill="#2563eb" />
+          <circle cx="16" cy="16" r="2.4" fill="#3450b8" />
         </svg>
         {!iconOnly && <span className="font-display text-lg font-bold tracking-tight text-ink">MSAuth</span>}
       </Link>
 
-      <nav className={iconOnly ? 'mt-6 flex flex-col items-center gap-2' : 'mt-6 flex flex-col gap-1.5'} aria-label="账户导航">
+      <nav className={iconOnly ? 'mt-8 flex flex-col items-center gap-2.5' : 'mt-8 flex flex-col gap-1.5'} aria-label="账户导航">
         {NAV.map((item) => (
           <NavLink
             key={item.to}
@@ -114,9 +114,9 @@ export function AppShell({ children }: { children?: ReactNode }) {
 
   return (
     <div className="min-h-dvh">
-      <div className="flex min-h-dvh w-full gap-4 p-3 md:p-4">
+      <div className="flex min-h-dvh w-full gap-5 p-3 md:p-5">
         {/* 桌面悬浮图标侧栏 */}
-        <aside className="card z-[10] sticky top-4 hidden h-[calc(100dvh-32px)] w-[88px] shrink-0 flex-col items-center rounded-card py-4 md:flex">
+        <aside className="card z-[10] sticky top-5 hidden h-[calc(100dvh-40px)] w-[88px] shrink-0 flex-col items-center rounded-card py-5 md:flex">
           <SidebarContent iconOnly />
           <div className="mt-3 flex flex-col items-center">{logoutBtn(true)}</div>
         </aside>
@@ -154,7 +154,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
         )}
 
         {/* 内容区 */}
-        <main className="min-w-0 flex-1 pt-16 pb-6 md:pt-2 md:pb-2">
+        <main className="min-w-0 flex-1 pt-16 pb-8 md:pt-4 md:pb-4">
           <div className="w-full">{children ?? <Outlet />}</div>
         </main>
       </div>

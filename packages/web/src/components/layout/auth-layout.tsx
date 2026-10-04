@@ -10,18 +10,18 @@ export function AuthLayout({ title, overline, children, footer }: {
 }) {
   return (
     <div className="halo-top min-h-dvh">
-      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-4 py-10">
+      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-4 py-14">
         <div className="stagger">
-          <div className="mb-8 flex justify-center">
+          <div className="mb-10 flex justify-center">
             <Brand tagline="IDENTITY · 统一身份" />
           </div>
-          <main className="card rounded-card p-7">
-            <p className="overline mb-1.5">{overline}</p>
-            <h1 className="t-display mb-6">{title}</h1>
+          <main className="card rounded-card p-8">
+            <p className="overline mb-2">{overline}</p>
+            <h1 className="t-display mb-7">{title}</h1>
             {children}
           </main>
-          {footer && <div className="mt-5 text-center text-sm text-ink-3">{footer}</div>}
-          <p className="mt-8 text-center font-mono text-[10px] tracking-[0.22em] text-ink-4 uppercase">
+          {footer && <div className="mt-6 text-center text-sm text-ink-3">{footer}</div>}
+          <p className="mt-10 text-center font-mono text-[10px] tracking-[0.22em] text-ink-4 uppercase">
             msauth · cloudflare workers · oauth 2.1
           </p>
         </div>

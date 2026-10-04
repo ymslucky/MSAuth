@@ -50,14 +50,14 @@ export default function PasswordPage() {
   });
 
   return (
-    <div className="stagger space-y-6">
+    <div className="stagger space-y-8">
       <div>
         <h1 className="t-display">修改密码</h1>
         <p className="t-caption mt-1">修改成功后，除当前设备外的所有会话都会被强制退出</p>
       </div>
 
       <Card title="设置新密码">
-        <form className="max-w-md space-y-4" onSubmit={form.handleSubmit((values) => mutation.mutate(values))} noValidate>
+        <form className="max-w-md space-y-5" onSubmit={form.handleSubmit((values) => mutation.mutate(values))} noValidate>
           <Field
             label="当前密码"
             type="password"

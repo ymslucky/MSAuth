@@ -4,13 +4,13 @@ export function BrandMark({ size = 28 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" className="shrink-0">
       <defs>
         <linearGradient id="msauth-blue" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#3b82f6" />
-          <stop offset="1" stopColor="#6366f1" />
+          <stop offset="0" stopColor="#4a6be6" />
+          <stop offset="1" stopColor="#2e3f9e" />
         </linearGradient>
       </defs>
       <rect width="32" height="32" rx="9" fill="url(#msauth-blue)" />
       <path d="M16 7l7.8 9-7.8 9-7.8-9z" fill="#ffffff" />
-      <circle cx="16" cy="16" r="2.4" fill="#2563eb" />
+      <circle cx="16" cy="16" r="2.4" fill="#3450b8" />
     </svg>
   );
 }

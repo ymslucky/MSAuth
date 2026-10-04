@@ -28,14 +28,16 @@ MSAuth 是面向个人与家人朋友的自托管身份平台。浏览器端完�
    信息密度清晰、重点数据一眼可读。
 4. 桌面优先，移动端完整可用（WCAG 2.2 AA 全程达标）。
 
-**审美锚点**（用户确认 + 参考图 HR Tool 仪表盘）：浅灰背景；白色悬浮卡片；
-柔和弥散阴影；大圆角（16–24px）；亮蓝色为主色；紫/橙/红点缀；
+**审美锚点**（用户确认 + 参考图 + v1.2.2 去AI感修订）：浅暖灰画布；白色悬浮卡片；
+柔和弥散阴影；大圆角（16–24px）；**群青**为主色；哑光李子/赤陶/青碧点缀；
 无衬线字体；数据可视化（环形进度 donut + 渐变填充面积图）；
-大号粗体数字 + 小号灰色说明文字；胶囊实底蓝按钮；圆形彩色头像。
-参照 Linear / Notion Calendar / Stripe Dashboard 的秩序感。
+大号粗体数字 + 小号灰色说明文字；胶囊实底按钮；圆形彩色头像；
+克制的单色相深浅渐变（禁止多色相彩虹渐变）。
+参照 Linear / Stripe / Radix Themes 的沉稳感。
 
-**反面清单**：禁止玻璃拟态（backdrop-filter）、禁止绿色主色、禁止花哨渐变背景、
-禁止裸色值/裸尺寸、禁止 outline:none 裸奔、禁止引入图表/动画大库。
+**反面清单**：禁止玻璃拟态、禁止 Tailwind 默认亮蓝 `#3B82F6`（AI 感主色）、
+禁止紫橙满饱和点缀组合、禁止多色相渐变卡、禁止绿色主色、禁止裸色值/裸尺寸、
+禁止 outline:none 裸奔、禁止引入图表/动画大库。
 
 ---
 
@@ -68,52 +70,53 @@ MSAuth 是面向个人与家人朋友的自托管身份平台。浏览器端完�
 primitive 值写在同文件注释块中备查。**组件代码禁止裸色值/裸尺寸**，只引用令牌
 （例外：纯 SVG 数据可视化组件可用 accent primitive 常量，集中在组件文件顶部）。
 
-### 3.1 Primitive 色板
+### 3.1 Primitive 色板（v1.2.2：暖纸灰画布 + 群青 + 哑光点缀）
 
 | 名称 | HEX | 备注 |
 |---|---|---|
-| slate-900 | `#0F172A` | 主文本 |
-| slate-700 | `#334155` | 次级文本 |
-| slate-500 | `#64748B` | 辅助文本（画布上 ≥4.5:1） |
-| slate-400 | `#94A3B8` | 占位/禁用/图表轴 |
-| gray-100 | `#F4F5F8` | 输入框底、骨架屏 |
-| canvas | `#F1F2F6` | 页面画布（浅灰） |
-| line | `rgb(15 23 42 / 0.08)` | 描边（白卡上） |
-| blue-500 | `#3B82F6` | 主色 |
-| blue-600 | `#2563EB` | 主色 hover |
-| blue-50 | `#EFF6FF` | 主色浅底 |
-| purple-500 | `#8B5CF6` / 底 `#F5F3FF` / 文字级 `#6D28D9` | 点缀：委托/Agent 相关 |
-| orange-500 | `#F97316` / 底 `#FFF7ED` / 文字级 `#C2410C` | 点缀：警示/等待 |
-| red-500 | `#EF4444` / 底 `#FEF2F2` / 文字级 `#DC2626` | 危险/错误（图标点用 500，文字用 600 级） |
-| green-500 | `#10B981` / 底 `#ECFDF5` / 文字级 `#059669` | 成功/在线（仅状态，不作交互色） |
-| sky-500 | `#0EA5E9` / 底 `#F0F9FF` / 文字级 `#0369A1` | 信息 |
-| amber-500 | `#F59E0B` / 底 `#FFFBEB` / 文字级 `#B45309` | 警告 |
+| ink | `#1D2433` | 深海军墨 · 主文本 |
+| ink-2 | `#414A5E` | 次级文本 |
+| ink-3 | `#6C7689` | 辅助文本（白底 ≥4.5:1） |
+| ink-4 | `#9AA3B2` | 占位/禁用/图表轴 |
+| gray-100 | `#F1F2EE` | 输入框底、骨架屏（暖调） |
+| canvas | `#F5F5F2` | 页面画布（暖纸灰） |
+| line | `rgb(29 36 51 / 0.08)` | 描边（白卡上） |
+| ultramarine-600 | `#3B5BDB` | 主色（群青，去AI感核心） |
+| ultramarine-700 | `#3450B8` | 主色 hover |
+| ultramarine-50 | `#E9EEFB` | 主色浅底 |
+| plum-700 | `#7048A8` / vivid `#9775FA` / 底 `#F3EEFB` | 点缀：登录方式/委托 |
+| terracotta-700 | `#B45309` / vivid `#E8853D` / 底 `#FDF2E5` | 点缀：操作/警示暖色 |
+| teal-700 | `#0F766E` / vivid `#0D9488` / 底 `#E7F6F3` | 信息/账户信息 |
+| green-600 | `#2B8A3E` / vivid `#40C057` / 底 `#EBFBEE` | 成功/在线（仅状态，不作交互色） |
+| amber-700 | `#9A6700` / vivid `#F08C00` / 底 `#FFF6DB` | 警告 |
+| red-700 | `#C92A2A` / vivid `#FA5252` / 底 `#FDEEEE` | 危险/错误 |
 
-> 规则：语义色分两档——`-vivid`（500 级）用于图标点/图表弧/装饰，文字与描边一律用
-> 文字级（600–700 级）保证白底/浅底 ≥4.5:1（WCAG 1.4.3）。
+> 规则：语义色分两档——`-vivid`（400–500 级哑光）用于图标点/图表弧/装饰，
+> 文字与描边一律用 700 级保证白底/浅底 ≥4.5:1（WCAG 1.4.3）。
+> 点缀色整体降饱和（哑光），主色唯一饱和态出现在实底按钮/激活导航，避免 AI 感。
 
 ### 3.2 Semantic 令牌（`@theme` 声明）
 
 ```css
---color-canvas: #f1f2f6;          /* 页面底 */
+--color-canvas: #f5f5f2;          /* 页面底（暖纸灰） */
 --color-surface: #ffffff;          /* 卡片底 */
---color-surface-input: #f4f5f8;    /* 输入框底 */
---color-ink: slate-900;            /* 主文本 ≥14:1 on canvas（AAA） */
---color-ink-2: slate-700;
---color-ink-3: slate-500;          /* 辅助 ≥4.5:1（AA） */
---color-ink-4: slate-400;
---color-line: rgb(15 23 42 / 0.08);
---color-action: blue-500;          /* 唯一交互主色 */
---color-action-hover: blue-600;
---color-action-subtle: blue-50;
---color-success / --color-warning / --color-danger / --color-info：见 3.1 语义行
+--color-surface-input: #f1f2ee;    /* 输入框底 */
+--color-ink: #1d2433;              /* 主文本 ≥14:1 on canvas（AAA） */
+--color-ink-2: #414a5e;
+--color-ink-3: #6c7689;            /* 辅助 ≥4.5:1（AA） */
+--color-ink-4: #9aa3b2;
+--color-line: rgb(29 36 51 / 0.08);
+--color-action: #3b5bdb;           /* 唯一交互主色（群青） */
+--color-action-hover: #3450b8;
+--color-action-subtle: #e9eefb;
+--color-success / --color-warning / --color-danger / --color-info：见 3.1 语义行（各含 -vivid 装饰档）
 --color-accent-purple / --color-accent-orange：点缀语义（§6.8 数据可视化、委托场景）
 ```
 
 ### 3.3 画布背景
 
-纯浅灰 `canvas`，无渐变光斑、无纹理。认证页可加一个极淡的顶部蓝色光晕
-（`radial 900px 400px @ (50%, -10%) blue-500/8% → transparent`，仅此一处），
+纯浅暖灰 `canvas`，无渐变光斑、无纹理。认证页可加一个极淡的顶部群青光晕
+（`radial 900px 400px @ (50%, -10%) ultramarine-600/7% → transparent`，仅此一处），
 不参与对比度计算。
 
 ### 3.4 卡片材质（elevation 体系）
@@ -166,7 +169,8 @@ primitive 值写在同文件注释块中备查。**组件代码禁止裸色值/�
   （44 表单控件 / 40 默认按钮 / 32 紧凑按钮 / 52 表格行）。
 - 圆角：**卡片 20**（`rounded-card`）、对话框 24（`rounded-dialog`）、
   控件 12（`rounded-xl`）、徽标 8、头像/图标容器全圆。
-- 卡片内边距 20 / 主卡 24；Bento 网格 gap 16–20。
+- **留白节奏（v1.2.2 放大）**：卡片内边距 24 / 主卡 28–32；Bento 网格 gap 20–24；
+  页面纵向区块间距 32；卡片内分区 ≥16（宁松勿挤）。
 - 内容宽：**流式全宽**（Bento 列数随断点增加吸收宽度，禁止全局 max-width 容器）；
   仅纯表单元素限制 `max-w-md`（登录/注册/改密码表单体 448）。
 - 触控目标 ≥44×44（超出 WCAG 2.5.8 的 24px 最低要求，取移动最佳实践）。
@@ -223,7 +227,7 @@ primitive 值写在同文件注释块中备查。**组件代码禁止裸色值/�
 
 ### 5.1 Bento 网格（核心布局原语）
 
-`.bento`：CSS Grid，`gap-4`（20 于 lg）；列定义随页面：
+`.bento`：CSS Grid，`gap-5`（xl: `gap-6`）；列定义随页面：
 
 - 账户概览：`md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`，卡片可
   `col-span/row-span` 合并（全宽流式下列数递增吸收宽度）。
@@ -374,15 +378,15 @@ AuthLayout；眉标 `SIGN IN · 登录`；标题「欢迎回来」。邮箱/密�
 
 页眉：问候「你好，{显示名}」Display + caption「欢迎回到你的身份中心」。
 
-Bento 网格（`md:2 / lg:3 / xl:4` 列，gap 16，流式全宽）：
+Bento 网格（`md:2 / lg:3 / xl:4` 列，gap 20–24，流式全宽）：
 
 | 卡 | 跨列 | accent | 内容 |
 |---|---|---|---|
-| 身份卡 | xl:2 | 蓝紫渐变（blue→indigo→vivid） | 渐变底白字：大头像（白描边）+ Display 显示名 + 白色半透明角色徽标 + mono 邮箱 + ID 可复制 |
-| 活跃会话 | 1 | **blue** | blue 图标砖 + `text-stat` 大数字 = 会话总数 + Donut（当前 1/N，蓝弧）+ caption「N 台设备在线」+ quiet 链接「管理会话 →」 |
-| 登录方式 | 1 | **purple** | purple 图标砖 + 大数字 = 已启用方式数；紫色启用态胶囊（密码/GitHub） |
-| 账户信息 | xl:2 | **sky** | sky 图标砖 + Row 列表（ID 可复制 / 创建时间 / 最近登录） |
-| 快捷操作 | xl:2 | **orange** | orange 图标砖 + 两个横向 secondary 按钮（带彩色图标：修改密码 purple / 管理设备 blue） |
+| 身份卡 | xl:2 | 群青单色相深浅渐变（`#3E63D6 → #2B3A8C`，禁彩虹） | 渐变底白字：大头像（白描边）+ Display 显示名 + 白色半透明角色徽标 + mono 邮箱 + ID 可复制 |
+| 活跃会话 | 1 | **群青** | 群青图标砖 + `text-stat` 大数字 = 会话总数 + Donut（当前 1/N，群青弧）+ caption + quiet 链接「管理会话 →」 |
+| 登录方式 | 1 | **plum 李子** | plum 图标砖 + 大数字 = 已启用方式数；李子色启用态胶囊（密码/GitHub） |
+| 账户信息 | xl:2 | **teal 青碧** | teal 图标砖 + Row 列表（ID 可复制 / 创建时间 / 最近登录） |
+| 快捷操作 | xl:2 | **terracotta 赤陶** | terracotta 图标砖 + 两个横向 secondary 按钮（带彩色图标：修改密码 plum / 管理设备 群青） |
 
 分色遵守 §5.1：accent 只落在图标砖/眉标/图形上，数字与正文保持 ink。
 
@@ -511,3 +515,4 @@ toast + 行移除。「撤销其他」→ Dialog 显示数量 → toast「已撤
 | v1.1 | 2026-10-04 | 行业规范修订：令牌三层架构、WCAG 2.2 条款化、状态矩阵、z-index/elevation 阶梯、Core Web Vitals 预算、中文系统字体策略、ARIA APG（Dialog/Toast）、ErrorBoundary、4px 基线网格 |
 | v1.2 | 2026-10-04 | 风格重定向（用户参考图确认）：玻璃拟态/自然绿 → Bento 网格/浅灰画布/白色悬浮卡片/柔和大圆角/亮蓝主色+紫橙红点缀/SaaS 数据可视化（Donut/Sparkbar/AreaTrend 纯 SVG）；悬浮侧栏改图标导航；移除全部 backdrop-filter；新增 §6.8 数据可视化组件规范 |
 | v1.2.1 | 2026-10-04 | 用户反馈修订：①内容区改流式全宽（移除 960/1080 max-width，Bento 列数 md:2/lg:3/xl:4 吸收宽度）②侧栏 76→88px、导航项 48×48、底部头像 40px ③新增 Bento 分色系统（§5.1/§7.3：每卡 accent=blue/purple/sky/orange，图标砖 §6.3），解决观感单调 |
+| v1.2.2 | 2026-10-04 | 用户反馈修订（去 AI 感 + 留白）：①配色整体重调——主色亮蓝 #3B82F6 → 群青 #3B5BDB、画布冷灰 → 暖纸灰 #F5F5F2、墨色 → 深海军 #1D2433、点缀降饱和为哑光 plum/terracotta/teal、身份卡改单色相深浅渐变（禁彩虹渐变）②留白全面放大——卡内边距 20→24/28+、Bento gap 16→20–24、页面纵向间距 24→32、认证页纵向 py-14 |

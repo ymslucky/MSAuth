@@ -78,7 +78,7 @@ export default function LoginPage() {
         </>
       }
     >
-      <form className="space-y-4" onSubmit={form.handleSubmit((values) => mutation.mutate(values))} noValidate>
+      <form className="space-y-5" onSubmit={form.handleSubmit((values) => mutation.mutate(values))} noValidate>
         {githubFailed && <FormBanner>GitHub 登录失败或已过期，请重试。</FormBanner>}
         {formError && !githubFailed && <FormBanner>{formError}</FormBanner>}
 
@@ -115,7 +115,7 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      <div className="my-5 flex items-center gap-3" aria-hidden="true">
+      <div className="my-6 flex items-center gap-3" aria-hidden="true">
         <span className="h-px flex-1 bg-line" />
         <span className="overline">或</span>
         <span className="h-px flex-1 bg-line" />

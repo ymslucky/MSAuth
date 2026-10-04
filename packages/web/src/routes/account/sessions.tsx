@@ -55,7 +55,7 @@ export default function SessionsPage() {
   const othersCount = sessions.filter((s) => !s.current).length;
 
   return (
-    <div className="stagger space-y-6">
+    <div className="stagger space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="t-display">登录设备</h1>
@@ -67,11 +67,11 @@ export default function SessionsPage() {
         </Button>
       </div>
 
-      <div className="card rounded-card p-2">
+      <div className="card rounded-card p-3">
         {query.isLoading ? (
           <div className="space-y-2 p-3" aria-hidden="true">
             {[0, 1].map((i) => (
-              <div key={i} className="flex items-center gap-4 p-3">
+              <div key={i} className="flex items-center gap-4 p-4">
                 <Skeleton className="h-10 w-10 rounded-full" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="h-4 w-40" />
@@ -84,7 +84,7 @@ export default function SessionsPage() {
         ) : (
           <ul className="divide-y divide-line">
             {sessions.map((s) => (
-              <li key={s.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl p-3 transition-colors duration-[140ms] hover:bg-canvas/70">
+              <li key={s.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl p-4 transition-colors duration-[140ms] hover:bg-canvas/70">
                 <div
                   className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
                     s.current ? 'bg-action-subtle text-action' : 'bg-canvas text-ink-3'

@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 export default function NotFoundPage() {
   return (
     <div className="halo-top flex min-h-dvh flex-col items-center justify-center px-4">
-      <div className="card anim-pop flex max-w-sm flex-col items-center rounded-card px-8 py-10 text-center">
+      <div className="card anim-pop flex max-w-sm flex-col items-center rounded-card px-10 py-12 text-center">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-action-subtle text-action">
           <Compass size={24} strokeWidth={1.75} aria-hidden="true" />
         </div>

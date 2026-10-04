@@ -1,10 +1,10 @@
-/** 头像（SPEC §6.3）：显示名首字白字 + 名字哈希 → 蓝/紫/橙/天蓝/靛蓝渐变（accent primitive） */
+/** 头像（SPEC §6.3）：显示名首字白字 + 名字哈希 → 群青/李子/赤陶/青碧/黛蓝渐变（哑光 accent） */
 const GRADIENTS = [
-  'from-[#60a5fa] to-[#2563eb]', // blue
-  'from-[#a78bfa] to-[#7c3aed]', // purple
-  'from-[#fb923c] to-[#ea580c]', // orange
-  'from-[#38bdf8] to-[#0284c7]', // sky
-  'from-[#818cf8] to-[#4f46e5]', // indigo
+  'from-[#8296ec] to-[#3b5bdb]', // ultramarine
+  'from-[#b18ae0] to-[#7048a8]', // plum
+  'from-[#e8a06b] to-[#c05c21]', // terracotta
+  'from-[#5fc4b6] to-[#0f766e]', // teal
+  'from-[#8e9ec9] to-[#47548f]', // slate-blue
 ];
 
 function hashIndex(name: string, mod: number): number {

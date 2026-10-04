@@ -13,40 +13,40 @@
   --font-sans: 'Onest Variable', 'PingFang SC', 'HarmonyOS Sans SC', 'MiSans', 'Microsoft YaHei', sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, 'Cascadia Mono', 'SFMono-Regular', monospace;
 
-  /* 画布 / 卡面 / 文本（primitive：slate 系 + 浅灰画布） */
-  --color-canvas: #f1f2f6; /* 页面画布 */
+  /* 画布 / 卡面 / 文本（primitive：暖纸灰画布 + 深海军墨，v1.2.2） */
+  --color-canvas: #f5f5f2; /* 暖纸灰页面画布 */
   --color-surface: #ffffff; /* 卡片底 */
-  --color-surface-input: #f4f5f8; /* gray-100 输入框底 */
-  --color-ink: #0f172a; /* slate-900 主文本 ≥14:1 */
-  --color-ink-2: #334155; /* slate-700 */
-  --color-ink-3: #64748b; /* slate-500 辅助 ≥4.5:1 */
-  --color-ink-4: #94a3b8; /* slate-400 占位/图表轴 */
-  --color-line: rgb(15 23 42 / 0.08);
+  --color-surface-input: #f1f2ee; /* 暖调输入框底 */
+  --color-ink: #1d2433; /* 深海军墨 主文本 ≥14:1 */
+  --color-ink-2: #414a5e;
+  --color-ink-3: #6c7689; /* 辅助 ≥4.5:1 */
+  --color-ink-4: #9aa3b2; /* 占位/图表轴 */
+  --color-line: rgb(29 36 51 / 0.08);
 
-  /* 亮蓝主色（唯一交互色） */
-  --color-action: #3b82f6; /* blue-500 */
-  --color-action-hover: #2563eb; /* blue-600 */
-  --color-action-subtle: #eff6ff; /* blue-50 */
+  /* 群青主色（唯一交互色，v1.2.2 去AI感） */
+  --color-action: #3b5bdb; /* ultramarine-600 */
+  --color-action-hover: #3450b8;
+  --color-action-subtle: #e9eefb;
 
-  /* 点缀（紫/橙）+ 语义色：-text 级保证白底 ≥4.5:1；-vivid 供图标点/图表 */
-  --color-accent-purple: #6d28d9; /* violet-700 文字级 */
-  --color-accent-purple-vivid: #8b5cf6;
-  --color-accent-purple-bg: #f5f3ff;
-  --color-accent-orange: #c2410c; /* orange-700 文字级 */
-  --color-accent-orange-vivid: #f97316;
-  --color-accent-orange-bg: #fff7ed;
-  --color-danger: #dc2626; /* red-600 文字级 */
-  --color-danger-vivid: #ef4444;
-  --color-danger-bg: #fef2f2;
-  --color-success: #059669; /* emerald-600 文字级 */
-  --color-success-vivid: #10b981;
-  --color-success-bg: #ecfdf5;
-  --color-warning: #b45309; /* amber-700 文字级 */
-  --color-warning-vivid: #f59e0b;
-  --color-warning-bg: #fffbeb;
-  --color-info: #0369a1; /* sky-700 文字级 */
-  --color-info-vivid: #0ea5e9;
-  --color-info-bg: #f0f9ff;
+  /* 点缀（plum/terracotta，哑光）+ 语义色：文字级保证白底 ≥4.5:1；-vivid 供图标点/图表 */
+  --color-accent-purple: #7048a8; /* plum 文字级 */
+  --color-accent-purple-vivid: #9775fa;
+  --color-accent-purple-bg: #f3eefb;
+  --color-accent-orange: #b45309; /* terracotta 文字级 */
+  --color-accent-orange-vivid: #e8853d;
+  --color-accent-orange-bg: #fdf2e5;
+  --color-danger: #c92a2a; /* red-700 文字级 */
+  --color-danger-vivid: #fa5252;
+  --color-danger-bg: #fdeeee;
+  --color-success: #2b8a3e; /* green-600 文字级 */
+  --color-success-vivid: #40c057;
+  --color-success-bg: #ebfbee;
+  --color-warning: #9a6700; /* amber-700 文字级 */
+  --color-warning-vivid: #f08c00;
+  --color-warning-bg: #fff6db;
+  --color-info: #0f766e; /* teal-700 文字级 */
+  --color-info-vivid: #0d9488;
+  --color-info-bg: #e7f6f3;
 
   /* 阴影三档 = 卡片/浮层/模态一一对应（SPEC §3.4） */
   --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px -12px rgb(15 23 42 / 0.1);
@@ -71,7 +71,7 @@
     @apply bg-canvas font-sans text-ink antialiased;
   }
   ::selection {
-    background: rgb(59 130 246 / 0.22);
+    background: rgb(59 91 219 / 0.18);
   }
   /* WCAG 2.4.7：全局焦点可见 */
   :focus-visible {
@@ -81,9 +81,9 @@
 }
 
 @layer components {
-  /* ===== 认证页顶部淡蓝光晕（SPEC §3.3，唯一允许的背景装饰）===== */
+  /* ===== 认证页顶部淡群青光晕（SPEC §3.3，唯一允许的背景装饰）===== */
   .halo-top {
-    background-image: radial-gradient(900px 400px at 50% -10%, rgb(59 130 246 / 0.08), transparent 70%);
+    background-image: radial-gradient(900px 400px at 50% -10%, rgb(59 91 219 / 0.07), transparent 70%);
   }
 
   /* ===== 卡片三档（SPEC §3.4）：实底白 + 柔影，无 backdrop-filter ===== */
@@ -201,7 +201,7 @@
     }
   }
   .skeleton {
-    background: linear-gradient(100deg, #f4f5f8 40%, #fafbfc 50%, #f4f5f8 60%);
+    background: linear-gradient(100deg, #f1f2ee 40%, #fafaf8 50%, #f1f2ee 60%);
     background-size: 200% 100%;
     animation: shimmer 1.4s linear infinite;
     border-radius: 12px;
