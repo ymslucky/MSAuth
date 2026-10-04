@@ -167,7 +167,8 @@ primitive 值写在同文件注释块中备查。**组件代码禁止裸色值/�
 - 圆角：**卡片 20**（`rounded-card`）、对话框 24（`rounded-dialog`）、
   控件 12（`rounded-xl`）、徽标 8、头像/图标容器全圆。
 - 卡片内边距 20 / 主卡 24；Bento 网格 gap 16–20。
-- 内容宽：表单 420 / 账户区 960（Bento 需要横向空间）/ 管理列表 1080。
+- 内容宽：**流式全宽**（Bento 列数随断点增加吸收宽度，禁止全局 max-width 容器）；
+  仅纯表单元素限制 `max-w-md`（登录/注册/改密码表单体 448）。
 - 触控目标 ≥44×44（超出 WCAG 2.5.8 的 24px 最低要求，取移动最佳实践）。
 
 ### 3.7 图标
@@ -224,11 +225,17 @@ primitive 值写在同文件注释块中备查。**组件代码禁止裸色值/�
 
 `.bento`：CSS Grid，`gap-4`（20 于 lg）；列定义随页面：
 
-- 账户概览：`md:grid-cols-2 lg:grid-cols-3`，卡片可 `col-span/row-span` 合并。
+- 账户概览：`md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`，卡片可
+  `col-span/row-span` 合并（全宽流式下列数递增吸收宽度）。
 - 管理概览（Phase 5）：`md:grid-cols-2 xl:grid-cols-4`。
 - 移动端一律单列堆叠。
 
 网格内卡片高度由内容决定、同行等高（`items-stretch` 默认）。
+
+**分色系统（Bento 反单调规则）**：网格内每张可见卡分配一个 accent 主题色
+（按序循环 `blue → purple → orange → green/sky`），用于：①眉标 overline 文字色
+（文字级保证 AA）②Donut/图形 弧色 ③图标砖底色。正文与数字保持 ink，占比
+≥70%（色为点缀不喧宾）。
 
 ### 5.2 认证布局（登录/注册）
 
@@ -238,19 +245,19 @@ primitive 值写在同文件注释块中备查。**组件代码禁止裸色值/�
 
 ### 5.3 应用壳（账户区）
 
-**左 76px 白色悬浮图标侧栏**：`.card` 圆角 20、与画布留 12–16px（非贴边通栏），
-内部：logo（居中）、**图标导航**（每项 44×44 圆角 12，图标 20；激活态 `action`
+**左 88px 白色悬浮图标侧栏**：`.card` 圆角 20、与画布留 12–16px（非贴边通栏），
+内部：logo（居中）、**图标导航**（每项 48×48 圆角 12，图标 20；激活态 `action`
 实底白图标 + `shadow-card`，hover `canvas` 底；`aria-label` + `title` 必带）、
-底部头像（36px）+ 角色徽标 + 退出图标按钮（hover danger 浅底）。
+底部头像（40px）+ 角色徽标 + 退出图标按钮（hover danger 浅底）。
 文字标签仅出现在移动端抽屉（`.card-float`，w-64，图标+文字导航项 +
 用户卡显示名/mono 邮箱 + 全宽退出）。
 
-内容区：`max-w-[960px]` 居中，页眉（问候语 Display + caption 副标题 + 右侧主操作）
-+ Bento 网格 stagger。<768px 侧栏折叠为顶部白条 + 抽屉（`.card-float`）。
+内容区：**流式全宽**（无 max-width），页眉（问候语 Display + caption 副标题 +
+右侧主操作）+ Bento 网格 stagger。<768px 侧栏折叠为顶部白条 + 抽屉（`.card-float`）。
 
 ### 5.4 管理壳（Phase 5）
 
-复用 AppShell；列表页 1080px「白卡内嵌表格」：sticky 表头 caption 级字、
+复用 AppShell；列表页流式全宽「白卡内嵌表格」：sticky 表头 caption 级字、
 行 hover `canvas`、行高 52；详情页左信息卡 + 右操作卡（<1024 单栏）。
 
 ### 5.5 断点（Tailwind 标准命名，桌面优先）
@@ -296,10 +303,14 @@ primitive 值写在同文件注释块中备查。**组件代码禁止裸色值/�
 错误：danger 描边 + 行内 caption（图标+文案）。必带 HTML 语义属性：
 `autocomplete`、`inputmode`、`aria-invalid`、`aria-describedby`（错误 id）。
 
-### 6.3 Card / Badge / Avatar / Skeleton / EmptyState
+### 6.3 Card / Badge / Avatar / Skeleton / EmptyState / IconTile
 
 - **Card**：`.card` 圆角 20 + 可选头（title/desc/右动作，头下 1px 分隔线）；
   可点击变体加抬升。
+- **IconTile（图标砖，分色系统载体）**：40×40 `rounded-xl`，tinted 底 + vivid 图标
+  （如 `bg-action-subtle text-action` / `bg-accent-purple-bg text-accent-purple-vivid` /
+  `bg-accent-orange-bg text-accent-orange-vivid` / `bg-success-bg text-success-vivid`）。
+  用于统计卡/列表行首。
 - **Badge**：admin=`action` 实底白字（唯一实底）；member/viewer=`blue-50`+`blue-600`；
   中性=`canvas`+`ink-3`；成功=green 底+字 + 圆点；危险=danger 浅底；
   警告=amber 浅底；信息=sky 浅底；紫=委托场景。mono 11px/22 高/圆角 8。
@@ -330,7 +341,7 @@ primitive 值写在同文件注释块中备查。**组件代码禁止裸色值/�
 
 ### 6.7 侧栏图标导航（AppShell 专用）
 
-每项 44×44、圆角 12、图标 20；`aria-label` + `title` 必带（图标-only）；
+每项 48×48、圆角 12、图标 20；`aria-label` + `title` 必带（图标-only）；
 激活 `action` 实底白图标 + `shadow-card`；hover `canvas` 底。
 文字标签仅出现在移动端抽屉（13px）。
 
@@ -359,21 +370,21 @@ AuthLayout；眉标 `SIGN IN · 登录`；标题「欢迎回来」。邮箱/密�
 
 字段：显示名/邮箱/密码。密码仅长度反馈（≥10 变绿勾），与后端策略一致。
 
-### 7.3 账户概览 `/account`（Bento）
+### 7.3 账户概览 `/account`（Bento + 分色系统）
 
 页眉：问候「你好，{显示名}」Display + caption「欢迎回到你的身份中心」。
 
-Bento 网格（`md:2 / lg:3` 列，gap 16）：
+Bento 网格（`md:2 / lg:3 / xl:4` 列，gap 16，流式全宽）：
 
-1. **身份卡**（lg:col-span-2）：亮蓝渐变底（`blue-500 → indigo-500`）白字，
-   大头像（白描边）+ Display 显示名 + 角色（白色半透明徽标）+ mono 邮箱 +
-   用户 ID（可复制，白色 70%）。
-2. **活跃会话统计卡**：`text-stat` 大数字 = 会话总数；右侧 Donut（当前设备 1/N，
-   `action` 弧）；caption「N 台设备在线」；底部 quiet 链接「管理会话 →」。
-3. **登录方式统计卡**：大数字 = 已启用方式数（密码/GitHub）；下方两个图标胶囊
-   （KeyRound 密码状态、Github 绑定状态，启用=`blue-50`+`action`，未启用=`canvas`+`ink-3`）。
-4. **账户信息卡**（lg:col-span-2）：Row 列表（ID 可复制 / 创建时间 / 最近登录）。
-5. **快捷操作卡**：修改密码 / 管理设备 两个 secondary 按钮纵排。
+| 卡 | 跨列 | accent | 内容 |
+|---|---|---|---|
+| 身份卡 | xl:2 | 蓝紫渐变（blue→indigo→vivid） | 渐变底白字：大头像（白描边）+ Display 显示名 + 白色半透明角色徽标 + mono 邮箱 + ID 可复制 |
+| 活跃会话 | 1 | **blue** | blue 图标砖 + `text-stat` 大数字 = 会话总数 + Donut（当前 1/N，蓝弧）+ caption「N 台设备在线」+ quiet 链接「管理会话 →」 |
+| 登录方式 | 1 | **purple** | purple 图标砖 + 大数字 = 已启用方式数；紫色启用态胶囊（密码/GitHub） |
+| 账户信息 | xl:2 | **sky** | sky 图标砖 + Row 列表（ID 可复制 / 创建时间 / 最近登录） |
+| 快捷操作 | xl:2 | **orange** | orange 图标砖 + 两个横向 secondary 按钮（带彩色图标：修改密码 purple / 管理设备 blue） |
+
+分色遵守 §5.1：accent 只落在图标砖/眉标/图形上，数字与正文保持 ink。
 
 ### 7.4 会话管理 `/account/sessions`
 
@@ -498,4 +509,5 @@ toast + 行移除。「撤销其他」→ Dialog 显示数量 → toast「已撤
 |---|---|---|
 | v1.0-draft | 2026-10-04 | 首版：用户三轮确认（亮色玻璃/自然绿/中席动效/桌面优先/全页面） |
 | v1.1 | 2026-10-04 | 行业规范修订：令牌三层架构、WCAG 2.2 条款化、状态矩阵、z-index/elevation 阶梯、Core Web Vitals 预算、中文系统字体策略、ARIA APG（Dialog/Toast）、ErrorBoundary、4px 基线网格 |
-| v1.2 | 2026-10-04 | 风格重定向（用户参考图确认）：玻璃拟态/自然绿 → Bento 网格/浅灰画布/白色悬浮卡片/柔和大圆角/亮蓝主色+紫橙红点缀/SaaS 数据可视化（Donut/Sparkbar/AreaTrend 纯 SVG）；悬浮侧栏改图标导航；账户区内容宽 720→960；移除全部 backdrop-filter；新增 §6.8 数据可视化组件规范 |
+| v1.2 | 2026-10-04 | 风格重定向（用户参考图确认）：玻璃拟态/自然绿 → Bento 网格/浅灰画布/白色悬浮卡片/柔和大圆角/亮蓝主色+紫橙红点缀/SaaS 数据可视化（Donut/Sparkbar/AreaTrend 纯 SVG）；悬浮侧栏改图标导航；移除全部 backdrop-filter；新增 §6.8 数据可视化组件规范 |
+| v1.2.1 | 2026-10-04 | 用户反馈修订：①内容区改流式全宽（移除 960/1080 max-width，Bento 列数 md:2/lg:3/xl:4 吸收宽度）②侧栏 76→88px、导航项 48×48、底部头像 40px ③新增 Bento 分色系统（§5.1/§7.3：每卡 accent=blue/purple/sky/orange，图标砖 §6.3），解决观感单调 |

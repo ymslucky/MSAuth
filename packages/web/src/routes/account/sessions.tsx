@@ -85,7 +85,11 @@ export default function SessionsPage() {
           <ul className="divide-y divide-line">
             {sessions.map((s) => (
               <li key={s.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl p-3 transition-colors duration-[140ms] hover:bg-canvas/70">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-action-subtle text-action">
+                <div
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                    s.current ? 'bg-action-subtle text-action' : 'bg-canvas text-ink-3'
+                  }`}
+                >
                   <DeviceIcon ua={s.userAgent} />
                 </div>
                 <div className="min-w-0 flex-1">

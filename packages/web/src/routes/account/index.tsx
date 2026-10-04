@@ -1,6 +1,6 @@
-/** 账户概览（SPEC §7.3）：Bento 网格 —— 身份 / 会话统计（Donut）/ 登录方式 / 账户信息 / 快捷操作 */
+/** 账户概览（SPEC §7.3）：Bento 网格 + 分色系统（blue/purple/sky/orange 图标砖） */
 import { useQuery } from '@tanstack/react-query';
-import { Check, Copy, Github, KeyRound } from 'lucide-react';
+import { Check, Copy, Github, Info, KeyRound, MonitorSmartphone, Zap, type LucideIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { ROLE_LABELS } from '@msauth/shared';
 import { Link } from 'react-router-dom';
@@ -11,6 +11,15 @@ import { useToast } from '../../components/ui/toast';
 import { listSessions, sessionsKey } from '../../lib/auth';
 import { fmtDateTime } from '../../lib/format';
 import { useSessionStore } from '../../stores/session';
+
+/** 图标砖（SPEC §6.3）：tinted 底 + vivid 图标，Bento 分色载体 */
+function IconTile({ icon: Icon, className }: { icon: LucideIcon; className: string }) {
+  return (
+    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${className}`}>
+      <Icon size={20} strokeWidth={1.75} aria-hidden="true" />
+    </div>
+  );
+}
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -68,9 +77,9 @@ export default function AccountIndexPage() {
         <p className="t-caption mt-1">欢迎回到你的身份中心</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* 身份卡：亮蓝渐变（lg 占 2 列） */}
-        <section className="rounded-card bg-gradient-to-br from-[#3b82f6] to-[#6366f1] p-6 shadow-card md:col-span-2">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {/* 身份卡：蓝→靛→紫渐变（xl 占 2 列） */}
+        <section className="rounded-card bg-gradient-to-br from-[#3b82f6] via-[#4f46e5] to-[#8b5cf6] p-6 shadow-card md:col-span-2">
           <div className="flex flex-wrap items-center gap-4">
             <div className="rounded-full ring-[3px] ring-white/40">
               <Avatar name={user.displayName} size={56} />
@@ -97,14 +106,17 @@ export default function AccountIndexPage() {
           </div>
         </section>
 
-        {/* 活跃会话统计卡：大数字 + Donut（当前设备 1/N） */}
+        {/* 活跃会话：blue accent + Donut（当前设备 1/N） */}
         <Card className="flex flex-col">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <IconTile icon={MonitorSmartphone} className="bg-action-subtle text-action" />
+            <p className="overline text-action-hover">活跃会话</p>
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-3">
             <div>
-              <p className="overline">活跃会话</p>
-              <p className="t-stat mt-1">{sessionsQuery.isLoading ? '—' : total}</p>
+              <p className="t-stat">{sessionsQuery.isLoading ? '—' : total}</p>
               <p className="t-caption mt-1">
-                {sessionsQuery.isLoading ? '加载中…' : `${current} 台当前设备 · 共 ${total} 个会话`}
+                {sessionsQuery.isLoading ? '加载中…' : `${current} 台当前设备在线`}
               </p>
             </div>
             {!sessionsQuery.isLoading && total > 0 && (
@@ -116,14 +128,17 @@ export default function AccountIndexPage() {
           </Link>
         </Card>
 
-        {/* 登录方式统计卡 */}
+        {/* 登录方式：purple accent */}
         <Card className="flex flex-col">
-          <p className="overline">登录方式</p>
-          <p className="t-stat mt-1">{methods}</p>
+          <div className="flex items-center gap-3">
+            <IconTile icon={KeyRound} className="bg-accent-purple-bg text-accent-purple-vivid" />
+            <p className="overline text-accent-purple">登录方式</p>
+          </div>
+          <p className="t-stat mt-3">{methods}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <span
               className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium ${
-                user.hasPassword ? 'bg-action-subtle text-action-hover' : 'bg-canvas text-ink-3'
+                user.hasPassword ? 'bg-accent-purple-bg text-accent-purple' : 'bg-canvas text-ink-3'
               }`}
             >
               <KeyRound size={14} strokeWidth={1.75} aria-hidden="true" />
@@ -131,7 +146,7 @@ export default function AccountIndexPage() {
             </span>
             <span
               className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium ${
-                user.github ? 'bg-action-subtle text-action-hover' : 'bg-canvas text-ink-3'
+                user.github ? 'bg-accent-purple-bg text-accent-purple' : 'bg-canvas text-ink-3'
               }`}
             >
               <Github size={14} strokeWidth={1.75} aria-hidden="true" />
@@ -147,31 +162,47 @@ export default function AccountIndexPage() {
           )}
         </Card>
 
-        {/* 账户信息卡（lg 占 2 列） */}
-        <Card title="账户信息" className="lg:col-span-2">
-          <Row label="用户 ID">
-            <span className="t-data inline-flex items-center">
-              {user.id}
-              <CopyButton value={user.id} />
-            </span>
-          </Row>
-          <Row label="创建时间">{fmtDateTime(user.createdAt)}</Row>
-          <Row label="最近登录">{fmtDateTime(user.lastLoginAt)}</Row>
+        {/* 账户信息：sky accent（xl 占 2 列） */}
+        <Card className="xl:col-span-2">
+          <div className="flex items-center gap-3">
+            <IconTile icon={Info} className="bg-info-bg text-info-vivid" />
+            <div>
+              <h2 className="t-title">账户信息</h2>
+            </div>
+          </div>
+          <div className="mt-2">
+            <Row label="用户 ID">
+              <span className="t-data inline-flex items-center">
+                {user.id}
+                <CopyButton value={user.id} />
+              </span>
+            </Row>
+            <Row label="创建时间">{fmtDateTime(user.createdAt)}</Row>
+            <Row label="最近登录">{fmtDateTime(user.lastLoginAt)}</Row>
+          </div>
         </Card>
 
-        {/* 快捷操作卡 */}
-        <Card title="快捷操作" className="flex flex-col justify-center">
-          <div className="flex flex-col gap-2.5">
+        {/* 快捷操作：orange accent（xl 占 2 列，宽屏横排） */}
+        <Card className="flex flex-col justify-center xl:col-span-2">
+          <div className="flex items-center gap-3">
+            <IconTile icon={Zap} className="bg-accent-orange-bg text-accent-orange-vivid" />
+            <div>
+              <h2 className="t-title">快捷操作</h2>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-col gap-2.5 xl:flex-row">
             <Link
               to="/account/password"
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-line bg-surface text-sm font-medium text-ink-2 transition-colors duration-[140ms] hover:bg-canvas"
+              className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-line bg-surface text-sm font-medium text-ink-2 transition-colors duration-[140ms] hover:bg-canvas"
             >
+              <KeyRound size={16} strokeWidth={1.75} className="text-accent-purple-vivid" aria-hidden="true" />
               修改密码
             </Link>
             <Link
               to="/account/sessions"
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-line bg-surface text-sm font-medium text-ink-2 transition-colors duration-[140ms] hover:bg-canvas"
+              className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-line bg-surface text-sm font-medium text-ink-2 transition-colors duration-[140ms] hover:bg-canvas"
             >
+              <MonitorSmartphone size={16} strokeWidth={1.75} className="text-action" aria-hidden="true" />
               管理登录设备
             </Link>
           </div>

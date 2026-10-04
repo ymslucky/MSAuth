@@ -49,7 +49,7 @@ function SidebarContent({ onNavigate, iconOnly = false }: { onNavigate?: () => v
             title={item.label}
             className={({ isActive }) =>
               iconOnly
-                ? `flex h-11 w-11 items-center justify-center rounded-xl transition-colors duration-[140ms] ${
+                ? `flex h-12 w-12 items-center justify-center rounded-xl transition-colors duration-[140ms] ${
                     isActive ? 'bg-action text-white shadow-card' : 'text-ink-3 hover:bg-canvas hover:text-ink'
                   }`
                 : `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-[140ms] ${
@@ -64,7 +64,7 @@ function SidebarContent({ onNavigate, iconOnly = false }: { onNavigate?: () => v
       </nav>
 
       <div className={`mt-auto flex flex-col gap-2.5 ${iconOnly ? 'items-center' : ''}`}>
-        <Avatar name={user?.displayName ?? '?'} size={iconOnly ? 36 : 40} />
+        <Avatar name={user?.displayName ?? '?'} size={40} />
         {!iconOnly && (
           <div className="w-full min-w-0 text-center">
             <div className="truncate text-sm leading-5 font-semibold text-ink">{user?.displayName ?? '—'}</div>
@@ -104,7 +104,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
       disabled={logoutMutation.isPending}
       onClick={() => logoutMutation.mutate()}
       className={`flex items-center justify-center rounded-xl text-ink-3 transition-colors duration-[140ms] hover:bg-danger-bg hover:text-danger disabled:opacity-40 ${
-        iconOnly ? 'h-11 w-11' : 'h-11 w-full gap-2 text-sm font-medium'
+        iconOnly ? 'h-12 w-12' : 'h-11 w-full gap-2 text-sm font-medium'
       }`}
     >
       <LogOut size={18} strokeWidth={1.75} aria-hidden="true" />
@@ -114,9 +114,9 @@ export function AppShell({ children }: { children?: ReactNode }) {
 
   return (
     <div className="min-h-dvh">
-      <div className="mx-auto flex min-h-dvh w-full max-w-[1180px] gap-4 p-3 md:p-4">
+      <div className="flex min-h-dvh w-full gap-4 p-3 md:p-4">
         {/* 桌面悬浮图标侧栏 */}
-        <aside className="card z-[10] sticky top-4 hidden h-[calc(100dvh-32px)] w-[76px] shrink-0 flex-col items-center rounded-card py-4 md:flex">
+        <aside className="card z-[10] sticky top-4 hidden h-[calc(100dvh-32px)] w-[88px] shrink-0 flex-col items-center rounded-card py-4 md:flex">
           <SidebarContent iconOnly />
           <div className="mt-3 flex flex-col items-center">{logoutBtn(true)}</div>
         </aside>
@@ -155,7 +155,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
 
         {/* 内容区 */}
         <main className="min-w-0 flex-1 pt-16 pb-6 md:pt-2 md:pb-2">
-          <div className="mx-auto max-w-[960px]">{children ?? <Outlet />}</div>
+          <div className="w-full">{children ?? <Outlet />}</div>
         </main>
       </div>
     </div>
