@@ -7,6 +7,7 @@ import { logout } from '../../lib/auth';
 import { useSessionStore } from '../../stores/session';
 import { Avatar } from '../ui/avatar';
 import { RoleBadge } from '../ui/badge';
+import { ThemeToggle } from '../ui/theme-toggle';
 
 const NAV = [
   { to: '/account', label: '概览', icon: UserRound, end: true },
@@ -26,14 +27,15 @@ function SidebarContent({ onNavigate, iconOnly = false }: { onNavigate?: () => v
       >
         <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
           <defs>
-            <linearGradient id="msauth-blue-nav" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#4a6be6" />
-              <stop offset="1" stopColor="#2e3f9e" />
+            <linearGradient id="msauth-brand-nav" x1="0" y1="0" x2="1" y2="1">
+              {/* SVG 属性不支持 var()，经 style 引用主题令牌（SPEC §3.1.1） */}
+              <stop offset="0" style={{ stopColor: 'var(--color-logo-from)' }} />
+              <stop offset="1" style={{ stopColor: 'var(--color-logo-to)' }} />
             </linearGradient>
           </defs>
-          <rect width="32" height="32" rx="9" fill="url(#msauth-blue-nav)" />
+          <rect width="32" height="32" rx="9" fill="url(#msauth-brand-nav)" />
           <path d="M16 7l7.8 9-7.8 9-7.8-9z" fill="#ffffff" />
-          <circle cx="16" cy="16" r="2.4" fill="#3450b8" />
+          <circle cx="16" cy="16" r="2.4" style={{ fill: 'var(--color-logo-dot)' }} />
         </svg>
         {!iconOnly && <span className="font-display text-lg font-bold tracking-tight text-ink">MSAuth</span>}
       </Link>
@@ -118,7 +120,10 @@ export function AppShell({ children }: { children?: ReactNode }) {
         {/* 桌面悬浮图标侧栏 */}
         <aside className="card z-[10] sticky top-5 hidden h-[calc(100dvh-40px)] w-[88px] shrink-0 flex-col items-center rounded-card py-5 md:flex">
           <SidebarContent iconOnly />
-          <div className="mt-3 flex flex-col items-center">{logoutBtn(true)}</div>
+          <div className="mt-3 flex flex-col items-center gap-1">
+            <ThemeToggle iconOnly />
+            {logoutBtn(true)}
+          </div>
         </aside>
 
         {/* 移动端顶栏 + 抽屉 */}
@@ -148,6 +153,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
             <div className="absolute inset-0 bg-ink/30" onClick={() => setDrawerOpen(false)} />
             <div className="anim-pop card-float absolute inset-y-0 left-0 flex w-64 flex-col gap-4 rounded-none border-y-0 border-l-0 p-4 pt-16">
               <SidebarContent onNavigate={() => setDrawerOpen(false)} />
+              <ThemeToggle />
               {logoutBtn(false)}
             </div>
           </div>

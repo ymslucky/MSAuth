@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './app';
 import { queryClient } from './lib/query';
+import { initTheme } from './lib/theme';
 import { ToastProvider } from './components/ui/toast';
 import './index.css';
 
@@ -42,6 +43,9 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
     return this.props.children;
   }
 }
+
+// 渲染前同步持久化主题到 html[data-theme]，避免首帧闪变（SPEC §3.1.1）
+initTheme();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

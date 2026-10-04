@@ -70,7 +70,7 @@ MSAuth 是面向个人与家人朋友的自托管身份平台。浏览器端完�
 primitive 值写在同文件注释块中备查。**组件代码禁止裸色值/裸尺寸**，只引用令牌
 （例外：纯 SVG 数据可视化组件可用 accent primitive 常量，集中在组件文件顶部）。
 
-### 3.1 Primitive 色板（v1.2.2：暖纸灰画布 + 群青 + 哑光点缀）
+### 3.1 Primitive 色板（默认主题「群青」，v1.2.2）
 
 | 名称 | HEX | 备注 |
 |---|---|---|
@@ -95,6 +95,37 @@ primitive 值写在同文件注释块中备查。**组件代码禁止裸色值/�
 > 文字与描边一律用 700 级保证白底/浅底 ≥4.5:1（WCAG 1.4.3）。
 > 点缀色整体降饱和（哑光），主色唯一饱和态出现在实底按钮/激活导航，避免 AI 感。
 
+### 3.1.1 主题系统（v1.2.3：三套配色可切换）
+
+默认主题「群青」即上表；另提供两套等宽主题。用户在侧栏点击循环切换
+（群青 → 花与月 → 灯塔），偏好持久化到 localStorage（`msauth-theme`），
+`main.tsx` 渲染前应用到 `html[data-theme]`，避免首帧闪变。
+
+机制：主题只覆盖**随主题变化的 semantic 令牌**（画布/墨阶/主色三件套/一个点缀/
+身份卡与 Logo 渐变），其余令牌（red/green/amber/teal 语义色、阴影、圆角、字体、
+Avatar 分类渐变）为跨主题常量。实现为 `index.css` 中 `:root[data-theme=…]` 覆盖块。
+
+| 令牌 | 花与月 `flower` | 灯塔 `lighthouse` |
+|---|---|---|
+| canvas | `#F7F1E6`（暖沙） | `#EDF3F4`（雾蓝） |
+| surface / surface-input | `#FFFDF9` / `#F3ECDD` | `#FFFFFF` / `#E8EFF1` |
+| ink / ink-2 / ink-3 / ink-4 | `#131C30` / `#3D465C` / `#6D7183` / `#9AA0AD` | `#1B262E` / `#3E4A53` / `#67737C` / `#95A1A8` |
+| line | `rgb(19 28 48 / 0.08)` | `rgb(27 38 46 / 0.08)` |
+| action / hover / subtle | `#05348B` / `#04286C` / `#E6EBF6` | `#216185` / `#1A4E6B` / `#E1ECF2` |
+| 点缀替换 | accent-orange → 琥珀 `#8A5500` / vivid `#F9A647` / 底 `#FDF2DE` | accent-purple → 苔绿 `#57560F` / vivid `#959434` / 底 `#F1F1DD` |
+| identity-from / identity-to | `#0A4394` / `#042A6E` | `#2A74A4` / `#143D61` |
+| logo-from / logo-to / logo-dot | `#1457C7` / `#031F55` / `#05348B` | `#3A86B8` / `#17466B` / `#216185` |
+
+> 种子色（用户提供）：花与月 = `#05348B` + `#F9A647` + `#EDCFAB`；
+> 灯塔 = `#216185` + `#959434` + `#B5CFD4`。
+> 文字级点缀与 action 均满足白底 ≥4.5:1，实底按钮白字 ≥4.5:1（WCAG 1.4.3）。
+
+组件约定：
+- 主题切换按钮（Palette 图标）位于侧栏底部：图标条为纯图标钮，抽屉为带文字项。
+- `::selection`、`.halo-top`、Field 焦点光环一律以 `color-mix(… var(--color-action) …)` 派生，自动随主题。
+- 骨架屏渐变引用 `surface-input` / `surface` 令牌。
+- Avatar 五组分类渐变与语义状态色是跨主题常量，不随主题切换。
+
 ### 3.2 Semantic 令牌（`@theme` 声明）
 
 ```css
@@ -111,13 +142,15 @@ primitive 值写在同文件注释块中备查。**组件代码禁止裸色值/�
 --color-action-subtle: #e9eefb;
 --color-success / --color-warning / --color-danger / --color-info：见 3.1 语义行（各含 -vivid 装饰档）
 --color-accent-purple / --color-accent-orange：点缀语义（§6.8 数据可视化、委托场景）
+--color-identity-from / --color-identity-to：身份卡单色相渐变（§3.1.1 随主题）
+--color-logo-from / --color-logo-to / --color-logo-dot：Logo 渐变与中心点（§3.1.1 随主题）
 ```
 
 ### 3.3 画布背景
 
-纯浅暖灰 `canvas`，无渐变光斑、无纹理。认证页可加一个极淡的顶部群青光晕
-（`radial 900px 400px @ (50%, -10%) ultramarine-600/7% → transparent`，仅此一处），
-不参与对比度计算。
+纯浅色 `canvas`，无渐变光斑、无纹理。认证页可加一个极淡的顶部主色光晕
+（`radial 900px 400px @ (50%, -10%) color-mix(action 7%) → transparent`，随主题，
+仅此一处），不参与对比度计算。
 
 ### 3.4 卡片材质（elevation 体系）
 
@@ -504,6 +537,7 @@ toast + 行移除。「撤销其他」→ Dialog 显示数量 → toast「已撤
 - [ ] 对比度抽测达标（白卡上 ink-3 / 画布上 ink-3 / 蓝底白字）
 - [ ] Lighthouse 双指标达标（构建版）
 - [ ] 同意页（Phase 2a 前）按 §7.6 实现（域名条 + 倒计时 + 防钓鱼走查）
+- [ ] 三主题（群青/花与月/灯塔）侧栏切换正常，刷新后偏好保留，无首帧闪变
 
 ---
 
@@ -516,3 +550,4 @@ toast + 行移除。「撤销其他」→ Dialog 显示数量 → toast「已撤
 | v1.2 | 2026-10-04 | 风格重定向（用户参考图确认）：玻璃拟态/自然绿 → Bento 网格/浅灰画布/白色悬浮卡片/柔和大圆角/亮蓝主色+紫橙红点缀/SaaS 数据可视化（Donut/Sparkbar/AreaTrend 纯 SVG）；悬浮侧栏改图标导航；移除全部 backdrop-filter；新增 §6.8 数据可视化组件规范 |
 | v1.2.1 | 2026-10-04 | 用户反馈修订：①内容区改流式全宽（移除 960/1080 max-width，Bento 列数 md:2/lg:3/xl:4 吸收宽度）②侧栏 76→88px、导航项 48×48、底部头像 40px ③新增 Bento 分色系统（§5.1/§7.3：每卡 accent=blue/purple/sky/orange，图标砖 §6.3），解决观感单调 |
 | v1.2.2 | 2026-10-04 | 用户反馈修订（去 AI 感 + 留白）：①配色整体重调——主色亮蓝 #3B82F6 → 群青 #3B5BDB、画布冷灰 → 暖纸灰 #F5F5F2、墨色 → 深海军 #1D2433、点缀降饱和为哑光 plum/terracotta/teal、身份卡改单色相深浅渐变（禁彩虹渐变）②留白全面放大——卡内边距 20→24/28+、Bento gap 16→20–24、页面纵向间距 24→32、认证页纵向 py-14 |
+| v1.2.3 | 2026-10-04 | 主题系统（用户指定种子色）：新增 §3.1.1 三主题切换——默认「群青」+ 新增「花与月」（#05348B/#F9A647/#EDCFAB）与「灯塔」（#216185/#959434/#B5CFD4）；`html[data-theme]` + localStorage 持久化；侧栏 Palette 切换按钮；selection/光晕/焦点光环/骨架屏改 color-mix 派生随主题；新增 identity/logo 渐变令牌 |

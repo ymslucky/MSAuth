@@ -78,8 +78,8 @@ export default function AccountIndexPage() {
       </div>
 
       <div className="grid gap-5 xl:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {/* 身份卡：群青单色相深浅渐变（xl 占 2 列） */}
-        <section className="rounded-card bg-gradient-to-br from-[#3e63d6] to-[#2b3a8c] p-7 shadow-card lg:p-8 md:col-span-2">
+        {/* 身份卡：单色相深浅渐变（§3.1.1 随主题），xl 占 2 列 */}
+        <section className="rounded-card bg-gradient-to-br from-identity-from to-identity-to p-7 shadow-card lg:p-8 md:col-span-2">
           <div className="flex flex-wrap items-center gap-4">
             <div className="rounded-full ring-[3px] ring-white/40">
               <Avatar name={user.displayName} size={56} />

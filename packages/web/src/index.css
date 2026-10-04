@@ -28,6 +28,13 @@
   --color-action-hover: #3450b8;
   --color-action-subtle: #e9eefb;
 
+  /* 身份卡 / Logo 渐变（SPEC §3.1.1：随主题切换） */
+  --color-identity-from: #3e63d6;
+  --color-identity-to: #2b3a8c;
+  --color-logo-from: #4a6be6;
+  --color-logo-to: #2e3f9e;
+  --color-logo-dot: #3450b8;
+
   /* 点缀（plum/terracotta，哑光）+ 语义色：文字级保证白底 ≥4.5:1；-vivid 供图标点/图表 */
   --color-accent-purple: #7048a8; /* plum 文字级 */
   --color-accent-purple-vivid: #9775fa;
@@ -63,6 +70,55 @@
   --radius-dialog: 1.5rem; /* 24 */
 }
 
+/*
+ * ===== 主题变体（SPEC §3.1.1）=====
+ * 只覆盖随主题变化的 semantic 令牌；语义状态色 / 阴影 / 圆角 / Avatar 渐变为跨主题常量。
+ * 种子色（用户指定）：花与月 #05348B + #F9A647 + #EDCFAB；灯塔 #216185 + #959434 + #B5CFD4。
+ */
+:root[data-theme='flower'] {
+  --color-canvas: #f7f1e6; /* 暖沙画布（#EDCFAB 高倍淡化） */
+  --color-surface: #fffdf9;
+  --color-surface-input: #f3ecdd;
+  --color-ink: #131c30; /* 夜空墨 */
+  --color-ink-2: #3d465c;
+  --color-ink-3: #6d7183;
+  --color-ink-4: #9aa0ad;
+  --color-line: rgb(19 28 48 / 0.08);
+  --color-action: #05348b; /* 深群青（种子色 1） */
+  --color-action-hover: #04286c;
+  --color-action-subtle: #e6ebf6;
+  --color-accent-orange: #8a5500; /* 琥珀文字级（种子色 2 的深档） */
+  --color-accent-orange-vivid: #f9a647;
+  --color-accent-orange-bg: #fdf2de;
+  --color-identity-from: #0a4394;
+  --color-identity-to: #042a6e;
+  --color-logo-from: #1457c7;
+  --color-logo-to: #031f55;
+  --color-logo-dot: #05348b;
+}
+
+:root[data-theme='lighthouse'] {
+  --color-canvas: #edf3f4; /* 雾蓝画布（#B5CFD4 高倍淡化） */
+  --color-surface: #ffffff;
+  --color-surface-input: #e8eff1;
+  --color-ink: #1b262e;
+  --color-ink-2: #3e4a53;
+  --color-ink-3: #67737c;
+  --color-ink-4: #95a1a8;
+  --color-line: rgb(27 38 46 / 0.08);
+  --color-action: #216185; /* 钢蓝（种子色 1） */
+  --color-action-hover: #1a4e6b;
+  --color-action-subtle: #e1ecf2;
+  --color-accent-purple: #57560f; /* 苔绿文字级（种子色 2 的深档） */
+  --color-accent-purple-vivid: #959434;
+  --color-accent-purple-bg: #f1f1dd;
+  --color-identity-from: #2a74a4;
+  --color-identity-to: #143d61;
+  --color-logo-from: #3a86b8;
+  --color-logo-to: #17466b;
+  --color-logo-dot: #216185;
+}
+
 @layer base {
   html {
     color-scheme: light;
@@ -71,7 +127,7 @@
     @apply bg-canvas font-sans text-ink antialiased;
   }
   ::selection {
-    background: rgb(59 91 219 / 0.18);
+    background: color-mix(in srgb, var(--color-action) 18%, transparent);
   }
   /* WCAG 2.4.7：全局焦点可见 */
   :focus-visible {
@@ -81,9 +137,9 @@
 }
 
 @layer components {
-  /* ===== 认证页顶部淡群青光晕（SPEC §3.3，唯一允许的背景装饰）===== */
+  /* ===== 认证页顶部淡主色光晕（SPEC §3.3，唯一允许的背景装饰，随主题）===== */
   .halo-top {
-    background-image: radial-gradient(900px 400px at 50% -10%, rgb(59 91 219 / 0.07), transparent 70%);
+    background-image: radial-gradient(900px 400px at 50% -10%, color-mix(in srgb, var(--color-action) 7%, transparent), transparent 70%);
   }
 
   /* ===== 卡片三档（SPEC §3.4）：实底白 + 柔影，无 backdrop-filter ===== */
@@ -201,7 +257,7 @@
     }
   }
   .skeleton {
-    background: linear-gradient(100deg, #f1f2ee 40%, #fafaf8 50%, #f1f2ee 60%);
+    background: linear-gradient(100deg, var(--color-surface-input) 40%, var(--color-surface) 50%, var(--color-surface-input) 60%);
     background-size: 200% 100%;
     animation: shimmer 1.4s linear infinite;
     border-radius: 12px;
