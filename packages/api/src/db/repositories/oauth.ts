@@ -55,6 +55,16 @@ export interface ClientInsert {
   createdBy: string | null;
 }
 
+/** 管理端 PATCH 的可更新字段（client_type / secret 不在内：前者需重建，后者走轮换） */
+export interface ClientPatch {
+  name?: string;
+  redirectUris?: string[];
+  allowedScopes?: string[];
+  resource?: string;
+  accessTokenTtlSeconds?: number;
+  refreshTokenTtlSeconds?: number;
+}
+
 export class OAuthClientsRepository {
   constructor(private readonly db: Db) {}
 
@@ -99,6 +109,39 @@ export class OAuthClientsRepository {
       Date.now(),
       id,
     );
+  }
+
+  /** 部分更新：仅落传入的字段，一律刷新 updated_at；调用方需先确认记录存在 */
+  async update(id: string, patch: ClientPatch): Promise<void> {
+    const sets: string[] = [];
+    const args: (string | number)[] = [];
+    if (patch.name !== undefined) {
+      sets.push('name = ?');
+      args.push(patch.name);
+    }
+    if (patch.redirectUris !== undefined) {
+      sets.push('redirect_uris = ?');
+      args.push(JSON.stringify(patch.redirectUris));
+    }
+    if (patch.allowedScopes !== undefined) {
+      sets.push('allowed_scopes = ?');
+      args.push(JSON.stringify(patch.allowedScopes));
+    }
+    if (patch.resource !== undefined) {
+      sets.push('resource = ?');
+      args.push(patch.resource);
+    }
+    if (patch.accessTokenTtlSeconds !== undefined) {
+      sets.push('access_token_ttl_seconds = ?');
+      args.push(patch.accessTokenTtlSeconds);
+    }
+    if (patch.refreshTokenTtlSeconds !== undefined) {
+      sets.push('refresh_token_ttl_seconds = ?');
+      args.push(patch.refreshTokenTtlSeconds);
+    }
+    sets.push('updated_at = ?');
+    args.push(Date.now(), id);
+    await this.db.run(`UPDATE oauth_clients SET ${sets.join(', ')} WHERE id = ?`, ...args);
   }
 
   async list(): Promise<OAuthClient[]> {

@@ -66,3 +66,24 @@ export const clientCreateSchema = z.strictObject({
     .optional(),
 });
 export type ClientCreateInput = z.infer<typeof clientCreateSchema>;
+
+/**
+ * PATCH /api/admin/clients/:id 请求体（部分更新）：
+ * - 字段约束与 clientCreateSchema 完全同源（复用其 shape），全部可选；
+ * - 至少传入一个字段（refine 拒绝空对象，避免无意义写库）；
+ * - client_type 不可更新：公共↔机密涉及 secret 语义变化，strictObject 会直接
+ *   拒绝该键（未在本 schema 中声明），需删除后重新注册。
+ */
+export const clientUpdateSchema = z
+  .strictObject({
+    name: clientCreateSchema.shape.name.optional(),
+    redirect_uris: clientCreateSchema.shape.redirect_uris.optional(),
+    allowed_scopes: clientCreateSchema.shape.allowed_scopes.optional(),
+    resource: clientCreateSchema.shape.resource.optional(),
+    access_token_ttl_seconds: clientCreateSchema.shape.access_token_ttl_seconds.optional(),
+    refresh_token_ttl_seconds: clientCreateSchema.shape.refresh_token_ttl_seconds.optional(),
+  })
+  .refine((v) => Object.values(v).some((field) => field !== undefined), {
+    message: '至少更新一个字段',
+  });
+export type ClientUpdateInput = z.infer<typeof clientUpdateSchema>;

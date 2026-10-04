@@ -1,6 +1,6 @@
 /** 应用壳（SPEC §5.3）：白色悬浮图标侧栏 + 内容区；<md 折叠为顶部条 + 抽屉 */
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { KeyRound, LogOut, Menu, MonitorSmartphone, UserRound, X } from 'lucide-react';
+import { KeyRound, LogOut, Menu, MonitorSmartphone, AppWindow, UserRound, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { logout } from '../../lib/auth';
@@ -12,6 +12,7 @@ import { ThemeToggle } from '../ui/theme-toggle';
 const NAV = [
   { to: '/account', label: '概览', icon: UserRound, end: true },
   { to: '/account/sessions', label: '会话', icon: MonitorSmartphone, end: false },
+  { to: '/account/clients', label: '应用', icon: AppWindow, end: false },
   { to: '/account/password', label: '改密码', icon: KeyRound, end: false },
 ];
 

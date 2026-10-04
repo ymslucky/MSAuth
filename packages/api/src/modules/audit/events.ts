@@ -34,6 +34,8 @@ export const AUDIT_ACTIONS = {
   OAUTH_CODE_REUSE: 'oauth.code.reuse',
   /** 管理员注册客户端 */
   OAUTH_CLIENT_CREATE: 'oauth.client.create',
+  /** 管理员更新客户端配置（部分字段） */
+  OAUTH_CLIENT_UPDATE: 'oauth.client.update',
   /** 管理员删除客户端 */
   OAUTH_CLIENT_DELETE: 'oauth.client.delete',
   /** 管理员轮换机密客户端 secret */

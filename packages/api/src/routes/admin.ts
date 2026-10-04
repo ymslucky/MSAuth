@@ -1,8 +1,8 @@
 /**
- * /api/admin/*：平台管理（OAuth 客户端注册/查询/删除/secret 轮换）。
+ * /api/admin/*：平台管理（OAuth 客户端注册/查询/更新/删除/secret 轮换）。
  * 全部要求 admin 角色（内联 requireAdmin，账号体系无其他管理域先例，暂不抽公共中间件）。
  */
-import { AppError, clientCreateSchema, type ClientSecretCreated } from '@msauth/shared';
+import { AppError, clientCreateSchema, clientUpdateSchema, type ClientSecretCreated } from '@msauth/shared';
 import { Hono } from 'hono';
 import {
   OAuthClientsRepository,
@@ -104,6 +104,41 @@ adminRoutes.post('/clients/:id/rotate-secret', async (c) => {
 adminRoutes.get('/clients/:id', async (c) => {
   const client = await new OAuthClientsRepository(dbOf(c.env)).byId(c.req.param('id'));
   if (!client) throw new AppError({ code: 'NOT_FOUND', message: '客户端不存在' });
+  return ok(c, { client });
+});
+
+/**
+ * PATCH /api/admin/clients/:id：部分更新（name/redirect_uris/allowed_scopes/resource/TTL）。
+ * client_type 不可修改——公共↔机密涉及 secret 语义变化，需删除后重新注册
+ * （clientUpdateSchema 为 strictObject，请求中出现该键即 400）。
+ */
+adminRoutes.patch('/clients/:id', async (c) => {
+  const id = c.req.param('id');
+  const body = parseWith(clientUpdateSchema, await readJsonBody(c));
+  if (body.resource !== undefined && body.resource === c.env.APP_BASE_URL) {
+    throw new AppError({ code: 'VALIDATION', message: 'resource 不能指向 MSAuth 自身（aud ≠ issuer）' });
+  }
+
+  const clients = new OAuthClientsRepository(dbOf(c.env));
+  if (!(await clients.byId(id))) {
+    throw new AppError({ code: 'NOT_FOUND', message: '客户端不存在' });
+  }
+  await clients.update(id, {
+    name: body.name,
+    redirectUris: body.redirect_uris,
+    allowedScopes: body.allowed_scopes === undefined ? undefined : [...new Set(body.allowed_scopes)],
+    resource: body.resource,
+    accessTokenTtlSeconds: body.access_token_ttl_seconds,
+    refreshTokenTtlSeconds: body.refresh_token_ttl_seconds,
+  });
+  const client = await clients.byId(id);
+  audit(c, {
+    action: AUDIT_ACTIONS.OAUTH_CLIENT_UPDATE,
+    result: 'success',
+    targetType: 'client',
+    targetId: id,
+    metadata: { fields: Object.keys(body) },
+  });
   return ok(c, { client });
 });
 

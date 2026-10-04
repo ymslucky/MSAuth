@@ -1,6 +1,6 @@
 # MSAuth UI/UX 设计规范（SPEC）
 
-> 版本 v1.2 · 2026-10 · Bento 网格 / 轻质感 SaaS 仪表盘（按用户参考图重定向）
+> 版本 v1.4 · 2026-10 · Bento 网格 / 轻质感 SaaS 仪表盘（按用户参考图重定向）
 > 适用于 web 包全部页面（现有 + Phase 2a/4/5 规划页面）。
 > 本文档是唯一视觉与交互事实源；实现不得偏离，改动需先改本文档。
 
@@ -483,6 +483,7 @@ toast + 行移除。「撤销其他」→ Dialog 显示数量 → toast「已撤
   （Switch 列表）+ 会话管理（复用 7.4）+ 危险区（danger 浅底白卡 + Dialog）。
 - 客户端：列表 + 详情（信息/scope/TTL/redirect URI/secret 轮换）。secret 一次性
   展示 = `.card-modal` 专用对话框，mono 大字 + 复制 + warning「关闭后无法再查看」。
+  （基础版已由 §7.11 于 Phase 2b 落地，Phase 5 扩展为独立详情页）
 - 审计：过滤器条 + 时间线（mono 时间 + 动作中文名 + actor + 结果徽标），
   行展开 metadata JSON。
 - 策略：表单卡。
@@ -496,6 +497,37 @@ toast + 行移除。「撤销其他」→ Dialog 显示数量 → toast「已撤
 404：居中白卡 + 线条图形 +「页面不存在」+ 返回账户（primary）。
 **ErrorBoundary（工程标配）**：渲染异常兜底页（白卡 + 「出错了」+ 错误 id mono +
 刷新按钮），避免白屏。
+
+### 7.11 应用管理 `/account/clients`（Phase 2b 新建，§7.8 客户端管理的基础版）
+
+权限边界：仅 admin。非 admin 进入 → 白卡 EmptyState「需要管理员权限」+
+返回概览链接（API 侧 `/api/admin/*` 一律 403，前端不请求列表）。
+
+页眉：Display「OAuth 应用」+ caption「管理接入 MSAuth 的下游客户端」+ 主操作
+「注册应用」（primary 胶囊）。
+
+列表（白卡容器 + divide 行，同 §7.4 设备行模式）：AppWindow 图标砖（群青
+tinted）+ 名称 + clientType 徽标（confidential=blue / public=neutral）+
+client_id（`t-data` mono + 复制）+ 首个回调地址（多余折叠为 +n，title 展开全量）
++ scope 徽标（最多 3 个 + +n）+ TTL 读数「AT 15m · RT 7d」（按秒紧凑格式化）+
+创建时间；行尾 quiet 操作：编辑 / 轮换密钥（仅 confidential）/ 删除（danger
+quiet）。加载中 Skeleton 行；空列表 EmptyState。
+
+四个弹层：
+
+- **注册 / 编辑**（表单弹层，`card-modal` + Esc/遮罩关闭）：名称、类型原生
+  select（仅注册可选——公共↔机密涉及 secret 语义，创建后不可改）、回调地址
+  textarea（每行一个）、scope 复选徽标列表（`SCOPE_LABELS` 中文标签，选中态
+  群青胶囊）、resource、AT/RT TTL 秒（选填，留空 = 默认值 / 编辑时保持不变）。
+  校验复用 shared `clientCreateSchema` / `clientUpdateSchema`（单一事实源，
+  错误映射回行内）。
+- **一次性 secret 展示**：创建 confidential 成功 / 轮换成功后弹出——mono 大
+  字段（`surface-input` 底、break-all）+ 复制 + warning「仅显示一次：关闭后
+  无法再查看」，关闭后刷新列表。
+- **轮换确认**（danger Dialog）：「旧密钥将立即失效，使用它的服务会立刻认证
+  失败；新密钥仅显示一次」→ 确认后进入一次性展示。
+- **删除确认**（danger Dialog）：说明会级联撤销该客户端全部令牌与授权记录
+  （含刷新令牌与用户同意），不可恢复。
 
 ---
 
@@ -583,3 +615,4 @@ toast + 行移除。「撤销其他」→ Dialog 显示数量 → toast「已撤
 | v1.2.5a | 2026-10-04 | 修复（用户反馈「文字太大/重叠/越界 + 布局不对称/没铺满」）：Sparkbar 改 ResizeObserver 1:1 渲染（mono 文字不随卡片缩放）、日期标签下标 1,4,7,10,13、峰值旁注锚右上；§7.3 Bento 行满约束（md/lg/xl 每行恰好铺满，快捷操作整行） |
 | v1.2.6 | 2026-10-04 | 图表形态升级（用户反馈「不要柱状图」）：登录活跃由 Sparkbar 堆叠柱改为 **AreaTrend 平滑趋势**（Catmull-Rom 曲线 + 渐变面积 + 顶点白描边小点 + 末值标注 + 基线失败事件红点 + 描线生长入场），编辑感语法与 1:1 尺寸策略全部保留；删除 sparkbar.tsx |
 | v1.3 | 2026-10-04 | **以 Material Design 3 为参考基线重梳**（用户需求）：①色彩/表面——新增 surface-container-low 表面容器阶（三主题各自推导），卡片改 tonal elevation（去描边、极轻影）；②形状标度对齐 M3——卡 20→16（large）、对话框 24→28（extra-large）、按钮/导航项/顶栏全部胶囊化（stadium）；③按钮变体重划——primary=filled、secondary=tonal（primary-container 底）、danger=tonal error、quiet=text，M3 状态层（hover 8%/12% color-mix + emphasized 缓动）替换旧 hover 换底；④导航栏对齐 M3 navigation rail——激活态改 primary-container 胶囊活动指示（替换实底白图标）；⑤SPEC §2/§3.4/§4/§5.3/§6.1 同步 |
+| v1.4 | 2026-10-04 | Phase 2b 管理 UI 基础版：新增 §7.11 应用管理 `/account/clients`（admin 专属——客户端列表行 + 注册/编辑表单弹层 + 轮换/删除确认 Dialog + client_secret 一次性展示；§7.8 客户端条目标注基础版已落地）；API 新增 `PATCH /api/admin/clients/:id` 部分更新（shared `clientUpdateSchema`，client_type 不可改，审计 `oauth.client.update`）；web `lib/api` 封装补 `patch` 方法 |
