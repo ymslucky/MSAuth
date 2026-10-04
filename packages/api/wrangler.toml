@@ -1,0 +1,34 @@
+# MSAuth API Worker：单 Worker 托管 /api/* 与 SPA 静态资源
+name = "msauth"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# 所有请求先进 Worker（统一安全响应头），未命中 /api/* 的走 SPA fallback
+[assets]
+directory = "../web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = true
+
+[[d1_databases]]
+binding = "AUTH_DB"
+database_name = "msauth-db"
+# 本地/测试用占位 id；部署前用 `wrangler d1 create msauth-db` 的真实 id 替换
+database_id = "local"
+migrations_dir = "migrations"
+
+[[kv_namespaces]]
+binding = "KV"
+# 本地/测试用占位 id；部署前用 `wrangler kv namespace create` 的真实 id 替换
+id = "local"
+
+[vars]
+# 对外基础 URL（GitHub OAuth 回调、SPA 重定向），部署时改为真实域名
+APP_BASE_URL = "http://localhost:8787"
+
+# 登录/注册限速：按 IP，60 秒 5 次（middleware/rate-limit.ts 使用）
+[[unsafe.bindings]]
+name = "LOGIN_RATE_LIMITER"
+type = "ratelimit"
+mode = "SIMPLE"
+simple = { limit = 5, period = 60 }

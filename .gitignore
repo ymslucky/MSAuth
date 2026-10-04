@@ -5,6 +5,7 @@ coverage/
 
 # Wrangler / Cloudflare
 .wrangler/
+.xdg-home/
 .dev.vars
 .dev.vars.*
 
