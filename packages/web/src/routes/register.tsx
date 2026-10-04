@@ -1,11 +1,11 @@
-/** 注册页 */
+/** 注册页（SPEC §7.2） */
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { registerSchema, type RegisterInput } from '@msauth/shared';
+import { AlertTriangle, Check } from 'lucide-react';
+import { PASSWORD_POLICY, registerSchema, type RegisterInput } from '@msauth/shared';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { AuthLayout } from '../components/layout/auth-layout';
-import { Alert } from '../components/ui/alert';
 import { Button } from '../components/ui/button';
 import { Field } from '../components/ui/input';
 import { useCsrfWarmup } from '../hooks/use-csrf';
@@ -23,6 +23,8 @@ export default function RegisterPage() {
     resolver: zodResolver(registerSchema),
     defaultValues: { email: '', password: '', displayName: '' },
   });
+  const password = form.watch('password');
+  const lengthOk = password.length >= PASSWORD_POLICY.minLength;
 
   const mutation = useMutation({
     mutationFn: register,
@@ -47,14 +49,19 @@ export default function RegisterPage() {
       footer={
         <>
           已有账户？{' '}
-          <Link to="/login" className="text-brass-300 hover:text-brass-400 hover:underline">
+          <Link to="/login" className="font-medium text-leaf-600 hover:text-leaf-700 hover:underline">
             直接登录
           </Link>
         </>
       }
     >
       <form className="space-y-4" onSubmit={form.handleSubmit((values) => mutation.mutate(values))} noValidate>
-        {formError && <Alert tone="error">{formError}</Alert>}
+        {formError && (
+          <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-danger/25 bg-danger-bg px-3.5 py-2.5 text-sm text-danger">
+            <AlertTriangle size={16} strokeWidth={1.75} className="mt-0.5 shrink-0" aria-hidden="true" />
+            <span>{formError}</span>
+          </div>
+        )}
 
         <Field
           label="显示名"
@@ -67,6 +74,7 @@ export default function RegisterPage() {
           label="邮箱"
           type="email"
           autoComplete="email"
+          inputMode="email"
           placeholder="you@example.com"
           error={form.formState.errors.email?.message}
           {...form.register('email')}
@@ -75,9 +83,16 @@ export default function RegisterPage() {
           label="密码"
           type="password"
           autoComplete="new-password"
-          placeholder="至少 10 个字符"
-          hint="只要求长度 ≥ 10，无复杂度要求"
+          placeholder={`至少 ${PASSWORD_POLICY.minLength} 个字符`}
           error={form.formState.errors.password?.message}
+          hint={
+            password.length > 0 ? (
+              <span className={`inline-flex items-center gap-1 ${lengthOk ? 'text-leaf-600' : 'text-ink-3'}`}>
+                {lengthOk && <Check size={13} strokeWidth={2.5} aria-hidden="true" />}
+                {lengthOk ? '长度满足要求' : `还需 ${PASSWORD_POLICY.minLength - password.length} 个字符`}
+              </span>
+            ) : undefined
+          }
           {...form.register('password')}
         />
 

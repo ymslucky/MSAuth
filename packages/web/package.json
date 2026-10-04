@@ -11,12 +11,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@fontsource-variable/bricolage-grotesque": "^5.1.0",
-    "@fontsource-variable/instrument-sans": "^5.1.0",
     "@fontsource-variable/jetbrains-mono": "^5.1.0",
+    "@fontsource-variable/onest": "^5.1.0",
+    "@fontsource-variable/sora": "^5.1.0",
     "@hookform/resolvers": "^5.0.0",
     "@msauth/shared": "workspace:*",
     "@tanstack/react-query": "^5.59.0",
+    "lucide-react": "^0.475.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.54.0",

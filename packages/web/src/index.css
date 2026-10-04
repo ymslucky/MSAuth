@@ -1,87 +1,245 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/bricolage-grotesque';
-@import '@fontsource-variable/instrument-sans';
+@import '@fontsource-variable/sora';
+@import '@fontsource-variable/onest';
 @import '@fontsource-variable/jetbrains-mono';
 
-/* ===== 设计令牌：石墨金库 / 黄铜强调 ===== */
+/*
+ * 设计令牌 —— 语义层（SPEC §3.2）
+ * primitive 值（milk/ink/leaf 色阶）即下列注释，页面代码只允许用语义类。
+ */
 @theme {
-  --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
-  --font-sans: 'Instrument Sans Variable', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, monospace;
+  /* 字体：拉丁自托管，中文系统栈（SPEC §3.5） */
+  --font-display: 'Sora Variable', 'Onest Variable', 'PingFang SC', 'HarmonyOS Sans SC', 'MiSans', 'Microsoft YaHei', sans-serif;
+  --font-sans: 'Onest Variable', 'PingFang SC', 'HarmonyOS Sans SC', 'MiSans', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'Cascadia Mono', 'SFMono-Regular', monospace;
 
-  --color-ink-950: #0a0b0e;
-  --color-ink-900: #0e1014;
-  --color-ink-850: #12151b;
-  --color-ink-800: #171b22;
-  --color-ink-700: #1f242d;
-  --color-ink-600: #2a2f3a;
-  --color-ink-500: #3a4150;
+  /* 底色与文本 */
+  --color-canvas: #fdfcf9; /* milk-50 */
+  --color-canvas-2: #faf7f0; /* milk-100 */
+  --color-surface-input: #f3efe4; /* milk-200 */
+  --color-ink: #1c2b25; /* ink-900 主文本 ≥12:1 */
+  --color-ink-2: #33453c; /* ink-700 */
+  --color-ink-3: #5f7066; /* ink-500 辅助 ≥4.5:1 */
+  --color-ink-4: #8b988f; /* ink-400 占位/禁用 */
+  --color-line: rgb(28 43 37 / 0.1);
 
-  --color-fog-500: #6f7280;
-  --color-fog-400: #8b8d96;
-  --color-fog-300: #a9abb4;
+  /* 自然绿（唯一交互色系） */
+  --color-leaf-50: #f0f9f3;
+  --color-leaf-100: #dff2e6;
+  --color-leaf-300: #8fd3ac;
+  --color-leaf-500: #3ba76e;
+  --color-leaf-600: #2c8a58;
+  --color-leaf-700: #237048;
 
-  --color-paper: #e9e7e0;
+  /* 语义色（柔化） */
+  --color-warn: #c98a2e;
+  --color-warn-bg: #fbf3e2;
+  --color-danger: #ce4a52;
+  --color-danger-bg: #fbefef;
+  --color-info: #3e8fa8;
+  --color-info-bg: #edf5f8;
 
-  --color-brass-300: #edbd77;
-  --color-brass-400: #e0a458;
-  --color-brass-500: #d0913f;
-  --color-brass-600: #a9702c;
+  /* 阴影阶梯 = 玻璃三档一一对应（SPEC §3.8） */
+  --shadow-glass-1: 0 1px 2px rgb(28 43 37 / 0.04), 0 8px 24px -12px rgb(28 43 37 / 0.1);
+  --shadow-glass-2: 0 2px 4px rgb(28 43 37 / 0.05), 0 16px 40px -16px rgb(28 43 37 / 0.16);
+  --shadow-glass-3: 0 4px 8px rgb(28 43 37 / 0.06), 0 24px 64px -24px rgb(28 43 37 / 0.24);
 
-  --color-moss-400: #5fb573;
-  --color-alarm-400: #e5484d;
+  /* 动效令牌（SPEC §4） */
+  --ease-out-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.3, 0.5, 1);
+
+  /* 圆角令牌 */
+  --radius-card: 1rem; /* 16 */
+  --radius-dialog: 1.5rem; /* 24 */
 }
 
 @layer base {
   html {
-    color-scheme: dark;
+    color-scheme: light;
   }
   body {
-    @apply bg-ink-950 font-sans text-paper antialiased;
+    @apply bg-canvas font-sans text-ink antialiased;
   }
   ::selection {
-    background: color-mix(in oklab, var(--color-brass-400) 35%, transparent);
+    background: rgb(44 138 88 / 0.22);
   }
+  /* WCAG 2.4.7：全局焦点可见 */
   :focus-visible {
-    outline: 2px solid var(--color-brass-400);
+    outline: 2px solid var(--color-leaf-600);
     outline-offset: 2px;
   }
 }
 
-/* ===== 背景氛围：顶部黄铜辉光 + 点阵 ===== */
-.vault-bg {
-  background-image:
-    radial-gradient(1100px 520px at 50% -12%, rgb(224 164 88 / 0.1), transparent 62%),
-    radial-gradient(760px 420px at 88% 112%, rgb(224 164 88 / 0.05), transparent 60%),
-    radial-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1px);
-  background-size:
-    auto,
-    auto,
-    26px 26px;
-}
-
-/* ===== 入场动效 ===== */
-@keyframes rise-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
+@layer components {
+  /* ===== 环境光背景（SPEC §3.3）===== */
+  .ambient {
+    background-image:
+      radial-gradient(880px 520px at 18% -8%, rgb(205 233 214 / 0.4), transparent 60%),
+      radial-gradient(720px 480px at 86% 108%, rgb(243 230 196 / 0.36), transparent 60%);
+    background-attachment: fixed;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  /* 认证/同意页加强版：追加光斑 C */
+  .ambient-max {
+    background-image:
+      radial-gradient(880px 520px at 18% -8%, rgb(205 233 214 / 0.4), transparent 60%),
+      radial-gradient(720px 480px at 86% 108%, rgb(243 230 196 / 0.36), transparent 60%),
+      radial-gradient(560px 420px at 60% 30%, rgb(220 239 232 / 0.3), transparent 60%);
+    background-attachment: fixed;
   }
-}
-.anim-rise {
-  animation: rise-in 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) both;
-}
-.anim-rise-2 {
-  animation: rise-in 0.45s 0.08s cubic-bezier(0.22, 0.61, 0.36, 1) both;
-}
-.anim-rise-3 {
-  animation: rise-in 0.45s 0.16s cubic-bezier(0.22, 0.61, 0.36, 1) both;
-}
 
-/* 等宽小标签（表单/数据区块标题） */
-.overline {
-  @apply font-mono text-[11px] font-medium tracking-[0.18em] text-fog-500 uppercase;
+  /* ===== 玻璃三档（SPEC §3.4）===== */
+  .glass-1 {
+    background: rgb(255 255 255 / 0.62);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    backdrop-filter: blur(14px) saturate(1.4);
+    border: 1px solid rgb(28 43 37 / 0.06);
+    box-shadow: var(--shadow-glass-1), inset 0 1px 0 rgb(255 255 255 / 0.9);
+  }
+  .glass-2 {
+    background: rgb(255 255 255 / 0.74);
+    -webkit-backdrop-filter: blur(18px) saturate(1.5);
+    backdrop-filter: blur(18px) saturate(1.5);
+    border: 1px solid rgb(28 43 37 / 0.08);
+    box-shadow: var(--shadow-glass-2), inset 0 1px 0 rgb(255 255 255 / 0.9);
+  }
+  .glass-3 {
+    background: rgb(255 255 255 / 0.82);
+    -webkit-backdrop-filter: blur(22px) saturate(1.6);
+    backdrop-filter: blur(22px) saturate(1.6);
+    border: 1px solid rgb(28 43 37 / 0.1);
+    box-shadow: var(--shadow-glass-3), inset 0 1px 0 rgb(255 255 255 / 0.9);
+  }
+
+  /* ===== 字阶类（SPEC §3.5）===== */
+  .t-display {
+    @apply font-display text-[30px] leading-[34px] font-bold tracking-[-0.01em] text-ink;
+  }
+  .t-title {
+    @apply font-display text-xl leading-[26px] font-semibold text-ink;
+  }
+  .t-caption {
+    @apply text-[12.5px] leading-[19px] text-ink-3;
+  }
+  .t-data {
+    @apply font-mono text-[12.5px] leading-5 text-ink-3;
+  }
+  .overline {
+    @apply font-mono text-[11px] font-medium tracking-[0.14em] text-ink-3 uppercase;
+  }
+
+  /* ===== 动效（SPEC §4）===== */
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .stagger > * {
+    animation: rise-in 360ms var(--ease-out-soft) both;
+  }
+  .stagger > *:nth-child(2) {
+    animation-delay: 60ms;
+  }
+  .stagger > *:nth-child(3) {
+    animation-delay: 120ms;
+  }
+  .stagger > *:nth-child(4) {
+    animation-delay: 180ms;
+  }
+
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96) translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .anim-pop {
+    animation: pop-in 300ms var(--ease-spring) both;
+  }
+
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateX(16px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .anim-toast {
+    animation: toast-in 240ms var(--ease-out-soft) both;
+  }
+
+  /* 主按钮/卡片玻璃高光：斜向光带位移（CSP 安全，纯 CSS 类） */
+  .btn-shine {
+    background-image: linear-gradient(115deg, transparent 35%, rgb(255 255 255 / 0.2) 50%, transparent 65%);
+    background-size: 250% 100%;
+    background-position: 100% 0;
+    transition: background-position 260ms var(--ease-out-soft);
+  }
+  .btn-shine:hover {
+    background-position: 0 0;
+  }
+
+  /* 骨架屏（SPEC §6.3）*/
+  @keyframes shimmer {
+    to {
+      background-position: -200% 0;
+    }
+  }
+  .skeleton {
+    background: linear-gradient(100deg, #f3efe4 40%, #faf7f0 50%, #f3efe4 60%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+    border-radius: 12px;
+  }
+
+  /* ===== 降级：无 backdrop-filter / reduced-transparency → 实底（SPEC §3.4）===== */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-1,
+    .glass-2,
+    .glass-3 {
+      background: var(--color-canvas);
+    }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-1,
+    .glass-2,
+    .glass-3 {
+      background: var(--color-canvas);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+    .ambient,
+    .ambient-max {
+      background-image: none;
+    }
+  }
+
+  /* ===== WCAG 2.3.3：动效降级 ===== */
+  @media (prefers-reduced-motion: reduce) {
+    .stagger > *,
+    .anim-pop,
+    .anim-toast {
+      animation-duration: 140ms;
+      animation-timing-function: ease;
+    }
+    .stagger > * {
+      animation-name: rise-in;
+    }
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+    }
+  }
 }

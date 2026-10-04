@@ -1,21 +1,33 @@
-/** 面板卡片：细线边框 + 可选标题区 */
+/** 玻璃卡片（SPEC §6.3） */
 import type { ReactNode } from 'react';
 
-export function Card({ title, desc, children, className = '' }: {
+export function GlassCard({
+  title,
+  desc,
+  action,
+  children,
+  className = '',
+  padded = true,
+}: {
   title?: ReactNode;
   desc?: ReactNode;
+  action?: ReactNode;
   children: ReactNode;
   className?: string;
+  padded?: boolean;
 }) {
   return (
-    <section className={`rounded-xl border border-ink-700 bg-ink-900/80 backdrop-blur-sm ${className}`}>
-      {(title || desc) && (
-        <header className="border-b border-ink-700 px-5 py-4">
-          {title && <h2 className="font-display text-lg font-medium text-paper">{title}</h2>}
-          {desc && <p className="mt-0.5 text-sm text-fog-400">{desc}</p>}
+    <section className={`glass-1 rounded-card ${className}`}>
+      {(title || action) && (
+        <header className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
+          <div>
+            {title && <h2 className="t-title">{title}</h2>}
+            {desc && <p className="t-caption mt-0.5">{desc}</p>}
+          </div>
+          {action}
         </header>
       )}
-      <div className="p-5">{children}</div>
+      <div className={padded ? 'p-5' : ''}>{children}</div>
     </section>
   );
 }
