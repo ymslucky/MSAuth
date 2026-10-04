@@ -8,7 +8,7 @@ import { Avatar } from '../../components/ui/avatar';
 import { Card } from '../../components/ui/card';
 import { Donut } from '../../components/ui/donut';
 import { Skeleton } from '../../components/ui/skeleton';
-import { Sparkbar } from '../../components/ui/sparkbar';
+import { AreaTrend } from '../../components/ui/area-trend';
 import { useToast } from '../../components/ui/toast';
 import { getLoginStats, listSessions, loginStatsKey, sessionsKey } from '../../lib/auth';
 import { fmtDateTime } from '../../lib/format';
@@ -202,14 +202,19 @@ export default function AccountIndexPage() {
             {statsQuery.isLoading ? (
               <Skeleton className="h-[124px] w-full" aria-hidden="true" />
             ) : (
-              <Sparkbar data={statDays} label={`近 14 天登录活跃：成功 ${statSuccess} 次，失败 ${statFailure} 次`} />
+              <AreaTrend data={statDays} label={`近 14 天登录活跃：成功 ${statSuccess} 次，失败 ${statFailure} 次`} />
             )}
           </div>
-          {/* Glance 大数字读数（§6.8 编辑感语法） */}
+          {/* Glance 大数字读数（§6.8 编辑感语法）；红点 = 基线失败事件日图例 */}
           <div className="mt-3 flex items-baseline gap-2 border-t border-line pt-3">
             <p className="t-stat">{statSuccess}</p>
             <p className="t-caption">次成功登录</p>
-            {statFailure > 0 && <p className="t-caption ml-auto text-danger">失败 {statFailure} 次</p>}
+            {statFailure > 0 && (
+              <p className="t-caption ml-auto inline-flex items-center gap-1.5 text-danger">
+                <span className="inline-block h-2 w-2 rounded-full bg-danger-vivid" aria-hidden="true" />
+                失败 {statFailure} 次
+              </p>
+            )}
           </div>
         </Card>
 

@@ -406,8 +406,7 @@ favicon 为静态 data URI（群青渐变），见 `index.html`。
 | 组件 | 规格 |
 |---|---|
 | **Donut**（环形进度） | SVG 圆环：轨道 `line` 发丝 8px，值弧 `action`/accent 8px 圆头；中心可叠大数字；尺寸 64/80 |
-| **Sparkbar**（登录活跃柱状，v1.2.4/§6.8 语法 v1.2.5） | 近 14 天逐日堆叠柱：成功段 `action`（下）、失败段 `danger-vivid`（上，仅有失败时）；柱宽自适应圆角 2px；发丝线网格 + 可数左轴（1 格 = 1 次，mono）+ 基线逐日刻度 + 峰值旁注（锚图右上）；hover `<title>` 显「MM-DD 成功 n · 失败 m」；数据源 `/api/account/login-stats`（audit_events 按 UTC 日聚合，缺省日补零）。**尺寸策略（v1.2.5）**：ResizeObserver 量容器宽 → viewBox 宽 = 实际像素宽，渲染 1:1，mono 文字恒定 10–11px 不随卡片缩放；日期标签固定下标 1,4,7,10,13（末日在列、间距 3 格不重叠） |
-| **AreaTrend**（面积折线，Phase 5） | 平滑折线 `action` 2px + 线性渐变填充 `action/20→0`；发丝线轴 + mono 刻度；hover 数据点待 Phase 5 |
+| **AreaTrend**（登录活跃趋势，v1.2.6 替代 Sparkbar 柱状） | 近 14 天平滑曲线（Catmull-Rom→贝塞尔，控制点夹紧防过冲）+ 线性渐变面积（`action/0.16→0`）；发丝线网格 + 可数左轴（1 格 = 1 次，mono）+ 基线逐日刻度；逐日顶点小点（白描边）+ 末值 mono 标注；峰值旁注（锚图右上）；**基线失败事件红点**（danger-vivid，仅实有失败日期出现，读数行「失败 n 次」前有对应红点图例）；hover 逐日透明列 `<title>` 显「MM-DD 成功 n · 失败 m」；入场描线生长（pathLength=1 归一化）+ 面积/顶点淡入；数据源 `/api/account/login-stats`。**尺寸策略**：ResizeObserver 量容器宽 → viewBox 宽 = 实际像素宽，渲染 1:1，mono 文字恒定 10–11px 不随卡片缩放；日期标签固定下标 1,4,7,10,13 |
 
 ---
 
@@ -435,7 +434,7 @@ Bento 网格（`md:2 / lg:3 / xl:4` 列，gap 20–24，流式全宽）：
 | 活跃会话 | 1 / 1 / 1 | **群青** | 群青图标砖 + `text-stat` 大数字 = 会话总数 + Donut（当前 1/N，群青弧）+ caption + quiet 链接「管理会话 →」 |
 | 登录方式 | 1 / 1 / 1 | **plum 李子** | plum 图标砖 + 大数字 = 已启用方式数；李子色启用态胶囊（密码/GitHub） |
 | 账户信息 | 2 / 2 / 2 | **teal 青碧** | teal 图标砖 + Row 列表（ID 可复制 / 创建时间 / 最近登录） |
-| 登录活跃 | 2 / 3 / 2 | **群青** | 群青图标砖（TrendingUp）+ Sparkbar 近 14 天堆叠柱（§6.8 编辑感语法：发丝网格/可数刻度/峰值旁注）+ Glance 大数字读数「n 次成功登录 · 失败 m 次」 |
+| 登录活跃 | 2 / 3 / 2 | **群青** | 群青图标砖（TrendingUp）+ AreaTrend 近 14 天平滑趋势（§6.8 编辑感语法：发丝网格/可数刻度/峰值旁注/基线失败红点）+ Glance 大数字读数「n 次成功登录 · 失败 m 次」 |
 | 快捷操作 | 2 / 3 / 4 | **terracotta 赤陶** | terracotta 图标砖 + 两个横排 secondary 按钮居中成对（max-w-3xl，带彩色图标：修改密码 plum / 管理设备 群青） |
 
 **行满约束（v1.2.5）**：每断点每行列数必须恰好铺满——md(2 列)：2+…/1+1/2/2/2；
@@ -573,3 +572,5 @@ toast + 行移除。「撤销其他」→ Dialog 显示数量 → toast「已撤
 | v1.2.3 | 2026-10-04 | 主题系统（用户指定种子色）：新增 §3.1.1 三主题切换——默认「群青」+ 新增「花与月」（#05348B/#F9A647/#EDCFAB）与「灯塔」（#216185/#959434/#B5CFD4）；`html[data-theme]` + localStorage 持久化；侧栏 Palette 切换按钮；selection/光晕/焦点光环/骨架屏改 color-mix 派生随主题；新增 identity/logo 渐变令牌 |
 | v1.2.4 | 2026-10-04 | 数据可视化增强（用户反馈「缺少数据可视化」）：新增 Sparkbar 登录活跃卡——API 新增 `GET /api/account/login-stats`（audit_events 按 UTC 日聚合近 14 天登录成功/失败，actor_id 与 target_id 取 COALESCE），Sparkbar 纯 SVG 堆叠柱（§6.8/§7.3），概览页 Bento 扩为 6 卡 |
 | v1.2.5 | 2026-10-04 | ①品牌标识重设计（用户需求「简洁有标识度，主题 MS/ID/Auth」）：「M + 验证点」白色字标替换菱形，favicon 同步（§3.2）；移除 logo-dot 令牌 ②图表语法升级（用户参考 lieflat-charts）：§6.8 新增编辑感图表语法——发丝线网格、可数刻度（1 格 = 1 次）+ 真实单位旁注、账本式逐日刻度、峰值旁注、受控视线落点（失败红仅实有失败时）、Glance 大数字读数；Donut 轨道改发丝 line 色 |
+| v1.2.5a | 2026-10-04 | 修复（用户反馈「文字太大/重叠/越界 + 布局不对称/没铺满」）：Sparkbar 改 ResizeObserver 1:1 渲染（mono 文字不随卡片缩放）、日期标签下标 1,4,7,10,13、峰值旁注锚右上；§7.3 Bento 行满约束（md/lg/xl 每行恰好铺满，快捷操作整行） |
+| v1.2.6 | 2026-10-04 | 图表形态升级（用户反馈「不要柱状图」）：登录活跃由 Sparkbar 堆叠柱改为 **AreaTrend 平滑趋势**（Catmull-Rom 曲线 + 渐变面积 + 顶点白描边小点 + 末值标注 + 基线失败事件红点 + 描线生长入场），编辑感语法与 1:1 尺寸策略全部保留；删除 sparkbar.tsx |

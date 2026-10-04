@@ -247,29 +247,42 @@
     animation-delay: 120ms;
   }
 
-  /* Sparkbar（SPEC §6.8）：柱体自底向上生长一次 */
-  @keyframes sparkbar-grow {
-    from {
-      transform: scaleY(0);
+  /* AreaTrend（SPEC §6.8 v1.2.6）：曲线描线生长 + 面积淡入（pathLength=1 归一化） */
+  @keyframes line-in {
+    to {
+      stroke-dashoffset: 0;
     }
   }
-  .sparkbar-col {
-    transform-origin: bottom;
-    transform-box: fill-box;
-    animation: sparkbar-grow 360ms var(--ease-out-soft) both;
+  @keyframes fade-in {
+    to {
+      opacity: 1;
+    }
   }
-  .sparkbar-axis {
+  .area-line {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: line-in 900ms var(--ease-out-soft) 120ms forwards;
+  }
+  .area-fill {
+    opacity: 0;
+    animation: fade-in 600ms ease-out 560ms forwards;
+  }
+  .area-dot {
+    opacity: 0;
+    animation: fade-in 400ms ease-out 720ms forwards;
+  }
+  .chart-axis {
     font: 500 11px var(--font-mono);
     fill: var(--color-ink-4);
     letter-spacing: 0.02em;
   }
   /* 可数左轴刻度 + 单位旁注（mono 小字） */
-  .sparkbar-tick {
+  .chart-tick {
     font: 500 10px var(--font-mono);
     fill: var(--color-ink-4);
   }
   /* 峰值旁注 */
-  .sparkbar-note {
+  .chart-note {
     font: 500 11px var(--font-mono);
     fill: var(--color-ink-3);
   }
@@ -293,7 +306,9 @@
     .anim-pop,
     .anim-toast,
     .donut-arc,
-    .sparkbar-col {
+    .area-line,
+    .area-fill,
+    .area-dot {
       animation-duration: 140ms;
       animation-timing-function: ease;
       animation-delay: 0ms;
