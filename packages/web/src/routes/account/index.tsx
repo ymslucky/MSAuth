@@ -1,14 +1,16 @@
-/** 账户概览（SPEC §7.3）：Bento 网格 + 分色系统（blue/purple/sky/orange 图标砖） */
+/** 账户概览（SPEC §7.3）：Bento 网格 + 分色系统 + 数据可视化（Donut/Sparkbar） */
 import { useQuery } from '@tanstack/react-query';
-import { Check, Copy, Github, Info, KeyRound, MonitorSmartphone, Zap, type LucideIcon } from 'lucide-react';
+import { Check, Copy, Github, Info, KeyRound, MonitorSmartphone, TrendingUp, Zap, type LucideIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { ROLE_LABELS } from '@msauth/shared';
 import { Link } from 'react-router-dom';
 import { Avatar } from '../../components/ui/avatar';
 import { Card } from '../../components/ui/card';
 import { Donut } from '../../components/ui/donut';
+import { Skeleton } from '../../components/ui/skeleton';
+import { Sparkbar } from '../../components/ui/sparkbar';
 import { useToast } from '../../components/ui/toast';
-import { listSessions, sessionsKey } from '../../lib/auth';
+import { getLoginStats, listSessions, loginStatsKey, sessionsKey } from '../../lib/auth';
 import { fmtDateTime } from '../../lib/format';
 import { useSessionStore } from '../../stores/session';
 
@@ -67,6 +69,11 @@ export default function AccountIndexPage() {
   const total = sessions.length;
   const current = sessions.filter((s) => s.current).length;
   const methods = (user?.hasPassword ? 1 : 0) + (user?.github ? 1 : 0);
+  // 登录活跃（近 14 天），Sparkbar 数据源
+  const statsQuery = useQuery({ queryKey: loginStatsKey, queryFn: getLoginStats });
+  const statDays = statsQuery.data?.days ?? [];
+  const statSuccess = statDays.reduce((acc, d) => acc + d.success, 0);
+  const statFailure = statDays.reduce((acc, d) => acc + d.failure, 0);
 
   if (!user) return null;
 
@@ -179,6 +186,34 @@ export default function AccountIndexPage() {
             </Row>
             <Row label="创建时间">{fmtDateTime(user.createdAt)}</Row>
             <Row label="最近登录">{fmtDateTime(user.lastLoginAt)}</Row>
+          </div>
+        </Card>
+
+        {/* 登录活跃：群青 accent + Sparkbar 近 14 天堆叠柱（xl 占 2 列） */}
+        <Card className="xl:col-span-2">
+          <div className="flex items-center gap-3">
+            <IconTile icon={TrendingUp} className="bg-action-subtle text-action" />
+            <div>
+              <h2 className="t-title">登录活跃</h2>
+            </div>
+            <span className="t-data ml-auto">近 14 天</span>
+          </div>
+          <div className="mt-4">
+            {statsQuery.isLoading ? (
+              <Skeleton className="h-[116px] w-full" aria-hidden="true" />
+            ) : (
+              <Sparkbar data={statDays} label={`近 14 天登录活跃：成功 ${statSuccess} 次，失败 ${statFailure} 次`} />
+            )}
+          </div>
+          <div className="mt-2 flex items-center gap-4">
+            <span className="t-caption inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-action" aria-hidden="true" />
+              成功 {statSuccess} 次
+            </span>
+            <span className="t-caption inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-danger-vivid" aria-hidden="true" />
+              失败 {statFailure} 次
+            </span>
           </div>
         </Card>
 

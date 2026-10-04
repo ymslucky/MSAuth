@@ -1,5 +1,5 @@
 /** 认证与账户 API + 会话查询键 */
-import type { LoginInput, PublicUser, RegisterInput, SessionListItem } from '@msauth/shared';
+import type { LoginStatsResponse, LoginInput, PublicUser, RegisterInput, SessionListItem } from '@msauth/shared';
 import { api, ApiError } from './api';
 
 export interface SessionResponse {
@@ -9,6 +9,7 @@ export interface SessionResponse {
 
 export const sessionKey = ['session'] as const;
 export const sessionsKey = ['sessions'] as const;
+export const loginStatsKey = ['login-stats'] as const;
 
 /** 401 视为未登录（返回 null），其余错误上抛 */
 export async function fetchSession(): Promise<SessionResponse | null> {
@@ -27,6 +28,8 @@ export const register = (input: RegisterInput) => api.post<{ user: PublicUser }>
 export const logout = () => api.post<{ ok: boolean }>('/api/auth/logout');
 
 export const listSessions = () => api.get<{ sessions: SessionListItem[] }>('/api/account/sessions');
+
+export const getLoginStats = () => api.get<LoginStatsResponse>('/api/account/login-stats');
 
 export const revokeSession = (id: string) => api.del<{ ok: boolean }>(`/api/account/sessions/${id}`);
 

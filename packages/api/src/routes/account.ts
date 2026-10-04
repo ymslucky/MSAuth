@@ -1,7 +1,7 @@
-/** /api/account/*：用户自助（会话列表/撤销/撤销其他、改密码） */
-import { type SessionListItem, AppError, changePasswordSchema } from '@msauth/shared';
+/** /api/account/*：用户自助（会话列表/撤销/撤销其他、改密码、登录活跃统计） */
+import { type LoginDailyStat, type SessionListItem, AppError, changePasswordSchema } from '@msauth/shared';
 import { Hono } from 'hono';
-import { SessionsRepository, UsersRepository, dbOf } from '../db/repositories';
+import { AuditEventsRepository, SessionsRepository, UsersRepository, dbOf } from '../db/repositories';
 import type { AppEnv } from '../env';
 import { ok } from '../lib/response';
 import { parseWith, readJsonBody } from '../lib/validation';
@@ -57,6 +57,22 @@ accountRoutes.post('/sessions/revoke-others', async (c) => {
     metadata: { revoked },
   });
   return ok(c, { revoked });
+});
+
+/** GET /api/account/login-stats：近 14 天逐日登录统计（UTC 日聚合，缺省日补零；数据可视化数据源） */
+accountRoutes.get('/login-stats', async (c) => {
+  const user = c.get('user')!;
+  const DAY_MS = 86_400_000;
+  const since = Date.now() - 13 * DAY_MS;
+  const rows = await new AuditEventsRepository(dbOf(c.env)).loginDailyStats(user.id, since);
+  const byDate = new Map(rows.map((r) => [r.date, r]));
+  const days: LoginDailyStat[] = [];
+  for (let i = 0; i < 14; i++) {
+    const date = new Date(since + i * DAY_MS).toISOString().slice(0, 10);
+    const row = byDate.get(date);
+    days.push({ date, success: row?.success ?? 0, failure: row?.failure ?? 0 });
+  }
+  return ok(c, { days });
 });
 
 /** POST /api/account/password：改密码，成功后撤销其他所有会话（关键操作：审计同步写） */

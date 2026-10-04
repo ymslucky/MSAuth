@@ -390,7 +390,7 @@ Avatar 分类渐变）为跨主题常量。实现为 `index.css` 中 `:root[data
 | 组件 | 规格 |
 |---|---|
 | **Donut**（环形进度） | SVG 圆环：轨道 `gray-100` 8px，值弧 `action`/accent 8px 圆头；中心可叠大数字；尺寸 64/80 |
-| **Sparkbar**（迷你柱状） | 7 根圆角柱，`blue-500/25` 底、当天 `action` 实底；高 48 |
+| **Sparkbar**（登录活跃柱状，v1.2.4） | 近 14 天逐日堆叠柱：成功段 `action`（下）、失败段 `danger-vivid`（上）；柱宽自适应圆角 2px；最高日对齐高 96；hover `<title>` 显「MM-DD 成功 n · 失败 m」；稀疏 mono 轴标（每 4 日 `MM-DD`）；数据源 `/api/account/login-stats`（audit_events 按 UTC 日聚合，缺省日补零） |
 | **AreaTrend**（面积折线，Phase 5） | 平滑折线 `action` 2px + 线性渐变填充 `blue-500/20→0`；轴 `ink-4` caption；hover 数据点待 Phase 5 |
 
 ---
@@ -419,6 +419,7 @@ Bento 网格（`md:2 / lg:3 / xl:4` 列，gap 20–24，流式全宽）：
 | 活跃会话 | 1 | **群青** | 群青图标砖 + `text-stat` 大数字 = 会话总数 + Donut（当前 1/N，群青弧）+ caption + quiet 链接「管理会话 →」 |
 | 登录方式 | 1 | **plum 李子** | plum 图标砖 + 大数字 = 已启用方式数；李子色启用态胶囊（密码/GitHub） |
 | 账户信息 | xl:2 | **teal 青碧** | teal 图标砖 + Row 列表（ID 可复制 / 创建时间 / 最近登录） |
+| 登录活跃 | xl:2 | **群青** | 群青图标砖（TrendingUp）+ Sparkbar 近 14 天堆叠柱（成功群青/失败红）+ caption「近 14 天成功 n 次 · 失败 m 次」 |
 | 快捷操作 | xl:2 | **terracotta 赤陶** | terracotta 图标砖 + 两个横向 secondary 按钮（带彩色图标：修改密码 plum / 管理设备 群青） |
 
 分色遵守 §5.1：accent 只落在图标砖/眉标/图形上，数字与正文保持 ink。
@@ -551,3 +552,4 @@ toast + 行移除。「撤销其他」→ Dialog 显示数量 → toast「已撤
 | v1.2.1 | 2026-10-04 | 用户反馈修订：①内容区改流式全宽（移除 960/1080 max-width，Bento 列数 md:2/lg:3/xl:4 吸收宽度）②侧栏 76→88px、导航项 48×48、底部头像 40px ③新增 Bento 分色系统（§5.1/§7.3：每卡 accent=blue/purple/sky/orange，图标砖 §6.3），解决观感单调 |
 | v1.2.2 | 2026-10-04 | 用户反馈修订（去 AI 感 + 留白）：①配色整体重调——主色亮蓝 #3B82F6 → 群青 #3B5BDB、画布冷灰 → 暖纸灰 #F5F5F2、墨色 → 深海军 #1D2433、点缀降饱和为哑光 plum/terracotta/teal、身份卡改单色相深浅渐变（禁彩虹渐变）②留白全面放大——卡内边距 20→24/28+、Bento gap 16→20–24、页面纵向间距 24→32、认证页纵向 py-14 |
 | v1.2.3 | 2026-10-04 | 主题系统（用户指定种子色）：新增 §3.1.1 三主题切换——默认「群青」+ 新增「花与月」（#05348B/#F9A647/#EDCFAB）与「灯塔」（#216185/#959434/#B5CFD4）；`html[data-theme]` + localStorage 持久化；侧栏 Palette 切换按钮；selection/光晕/焦点光环/骨架屏改 color-mix 派生随主题；新增 identity/logo 渐变令牌 |
+| v1.2.4 | 2026-10-04 | 数据可视化增强（用户反馈「缺少数据可视化」）：新增 Sparkbar 登录活跃卡——API 新增 `GET /api/account/login-stats`（audit_events 按 UTC 日聚合近 14 天登录成功/失败，actor_id 与 target_id 取 COALESCE），Sparkbar 纯 SVG 堆叠柱（§6.8/§7.3），概览页 Bento 扩为 6 卡 |

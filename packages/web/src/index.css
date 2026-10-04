@@ -250,6 +250,23 @@
     animation-delay: 120ms;
   }
 
+  /* Sparkbar（SPEC §6.8）：柱体自底向上生长一次 */
+  @keyframes sparkbar-grow {
+    from {
+      transform: scaleY(0);
+    }
+  }
+  .sparkbar-col {
+    transform-origin: bottom;
+    transform-box: fill-box;
+    animation: sparkbar-grow 360ms var(--ease-out-soft) both;
+  }
+  .sparkbar-axis {
+    font: 500 11px var(--font-mono);
+    fill: var(--color-ink-4);
+    letter-spacing: 0.02em;
+  }
+
   /* 骨架屏（SPEC §6.3）*/
   @keyframes shimmer {
     to {
@@ -268,7 +285,8 @@
     .stagger > *,
     .anim-pop,
     .anim-toast,
-    .donut-arc {
+    .donut-arc,
+    .sparkbar-col {
       animation-duration: 140ms;
       animation-timing-function: ease;
       animation-delay: 0ms;
