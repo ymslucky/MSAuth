@@ -169,8 +169,8 @@ export default function AccountIndexPage() {
           )}
         </Card>
 
-        {/* 账户信息：teal accent（xl 占 2 列） */}
-        <Card className="xl:col-span-2">
+        {/* 账户信息：teal accent（md 起占 2 列，md/lg/xl 行均满无空洞） */}
+        <Card className="md:col-span-2">
           <div className="flex items-center gap-3">
             <IconTile icon={Info} className="bg-info-bg text-info-vivid" />
             <div>
@@ -189,8 +189,8 @@ export default function AccountIndexPage() {
           </div>
         </Card>
 
-        {/* 登录活跃：群青 accent + Sparkbar 近 14 天堆叠柱（xl 占 2 列） */}
-        <Card className="xl:col-span-2">
+        {/* 登录活跃：群青 accent + Sparkbar（md 整行 / lg 整行 / xl 半行） */}
+        <Card className="md:col-span-2 lg:col-span-3 xl:col-span-2">
           <div className="flex items-center gap-3">
             <IconTile icon={TrendingUp} className="bg-action-subtle text-action" />
             <div>
@@ -213,15 +213,15 @@ export default function AccountIndexPage() {
           </div>
         </Card>
 
-        {/* 快捷操作：terracotta accent（xl 占 2 列，宽屏横排） */}
-        <Card className="flex flex-col justify-center xl:col-span-2">
+        {/* 快捷操作：terracotta accent（md 起整行铺满，按钮居中成对） */}
+        <Card className="md:col-span-2 lg:col-span-3 xl:col-span-4">
           <div className="flex items-center gap-3">
             <IconTile icon={Zap} className="bg-accent-orange-bg text-accent-orange-vivid" />
             <div>
               <h2 className="t-title">快捷操作</h2>
             </div>
           </div>
-          <div className="mt-5 flex flex-col gap-3 xl:flex-row">
+          <div className="mx-auto mt-5 grid w-full max-w-3xl gap-3 sm:grid-cols-2">
             <Link
               to="/account/password"
               className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-line bg-surface text-sm font-medium text-ink-2 transition-colors duration-[140ms] hover:bg-canvas"
