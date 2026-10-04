@@ -9,7 +9,7 @@ beforeEach(resetDb);
 /** GitHub API mock：token → user → emails */
 function mockGithubFetch(opts: { id?: number; login?: string; email?: string; primaryEmail?: string } = {}) {
   const { id = 4242, login = 'octocat', email = null, primaryEmail = 'gh-new@example.com' } = opts;
-  return async (url: string | URL | Request): Promise<Response> => {
+  return async (url: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const u = String(url);
     const json = (body: unknown) => new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
     if (u.includes('login/oauth/access_token')) return json({ access_token: 'gh-token', token_type: 'bearer' });
@@ -67,6 +67,21 @@ describe('githubResolveUser（可注入 fetch）', () => {
     expect(user.roles).toEqual(['member']);
     expect(user.github?.login).toBe('octocat');
     expect(await env.KV.get(`gh_state:${state}`)).toBeNull(); // 立即删除
+  });
+
+  it('网络抖动（首连超时/重置）时自动重试成功', async () => {
+    const state = await seedState();
+    let calls = 0;
+    const flaky = async (url: string | URL | Request, init?: RequestInit): Promise<Response> => {
+      // 前两次：模拟 github.com 首连超时（reject）与 502
+      calls++;
+      if (calls === 1) throw new TypeError('fetch failed: connection timed out');
+      if (calls === 2) return new Response('bad gateway', { status: 502 });
+      return mockGithubFetch()(url, init);
+    };
+    const user = await githubResolveUser(env, 'code-flaky', state, flaky);
+    expect(user.email).toBe('gh-new@example.com');
+    expect(calls).toBeGreaterThanOrEqual(3);
   });
 
   it('state 只能用一次：复用抛 GITHUB_AUTH_FAILED', async () => {

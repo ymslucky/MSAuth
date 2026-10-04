@@ -22,6 +22,35 @@ const STATE_TTL_SECONDS = 600;
 /** 可注入的 fetch（测试用），签名宽松以兼容全局 fetch */
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
+/** 单次请求超时：本机网络对 github.com 偶发首连挂起，必须设上限 */
+const FETCH_TIMEOUT_MS = 8_000;
+
+/** 总尝试次数（含首次） */
+const FETCH_ATTEMPTS = 3;
+
+/**
+ * 带超时与重试的 GitHub 请求：
+ * - 网络错误（超时/重置/workerd internal error）→ 重试
+ * - 5xx / 429 → 重试；4xx 不重试（业务错误）
+ */
+async function fetchWithRetry(url: string, init: RequestInit, fetchImpl: FetchLike): Promise<Response> {
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt++) {
+    if (attempt > 1) await new Promise((resolve) => setTimeout(resolve, 300 * (attempt - 1)));
+    try {
+      const res = await fetchImpl(url, { ...init, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+      if (res.status >= 500 || res.status === 429) {
+        lastError = new Error(`GitHub HTTP ${res.status}`);
+        continue;
+      }
+      return res;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw new AppError({ code: 'GITHUB_AUTH_FAILED', message: '连接 GitHub 失败（网络超时或不稳定），请重试', cause: lastError });
+}
+
 interface GithubUser {
   id: number;
   login: string;
@@ -71,16 +100,20 @@ export async function githubResolveUser(
   await env.KV.delete(stateKey);
 
   // code 换 access_token
-  const tokenRes = await fetchImpl(TOKEN_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', accept: 'application/json' },
-    body: JSON.stringify({
-      client_id: env.GITHUB_CLIENT_ID,
-      client_secret: env.GITHUB_CLIENT_SECRET,
-      code,
-      redirect_uri: callbackUrl(env),
-    }),
-  });
+  const tokenRes = await fetchWithRetry(
+    TOKEN_URL,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({
+        client_id: env.GITHUB_CLIENT_ID,
+        client_secret: env.GITHUB_CLIENT_SECRET,
+        code,
+        redirect_uri: callbackUrl(env),
+      }),
+    },
+    fetchImpl,
+  );
   const tokenBody = (await tokenRes.json().catch(() => null)) as { access_token?: string } | null;
   const accessToken = tokenBody?.access_token;
   if (!tokenRes.ok || !accessToken) {
@@ -95,8 +128,8 @@ export async function githubResolveUser(
   };
 
   const [userRes, emailsRes] = await Promise.all([
-    fetchImpl(API_USER_URL, { headers: authHeaders }),
-    fetchImpl(API_EMAILS_URL, { headers: authHeaders }),
+    fetchWithRetry(API_USER_URL, { headers: authHeaders }, fetchImpl),
+    fetchWithRetry(API_EMAILS_URL, { headers: authHeaders }, fetchImpl),
   ]);
   if (!userRes.ok || !emailsRes.ok) {
     // 状态码进审计 reason，便于排查；不暴露给最终用户
