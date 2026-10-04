@@ -86,14 +86,21 @@ export async function githubResolveUser(
   if (!tokenRes.ok || !accessToken) {
     throw new AppError({ code: 'GITHUB_AUTH_FAILED', message: 'GitHub 授权码交换失败' });
   }
-  const authHeaders = { authorization: `Bearer ${accessToken}`, accept: 'application/vnd.github+json' };
+  // GitHub REST API 强制要求 User-Agent（workerd 的 fetch 默认不携带，会 403）
+  const authHeaders = {
+    authorization: `Bearer ${accessToken}`,
+    accept: 'application/vnd.github+json',
+    'user-agent': 'MSAuth-Workers/0.2',
+    'x-github-api-version': '2022-11-28',
+  };
 
   const [userRes, emailsRes] = await Promise.all([
     fetchImpl(API_USER_URL, { headers: authHeaders }),
     fetchImpl(API_EMAILS_URL, { headers: authHeaders }),
   ]);
   if (!userRes.ok || !emailsRes.ok) {
-    throw new AppError({ code: 'GITHUB_AUTH_FAILED', message: '获取 GitHub 用户信息失败' });
+    // 状态码进审计 reason，便于排查；不暴露给最终用户
+    throw new AppError({ code: 'GITHUB_AUTH_FAILED', message: `获取 GitHub 用户信息失败（${userRes.status}/${emailsRes.status}）` });
   }
   const ghUser = (await userRes.json()) as GithubUser;
   const ghEmails = (await emailsRes.json()) as GithubEmail[];

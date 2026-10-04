@@ -105,6 +105,7 @@ authRoutes.get('/github/callback', async (c) => {
     audit(c, { action: AUDIT_ACTIONS.LOGIN_GITHUB, result: 'success', targetType: 'user', targetId: user.id });
     return c.redirect(`${c.env.APP_BASE_URL.replace(/\/$/, '')}/account`);
   } catch (err) {
+    console.error(`[msauth] ${c.get('requestId')} github callback failed:`, err);
     audit(c, {
       action: AUDIT_ACTIONS.LOGIN_GITHUB,
       result: 'failure',
