@@ -4,13 +4,18 @@
  */
 import { env } from 'cloudflare:test';
 // @ts-expect-error Vite ?raw 资源导入（测试专用，无 vite/client 类型）
-import migrationSql from '../migrations/0001_init.sql?raw';
+import migration0001 from '../migrations/0001_init.sql?raw';
+// @ts-expect-error 同上
+import migration0002 from '../migrations/0002_oauth.sql?raw';
 
-const sqlText = migrationSql as string;
-const statements = sqlText
-  .replace(/--.*$/gm, '') // 去行注释
-  .split(';')
-  .map((s: string) => s.trim())
-  .filter((s: string) => s.length > 0);
+function statementsOf(sqlText: string): string[] {
+  return (sqlText as string)
+    .replace(/--.*$/gm, '') // 去行注释
+    .split(';')
+    .map((s: string) => s.trim())
+    .filter((s: string) => s.length > 0);
+}
 
-await env.AUTH_DB.batch(statements.map((s) => env.AUTH_DB.prepare(s)));
+await env.AUTH_DB.batch(
+  [...statementsOf(migration0001), ...statementsOf(migration0002)].map((s) => env.AUTH_DB.prepare(s)),
+);

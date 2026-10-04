@@ -32,10 +32,18 @@ export class TestClient {
   async call(
     method: string,
     path: string,
-    opts: { body?: unknown; csrf?: boolean; ip?: string; headers?: Record<string, string> } = {},
+    opts: { body?: unknown; form?: Record<string, string>; csrf?: boolean; ip?: string; headers?: Record<string, string> } = {},
   ): Promise<Response> {
     const headers: Record<string, string> = { 'user-agent': 'vitest-agent', ...(opts.headers ?? {}) };
-    if (opts.body !== undefined) headers['content-type'] = 'application/json';
+    let body: string | undefined;
+    if (opts.body !== undefined) {
+      headers['content-type'] = 'application/json';
+      body = JSON.stringify(opts.body);
+    } else if (opts.form !== undefined) {
+      // RFC 6749 表单端点（/api/oauth/token）用 urlencoded 编码
+      headers['content-type'] = 'application/x-www-form-urlencoded';
+      body = new URLSearchParams(opts.form).toString();
+    }
     const csrfToken = this.cookies.get(COOKIES.csrf);
     if (csrfToken && (opts.csrf ?? true)) headers['x-csrf-token'] = csrfToken;
     if (this.cookies.size > 0) {
@@ -52,7 +60,7 @@ export class TestClient {
       {
         method,
         headers,
-        body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+        body,
       },
       env,
       ctx,
@@ -115,5 +123,9 @@ export async function resetDb(): Promise<void> {
     env.AUTH_DB.prepare('DELETE FROM github_accounts'),
     env.AUTH_DB.prepare('DELETE FROM user_roles'),
     env.AUTH_DB.prepare('DELETE FROM users'),
+    env.AUTH_DB.prepare('DELETE FROM oauth_refresh_tokens'),
+    env.AUTH_DB.prepare('DELETE FROM oauth_codes'),
+    env.AUTH_DB.prepare('DELETE FROM oauth_consents'),
+    env.AUTH_DB.prepare('DELETE FROM oauth_clients'),
   ]);
 }

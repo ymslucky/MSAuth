@@ -106,6 +106,31 @@ export type Scope = keyof typeof SCOPES;
 /** 全部合法 scope（授权端点校验 + 管理后台展示） */
 export const SCOPE_LIST = Object.keys(SCOPES) as Scope[];
 
+/**
+ * scope → 中文标签（同意页徽标展示）。
+ * 与 SCOPES 的说明共用一份文案，键覆盖 SCOPE_LIST 全量。
+ */
+export const SCOPE_LABELS: Record<string, string> = { ...SCOPES };
+
+// ===== 角色 × scope 矩阵 =====
+
+/**
+ * 角色 → 可授权 scope 上限。授权端点取「用户最高角色」的集合，与客户端
+ * allowed_scopes、请求 scope 三方求交集得到实际授予的 scope。
+ *
+ * SCOPES 注册表未内置角色语义，此处按资源动作等级人工划分：
+ * - admin：全量（平台管理员可信）
+ * - member：读写（排除各资源的 :admin 管理动作）
+ * - viewer：只读（:read）+ offline_access（只读应用同样需要刷新令牌）
+ * - none：空集（仅能登录，不能授权任何下游资源）
+ */
+export const ROLE_SCOPES: Record<Role, string[]> = {
+  admin: [...SCOPE_LIST],
+  member: SCOPE_LIST.filter((s) => !s.endsWith(':admin')),
+  viewer: SCOPE_LIST.filter((s) => s.endsWith(':read') || s === 'offline_access'),
+  none: [],
+};
+
 // ===== OAuth 客户端 / 授权类型 =====
 
 export const CLIENT_TYPES = ['public', 'confidential'] as const;

@@ -4,7 +4,9 @@
  */
 import { Hono } from 'hono';
 import { accountRoutes } from './routes/account';
+import { adminRoutes } from './routes/admin';
 import { authRoutes } from './routes/auth';
+import { oauthRoutes } from './routes/oauth';
 import type { AppEnv } from './env';
 import { csrfGuard } from './middleware/csrf';
 import { registerErrorHandler } from './middleware/error';
@@ -50,6 +52,8 @@ app.use('/api/*', csrfGuard());
 
 app.route('/api/auth', authRoutes);
 app.route('/api/account', accountRoutes);
+app.route('/api/oauth', oauthRoutes);
+app.route('/api/admin', adminRoutes);
 
 app.get('/healthz', (c) => c.json({ ok: true }));
 

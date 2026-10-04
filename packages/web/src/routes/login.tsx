@@ -51,7 +51,8 @@ export default function LoginPage() {
     onSuccess: ({ user }) => {
       setUser(user);
       void queryClient.invalidateQueries();
-      const from = (location.state as { from?: string } | null)?.from;
+      // 优先回跳来源页：路由守卫的 state.from，或 ?next=（如 OAuth 同意页登录后返回）
+      const from = (location.state as { from?: string } | null)?.from ?? searchParams.get('next');
       navigate(from ?? '/account', { replace: true });
     },
   });

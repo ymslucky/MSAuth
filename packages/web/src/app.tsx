@@ -2,16 +2,19 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AccountLayout from './routes/account/layout';
 import AccountIndexPage from './routes/account/index';
-import PasswordPage from './routes/account/password';
-import SessionsPage from './routes/account/sessions';
 import LoginPage from './routes/login';
 import NotFoundPage from './routes/not-found';
+import OAuthConsentPage from './routes/oauth-consent';
+import PasswordPage from './routes/account/password';
 import RegisterPage from './routes/register';
+import SessionsPage from './routes/account/sessions';
 
 export const router = createBrowserRouter([
   { path: '/', element: <Navigate to="/account" replace /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
+  // OAuth 同意页：独立直出，不套 AppShell（authorize 302 直达）
+  { path: '/oauth/consent', element: <OAuthConsentPage /> },
   {
     path: '/account',
     element: <AccountLayout />,
