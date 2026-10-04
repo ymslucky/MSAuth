@@ -8,6 +8,7 @@ export {
   OAuthConsentsRepository,
   OAuthCodesRepository,
   OAuthRefreshTokensRepository,
+  type ClientAuthRecord,
   type ClientInsert,
   type CodeInsert,
   type CodeRecord,

@@ -36,6 +36,8 @@ export const AUDIT_ACTIONS = {
   OAUTH_CLIENT_CREATE: 'oauth.client.create',
   /** 管理员删除客户端 */
   OAUTH_CLIENT_DELETE: 'oauth.client.delete',
+  /** 管理员轮换机密客户端 secret */
+  OAUTH_CLIENT_ROTATE_SECRET: 'oauth.client.rotate_secret',
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

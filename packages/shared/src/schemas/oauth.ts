@@ -3,7 +3,7 @@
  * API 路由与 SPA 共用；wire 字段名保持 RFC 6749 惯例（snake_case）。
  */
 import { z } from 'zod';
-import { SCOPE_LIST, TTL_LIMITS } from '../constants';
+import { CLIENT_TYPES, SCOPE_LIST, TTL_LIMITS } from '../constants';
 
 /** 绝对 http(s) URL（redirect_uri / resource 共用；拒绝相对路径与其他协议） */
 const absoluteHttpUrl = z.url({ protocol: /^https?$/, message: '必须是 http(s) 绝对 URL' });
@@ -41,6 +41,8 @@ export const clientCreateSchema = z.strictObject({
     .trim()
     .min(1, '名称不能为空')
     .max(64, '名称最多 64 个字符'),
+  /** 客户端类型：public（默认，无 secret）| confidential（服务间机器客户端） */
+  clientType: z.enum(CLIENT_TYPES).default('public'),
   redirect_uris: z
     .array(absoluteHttpUrl, { message: 'redirect_uris 必须是绝对 URL 数组' })
     .min(1, '至少注册一个回调地址')

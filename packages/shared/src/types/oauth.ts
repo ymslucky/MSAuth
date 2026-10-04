@@ -1,9 +1,14 @@
 /** OAuth 2.1 领域类型（API 与 SPA 共用） */
+import type { ClientType } from '../constants';
 
-/** OAuth 客户端（公共客户端无 secret，字段可安全返回给管理端） */
+/**
+ * OAuth 客户端（字段可安全返回给管理端；secret 哈希仅存库，绝不进本类型）。
+ * public：无 secret，靠 PKCE；confidential：持有 client_secret，需客户端认证。
+ */
 export interface OAuthClient {
   id: string;
   name: string;
+  clientType: ClientType;
   /** 已注册回调地址（授权时精确匹配） */
   redirectUris: string[];
   /** 允许申请的 scope（⊆ SCOPE_LIST） */
@@ -15,6 +20,17 @@ export interface OAuthClient {
   createdBy: string | null;
   createdAt: number;
   updatedAt: number;
+}
+
+/**
+ * 机密客户端 secret 一次性明文返回（创建 / 轮换时随响应下发）。
+ * 库中只存 SHA-256 哈希，明文事后无法找回，只能重新轮换。
+ */
+export interface ClientSecretCreated {
+  /** 客户端 id */
+  id: string;
+  /** client_secret 明文，仅此一次可见 */
+  clientSecret: string;
 }
 
 /** 同意页展示信息（GET /api/oauth/consent/request 响应） */
@@ -34,7 +50,8 @@ export interface TokenResponse {
   token_type: 'Bearer';
   /** 访问令牌寿命（秒） */
   expires_in: number;
-  refresh_token: string;
+  /** client_credentials 不签发刷新令牌（RFC 6749 §4.4.3），其余模式必返 */
+  refresh_token?: string;
   /** 实际授予的 scope（空格连接） */
   scope: string;
 }

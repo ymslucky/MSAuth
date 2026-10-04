@@ -79,7 +79,8 @@ export async function getSigningKey(env: Env): Promise<SigningKey> {
 
 /** 访问令牌声明（iss/jti 由签发函数补充） */
 export interface AccessTokenInput {
-  userId: string;
+  /** JWT sub：用户令牌为用户 id；client_credentials 为 client_id（机器身份，无用户） */
+  subject: string;
   /** JWT aud：下游资源服务器标识 */
   resource: string;
   clientId: string;
@@ -89,14 +90,14 @@ export interface AccessTokenInput {
   ttlSeconds: number;
 }
 
-/** 签发 RS256 访问令牌：iss=APP_BASE_URL、sub=userId、aud=resource、client_id、scope、jti=ULID */
+/** 签发 RS256 访问令牌：iss=APP_BASE_URL、sub=subject、aud=resource、client_id、scope、jti=ULID */
 export async function signAccessToken(env: Env, input: AccessTokenInput): Promise<string> {
   const { privateKey, kid } = await getSigningKey(env);
   const iat = Math.floor(Date.now() / 1000);
   return new SignJWT({ client_id: input.clientId, scope: input.scope })
     .setProtectedHeader({ alg: 'RS256', typ: 'JWT', kid })
     .setIssuer(env.APP_BASE_URL)
-    .setSubject(input.userId)
+    .setSubject(input.subject)
     .setAudience(input.resource)
     .setIssuedAt(iat)
     .setExpirationTime(iat + input.ttlSeconds)

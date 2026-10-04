@@ -316,7 +316,7 @@ describe('授权码全流程', () => {
     const refreshRes = await tokenExchange(anonymous, {
       grant_type: 'refresh_token',
       client_id: client.id,
-      refresh_token: tokens.refresh_token,
+      refresh_token: tokens.refresh_token!,
     });
     expect(refreshRes.status).toBe(400);
 
@@ -344,7 +344,7 @@ describe('refresh_token 轮换与重用检测', () => {
       code_verifier: pkce.verifier,
     });
     expect(issue.status).toBe(200);
-    const rt1 = (await anonymous.json<TokenResponse>(issue)).refresh_token;
+    const rt1 = (await anonymous.json<TokenResponse>(issue)).refresh_token!;
 
     // 轮换：RT1 → RT2 + 新 AT
     const rotate = await tokenExchange(anonymous, {
@@ -372,7 +372,7 @@ describe('refresh_token 轮换与重用检测', () => {
     const rt2 = await tokenExchange(anonymous, {
       grant_type: 'refresh_token',
       client_id: client.id,
-      refresh_token: rotated.refresh_token,
+      refresh_token: rotated.refresh_token!,
     });
     expect(rt2.status).toBe(400);
 

@@ -7,6 +7,8 @@ import type { Db } from '../client';
 interface ClientRow {
   id: string;
   name: string;
+  client_type: string;
+  client_secret_hash: string | null;
   redirect_uris: string;
   allowed_scopes: string;
   resource: string;
@@ -21,6 +23,7 @@ function mapClient(row: ClientRow): OAuthClient {
   return {
     id: row.id,
     name: row.name,
+    clientType: row.client_type === 'confidential' ? 'confidential' : 'public',
     redirectUris: JSON.parse(row.redirect_uris) as string[],
     allowedScopes: JSON.parse(row.allowed_scopes) as string[],
     resource: row.resource,
@@ -32,9 +35,18 @@ function mapClient(row: ClientRow): OAuthClient {
   };
 }
 
+/** 令牌端点客户端认证用记录（含 secret 哈希，仅 API 内部使用，绝不序列化外发） */
+export interface ClientAuthRecord extends OAuthClient {
+  /** confidential 的 client_secret SHA-256 hex；public 恒为 null */
+  clientSecretHash: string | null;
+}
+
 export interface ClientInsert {
   id: string;
   name: string;
+  clientType: OAuthClient['clientType'];
+  /** 仅 confidential 传入；public 传 null */
+  clientSecretHash: string | null;
   redirectUris: string[];
   allowedScopes: string[];
   resource: string;
@@ -50,10 +62,13 @@ export class OAuthClientsRepository {
     const now = Date.now();
     await this.db.run(
       `INSERT INTO oauth_clients
-        (id, name, redirect_uris, allowed_scopes, resource, access_token_ttl_seconds, refresh_token_ttl_seconds, created_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, name, client_type, client_secret_hash, redirect_uris, allowed_scopes, resource,
+         access_token_ttl_seconds, refresh_token_ttl_seconds, created_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       input.id,
       input.name,
+      input.clientType,
+      input.clientSecretHash,
       JSON.stringify(input.redirectUris),
       JSON.stringify(input.allowedScopes),
       input.resource,
@@ -68,6 +83,22 @@ export class OAuthClientsRepository {
   async byId(id: string): Promise<OAuthClient | null> {
     const row = await this.db.one<ClientRow>('SELECT * FROM oauth_clients WHERE id = ?', id);
     return row ? mapClient(row) : null;
+  }
+
+  /** 令牌端点客户端认证：与 byId 同源，但额外带出 secret 哈希做常数时间比对 */
+  async byIdWithSecret(id: string): Promise<ClientAuthRecord | null> {
+    const row = await this.db.one<ClientRow>('SELECT * FROM oauth_clients WHERE id = ?', id);
+    return row ? { ...mapClient(row), clientSecretHash: row.client_secret_hash } : null;
+  }
+
+  /** 轮换机密客户端 secret：整串（含 cs_ 前缀）SHA-256 hex 落库 */
+  async updateSecretHash(id: string, clientSecretHash: string): Promise<void> {
+    await this.db.run(
+      'UPDATE oauth_clients SET client_secret_hash = ?, updated_at = ? WHERE id = ?',
+      clientSecretHash,
+      Date.now(),
+      id,
+    );
   }
 
   async list(): Promise<OAuthClient[]> {
