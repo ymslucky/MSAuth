@@ -55,7 +55,7 @@ export interface ClientInsert {
   createdBy: string | null;
 }
 
-/** 管理端 PATCH 的可更新字段（client_type / secret 不在内：前者需重建，后者走轮换） */
+/** 归属者 PATCH 的可更新字段（client_type / secret 不在内：前者需重建，后者走轮换） */
 export interface ClientPatch {
   name?: string;
   redirectUris?: string[];
@@ -144,8 +144,12 @@ export class OAuthClientsRepository {
     await this.db.run(`UPDATE oauth_clients SET ${sets.join(', ')} WHERE id = ?`, ...args);
   }
 
-  async list(): Promise<OAuthClient[]> {
-    const rows = await this.db.all<ClientRow>('SELECT * FROM oauth_clients ORDER BY created_at DESC');
+  /** 归属权模型：列出某用户创建的客户端（新建在前），不返回他人记录 */
+  async listByOwner(createdBy: string): Promise<OAuthClient[]> {
+    const rows = await this.db.all<ClientRow>(
+      'SELECT * FROM oauth_clients WHERE created_by = ? ORDER BY created_at DESC',
+      createdBy,
+    );
     return rows.map(mapClient);
   }
 

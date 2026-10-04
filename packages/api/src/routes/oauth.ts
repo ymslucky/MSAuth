@@ -13,7 +13,6 @@ import {
   DEFAULT_TTL,
   ROLE_SCOPES,
   SCOPE_LIST,
-  type Role,
   AppError,
   authorizeQuerySchema,
   consentDecisionSchema,
@@ -30,7 +29,7 @@ import {
 import type { AppEnv, Env } from '../env';
 import { randomToken, sha256Hex, timingSafeEqualStr } from '../lib/crypto';
 import { authenticateClient } from '../lib/client-auth';
-import { getSigningKey, pkceChallenge, signAccessToken } from '../lib/oauth';
+import { getSigningKey, highestRole, pkceChallenge, signAccessToken } from '../lib/oauth';
 import { ok, redirect } from '../lib/response';
 import { ulid } from '../lib/ulid';
 import { parseWith, readJsonBody } from '../lib/validation';
@@ -55,13 +54,6 @@ interface PendingConsent {
   scope: string[];
   state: string | null;
   codeChallenge: string;
-}
-
-/** 角色优先级：取用户最高角色决定可授权 scope 上限 */
-const ROLE_RANK: Record<Role, number> = { admin: 3, member: 2, viewer: 1, none: 0 };
-
-function highestRole(roles: Role[]): Role {
-  return roles.reduce<Role>((top, r) => (ROLE_RANK[r] > ROLE_RANK[top] ? r : top), 'none');
 }
 
 function kvKey(requestId: string): string {

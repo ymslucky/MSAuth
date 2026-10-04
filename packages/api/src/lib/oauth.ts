@@ -1,5 +1,6 @@
 /**
- * OAuth 2.1 基础设施：RS256 签名密钥（KV 持久化 + 模块级缓存）、访问令牌签发。
+ * OAuth 2.1 基础设施：RS256 签名密钥（KV 持久化 + 模块级缓存）、访问令牌签发、
+ * 用户最高角色判定。
  *
  * 约定：
  * - 访问令牌为 RS256 JWT（资源服务器经 /api/oauth/jwks 取公钥自验签），
@@ -8,6 +9,7 @@
  *   Workers 实例内做模块级缓存，避免每个请求都读 KV。
  * - 随机串直接复用 crypto.ts 的 randomToken（base64url，授权码 / RT / code_verifier 同格式）。
  */
+import { type Role } from '@msauth/shared';
 import { SignJWT } from 'jose';
 import type { Env } from '../env';
 import { randomToken, toB64Url } from './crypto';
@@ -109,4 +111,14 @@ export async function signAccessToken(env: Env, input: AccessTokenInput): Promis
 export async function pkceChallenge(verifier: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
   return toB64Url(new Uint8Array(digest));
+}
+
+// ===== 用户最高角色（授权端点三方交集与客户端注册的 scope 上限共用） =====
+
+/** 角色优先级：取用户最高角色决定可授权 scope 上限 */
+const ROLE_RANK: Record<Role, number> = { admin: 3, member: 2, viewer: 1, none: 0 };
+
+/** 用户最高角色（多角色取优先级最高者；无角色回退 none） */
+export function highestRole(roles: Role[]): Role {
+  return roles.reduce<Role>((top, r) => (ROLE_RANK[r] > ROLE_RANK[top] ? r : top), 'none');
 }

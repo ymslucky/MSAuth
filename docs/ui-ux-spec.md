@@ -1,6 +1,6 @@
 # MSAuth UI/UX 设计规范（SPEC）
 
-> 版本 v1.4 · 2026-10 · Bento 网格 / 轻质感 SaaS 仪表盘（按用户参考图重定向）
+> 版本 v1.4a · 2026-10 · Bento 网格 / 轻质感 SaaS 仪表盘（按用户参考图重定向）
 > 适用于 web 包全部页面（现有 + Phase 2a/4/5 规划页面）。
 > 本文档是唯一视觉与交互事实源；实现不得偏离，改动需先改本文档。
 
@@ -500,10 +500,18 @@ toast + 行移除。「撤销其他」→ Dialog 显示数量 → toast「已撤
 
 ### 7.11 应用管理 `/account/clients`（Phase 2b 新建，§7.8 客户端管理的基础版）
 
-权限边界：仅 admin。非 admin 进入 → 白卡 EmptyState「需要管理员权限」+
-返回概览链接（API 侧 `/api/admin/*` 一律 403，前端不请求列表）。
+归属权（owner）模型（v1.4a 起，替代 v1.4 的 admin 门槛——原设计为误设）：
+**谁创建谁管理**，任意登录用户均可注册并管理自己的下游应用，不要求 admin
+角色。权限边界（API 侧 `/api/account/clients*`）：
 
-页眉：Display「OAuth 应用」+ caption「管理接入 MSAuth 的下游客户端」+ 主操作
+- 列表仅返回当前用户创建的应用（`created_by` 过滤，「我的应用」）；
+- 他人应用的详情/更新/轮换/删除一律 **404**（与「不存在」同响应，防枚举
+  探测 client_id）；
+- 注册的 scope 上限 = 创建者最高角色的可授权矩阵（`ROLE_SCOPES`；如 member
+  不可选 `mstor:admin`/`pve:admin` 等管理类，越界由 API 返回 400
+  invalid_scope「超出你的角色可授权的 scope」）。
+
+页眉：Display「OAuth 应用」+ caption「管理你接入 MSAuth 的下游应用」+ 主操作
 「注册应用」（primary 胶囊）。
 
 列表（白卡容器 + divide 行，同 §7.4 设备行模式）：AppWindow 图标砖（群青
@@ -616,3 +624,4 @@ quiet）。加载中 Skeleton 行；空列表 EmptyState。
 | v1.2.6 | 2026-10-04 | 图表形态升级（用户反馈「不要柱状图」）：登录活跃由 Sparkbar 堆叠柱改为 **AreaTrend 平滑趋势**（Catmull-Rom 曲线 + 渐变面积 + 顶点白描边小点 + 末值标注 + 基线失败事件红点 + 描线生长入场），编辑感语法与 1:1 尺寸策略全部保留；删除 sparkbar.tsx |
 | v1.3 | 2026-10-04 | **以 Material Design 3 为参考基线重梳**（用户需求）：①色彩/表面——新增 surface-container-low 表面容器阶（三主题各自推导），卡片改 tonal elevation（去描边、极轻影）；②形状标度对齐 M3——卡 20→16（large）、对话框 24→28（extra-large）、按钮/导航项/顶栏全部胶囊化（stadium）；③按钮变体重划——primary=filled、secondary=tonal（primary-container 底）、danger=tonal error、quiet=text，M3 状态层（hover 8%/12% color-mix + emphasized 缓动）替换旧 hover 换底；④导航栏对齐 M3 navigation rail——激活态改 primary-container 胶囊活动指示（替换实底白图标）；⑤SPEC §2/§3.4/§4/§5.3/§6.1 同步 |
 | v1.4 | 2026-10-04 | Phase 2b 管理 UI 基础版：新增 §7.11 应用管理 `/account/clients`（admin 专属——客户端列表行 + 注册/编辑表单弹层 + 轮换/删除确认 Dialog + client_secret 一次性展示；§7.8 客户端条目标注基础版已落地）；API 新增 `PATCH /api/admin/clients/:id` 部分更新（shared `clientUpdateSchema`，client_type 不可改，审计 `oauth.client.update`）；web `lib/api` 封装补 `patch` 方法 |
+| v1.4a | 2026-10-04 | 修正（§7.11 原 admin 门槛为误设）：应用管理改为**归属权（owner）模型**——谁创建谁管理，任意登录用户管理自己的应用。API 由 `/api/admin/clients*`（requireAdmin）迁移至 `/api/account/clients*`（requireAuth）：列表按 `created_by` 过滤只看自己、他人客户端详情/更新/轮换/删除一律 404（防枚举）、创建校验 `allowed_scopes ⊆ ROLE_SCOPES[创建者最高角色]`（越界 400 invalid_scope，复用授权端点同源 highestRole）；web `lib/admin.ts` 改名 `lib/clients.ts`（`clientsKey`），页面移除 admin 判断与无权限空态，caption 改「管理你接入 MSAuth 的下游应用」；审计 action 不变（`oauth.client.*`） |

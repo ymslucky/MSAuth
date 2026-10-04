@@ -34,7 +34,7 @@ export const consentDecisionSchema = z.strictObject({
 });
 export type ConsentDecision = z.infer<typeof consentDecisionSchema>;
 
-/** POST /api/admin/clients 请求体（管理端注册客户端） */
+/** POST /api/account/clients 请求体（归属者自助注册客户端） */
 export const clientCreateSchema = z.strictObject({
   name: z
     .string({ message: '请输入客户端名称' })
@@ -68,7 +68,7 @@ export const clientCreateSchema = z.strictObject({
 export type ClientCreateInput = z.infer<typeof clientCreateSchema>;
 
 /**
- * PATCH /api/admin/clients/:id 请求体（部分更新）：
+ * PATCH /api/account/clients/:id 请求体（归属者部分更新）：
  * - 字段约束与 clientCreateSchema 完全同源（复用其 shape），全部可选；
  * - 至少传入一个字段（refine 拒绝空对象，避免无意义写库）；
  * - client_type 不可更新：公共↔机密涉及 secret 语义变化，strictObject 会直接

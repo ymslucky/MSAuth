@@ -1,10 +1,11 @@
 /**
- * OAuth 应用管理（SPEC §7.11，Phase 2b 管理基础版）：admin 专属。
+ * OAuth 应用管理（SPEC §7.11，Phase 2b 基础版）：归属权模型——任意登录用户
+ * 管理自己创建的下游应用（谁创建谁管理，他人应用 API 侧 404）。
  * 列表（白卡行）+ 注册/编辑/轮换/删除四类弹层；confidential 的 secret 仅一次性展示。
  * 校验直接复用 shared 的 clientCreateSchema / clientUpdateSchema（单一事实源）。
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AppWindow, Check, Copy, Plus, ShieldAlert, X } from 'lucide-react';
+import { AppWindow, Check, Copy, Plus, X } from 'lucide-react';
 import {
   CLIENT_TYPES,
   SCOPE_LABELS,
@@ -18,7 +19,6 @@ import {
   type OAuthClient,
 } from '@msauth/shared';
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Dialog } from '../../components/ui/dialog';
@@ -29,13 +29,13 @@ import { useToast } from '../../components/ui/toast';
 import { useCsrfWarmup } from '../../hooks/use-csrf';
 import { useSession } from '../../hooks/use-session';
 import {
-  adminClientsKey,
+  clientsKey,
   createClient,
   deleteClient,
   listClients,
   rotateClientSecret,
   updateClient,
-} from '../../lib/admin';
+} from '../../lib/clients';
 import { fmtDateTime } from '../../lib/format';
 
 type FormTarget = { mode: 'create' } | { mode: 'edit'; client: OAuthClient };
@@ -386,10 +386,9 @@ export default function ClientsPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
   const { user } = useSession();
-  const isAdmin = user?.roles.includes('admin') ?? false;
 
-  const query = useQuery({ queryKey: adminClientsKey, queryFn: listClients, enabled: isAdmin });
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: adminClientsKey });
+  const query = useQuery({ queryKey: clientsKey, queryFn: listClients });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: clientsKey });
   const onError = (err: Error) => toast.error('操作失败', err.message);
 
   const [form, setForm] = useState<FormTarget | null>(null);
@@ -437,24 +436,6 @@ export default function ClientsPage() {
 
   if (!user) return null;
 
-  // 权限边界：/api/admin/* 全部 403，前端直接给出无权限态
-  if (!isAdmin) {
-    return (
-      <div className="stagger card rounded-card">
-        <EmptyState
-          icon={ShieldAlert}
-          title="需要管理员权限"
-          desc="OAuth 应用管理仅对平台管理员开放，如需接入下游客户端请联系管理员。"
-          action={
-            <Link to="/account" className="text-sm font-medium text-action hover:text-action-hover">
-              返回概览 →
-            </Link>
-          }
-        />
-      </div>
-    );
-  }
-
   const clients = query.data?.clients ?? [];
 
   return (
@@ -462,7 +443,7 @@ export default function ClientsPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="t-display">OAuth 应用</h1>
-          <p className="t-caption mt-1">管理接入 MSAuth 的下游客户端</p>
+          <p className="t-caption mt-1">管理你接入 MSAuth 的下游应用</p>
         </div>
         <Button onClick={() => setForm({ mode: 'create' })}>
           <Plus size={16} strokeWidth={1.75} aria-hidden="true" />

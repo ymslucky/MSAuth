@@ -1,4 +1,4 @@
-/** /api/oauth/* + /api/admin/clients 集成测试：客户端管理、授权码全流程、PKCE、重放与轮换、JWKS */
+/** /api/oauth/* + /api/account/clients 集成测试：客户端管理（归属权模型）、授权码全流程、PKCE、重放与轮换、JWKS */
 import type { OAuthClient, TokenResponse } from '@msauth/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { env } from 'cloudflare:test';
@@ -45,12 +45,12 @@ async function adminClient(email = 'admin@example.com'): Promise<TestClient> {
   return c;
 }
 
-/** 管理端注册客户端（默认允许全部 mstor 相关 scope + profile + offline_access） */
+/** 归属者注册客户端（默认允许全部 mstor 相关 scope + profile + offline_access，需 admin 角色） */
 async function createClient(
-  admin: TestClient,
+  owner: TestClient,
   overrides: Partial<{ name: string; redirect_uris: string[]; allowed_scopes: string[]; resource: string }> = {},
 ): Promise<OAuthClient> {
-  const res = await admin.call('POST', '/api/admin/clients', {
+  const res = await owner.call('POST', '/api/account/clients', {
     body: {
       name: 'mstor-web',
       redirect_uris: [REDIRECT_URI],
@@ -61,7 +61,7 @@ async function createClient(
     },
   });
   expect(res.status).toBe(201);
-  return (await admin.json<{ client: OAuthClient }>(res)).client;
+  return (await owner.json<{ client: OAuthClient }>(res)).client;
 }
 
 /** 发起授权（GET /api/oauth/authorize），返回 Response */
@@ -121,8 +121,8 @@ function decodeJwt(token: string): { header: Record<string, unknown>; payload: R
 
 beforeEach(resetDb);
 
-describe('POST /api/admin/clients', () => {
-  it('管理员注册客户端：201 + 前缀 c_ + TTL 生效 + 审计', async () => {
+describe('POST /api/account/clients（归属权模型）', () => {
+  it('admin 创建者注册客户端：201 + 前缀 c_ + TTL 生效 + 审计', async () => {
     const admin = await adminClient();
     const client = await createClient(admin);
     expect(client.id).toMatch(/^c_[A-Za-z0-9_-]{20,}$/);
@@ -134,21 +134,22 @@ describe('POST /api/admin/clients', () => {
     expect(rows[0]?.result).toBe('success');
   });
 
-  it('非管理员：403；resource 指向 MSAuth 自身：400', async () => {
-    await adminClient(); // 需要已存在 admin 才能对照，但本用例主体是普通用户
+  it('member（普通用户）注册自己的客户端：201 + created_by 归属；resource 指向 MSAuth 自身：400', async () => {
     const member = new TestClient();
-    await member.register('member0@example.com');
-    const forbidden = await member.call('POST', '/api/admin/clients', {
+    const reg = await member.register('member0@example.com');
+    const { user } = await member.json<{ user: { id: string } }>(reg);
+
+    const okRes = await member.call('POST', '/api/account/clients', {
       body: { name: 'x', redirect_uris: [REDIRECT_URI], allowed_scopes: ['profile:read'], resource: RESOURCE },
     });
-    expect(forbidden.status).toBe(403);
+    expect(okRes.status).toBe(201);
+    expect((await member.json<{ client: OAuthClient }>(okRes)).client.createdBy).toBe(user.id);
 
-    const admin = await adminClient('admin2@example.com');
-    const bad = await admin.call('POST', '/api/admin/clients', {
+    const bad = await member.call('POST', '/api/account/clients', {
       body: { name: 'x', redirect_uris: [REDIRECT_URI], allowed_scopes: ['profile:read'], resource: 'http://api.test' },
     });
     expect(bad.status).toBe(400);
-    expect((await admin.json<{ error: string }>(bad)).error).toBe('validation_error');
+    expect((await member.json<{ error: string }>(bad)).error).toBe('validation_error');
   });
 });
 
@@ -491,7 +492,7 @@ describe('GET /api/oauth/jwks 与客户端删除', () => {
     });
     expect(tokenRes.status).toBe(200);
 
-    const delRes = await admin.call('DELETE', `/api/admin/clients/${client.id}`);
+    const delRes = await admin.call('DELETE', `/api/account/clients/${client.id}`);
     expect(delRes.status).toBe(204);
 
     const counts = await env.AUTH_DB.prepare(

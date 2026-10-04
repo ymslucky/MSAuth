@@ -4,8 +4,8 @@
  */
 import { Hono } from 'hono';
 import { accountRoutes } from './routes/account';
-import { adminRoutes } from './routes/admin';
 import { authRoutes } from './routes/auth';
+import { clientRoutes } from './routes/clients';
 import { oauthRoutes } from './routes/oauth';
 import type { AppEnv } from './env';
 import { csrfGuard } from './middleware/csrf';
@@ -52,8 +52,8 @@ app.use('/api/*', csrfGuard());
 
 app.route('/api/auth', authRoutes);
 app.route('/api/account', accountRoutes);
+app.route('/api/account', clientRoutes); // /api/account/clients*：客户端自助管理（归属权模型）
 app.route('/api/oauth', oauthRoutes);
-app.route('/api/admin', adminRoutes);
 
 app.get('/healthz', (c) => c.json({ ok: true }));
 

@@ -32,13 +32,13 @@ export const AUDIT_ACTIONS = {
   OAUTH_TOKEN_REUSE: 'oauth.token.reuse',
   /** 授权码二次使用（重放） */
   OAUTH_CODE_REUSE: 'oauth.code.reuse',
-  /** 管理员注册客户端 */
+  /** 归属者注册客户端（谁创建谁管理） */
   OAUTH_CLIENT_CREATE: 'oauth.client.create',
-  /** 管理员更新客户端配置（部分字段） */
+  /** 归属者更新客户端配置（部分字段） */
   OAUTH_CLIENT_UPDATE: 'oauth.client.update',
-  /** 管理员删除客户端 */
+  /** 归属者删除客户端 */
   OAUTH_CLIENT_DELETE: 'oauth.client.delete',
-  /** 管理员轮换机密客户端 secret */
+  /** 归属者轮换机密客户端 secret */
   OAUTH_CLIENT_ROTATE_SECRET: 'oauth.client.rotate_secret',
 } as const;
 

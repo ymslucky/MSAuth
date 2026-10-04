@@ -1,4 +1,5 @@
-/** Phase 2b 集成测试：机密客户端（confidential）注册/secret 轮换 + client_credentials 授权模式 */
+/** Phase 2b 集成测试：机密客户端（confidential）注册/secret 轮换 + client_credentials 授权模式
+ * + 客户端归属权（owner）模型：谁创建谁管理，他人一律 404。 */
 import type { ClientSecretCreated, OAuthClient, TokenResponse } from '@msauth/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { env } from 'cloudflare:test';
@@ -8,6 +9,8 @@ const REDIRECT_URI = 'https://client.example.com/callback';
 const RESOURCE = 'https://mstor.example.com';
 const AT_TTL = 120; // 客户端自定义访问令牌 TTL（TTL_LIMITS 区间内）
 const ALLOWED = ['profile:read', 'mstor:read', 'mstor:write', 'mstor:admin', 'offline_access'];
+/** member 角色矩阵内的 scope 子集（不含 :admin 管理类） */
+const MEMBER_ALLOWED = ALLOWED.filter((s) => !s.endsWith(':admin'));
 
 function fromB64url(seg: string): Uint8Array {
   const pad = seg.length % 4 === 0 ? '' : '='.repeat(4 - (seg.length % 4));
@@ -50,23 +53,23 @@ interface CreatedClient {
   secret: string | null;
 }
 
-/** 管理端注册客户端（clientType 可选，默认 public） */
+/** 归属者注册客户端（默认全量 scope 需 admin 角色；member 需传 allowed_scopes=MEMBER_ALLOWED） */
 async function createClient(
-  admin: TestClient,
-  overrides: Partial<{ name: string; clientType: 'public' | 'confidential' }> = {},
+  owner: TestClient,
+  overrides: Partial<{ name: string; clientType: 'public' | 'confidential'; allowed_scopes: string[] }> = {},
 ): Promise<CreatedClient> {
-  const res = await admin.call('POST', '/api/admin/clients', {
+  const res = await owner.call('POST', '/api/account/clients', {
     body: {
       name: overrides.name ?? 'mstor-cli',
       clientType: overrides.clientType,
       redirect_uris: [REDIRECT_URI],
-      allowed_scopes: ALLOWED,
+      allowed_scopes: overrides.allowed_scopes ?? ALLOWED,
       resource: RESOURCE,
       access_token_ttl_seconds: AT_TTL,
     },
   });
   expect(res.status).toBe(201);
-  const body = await admin.json<{ client: OAuthClient; clientSecret?: string }>(res);
+  const body = await owner.json<{ client: OAuthClient; clientSecret?: string }>(res);
   return { client: body.client, secret: body.clientSecret ?? null };
 }
 
@@ -125,11 +128,11 @@ describe('机密客户端注册', () => {
     expect(row?.client_secret_hash).not.toBe(secret);
 
     // 列表与详情响应不含 secret / 哈希字段
-    const listRes = await admin.call('GET', '/api/admin/clients');
+    const listRes = await admin.call('GET', '/api/account/clients');
     const listBody = await admin.json<{ clients: OAuthClient[] }>(listRes);
     expect(JSON.stringify(listBody)).not.toContain(secret!);
     expect(listBody.clients[0]?.clientType).toBe('confidential');
-    const detail = await admin.call('GET', `/api/admin/clients/${client.id}`);
+    const detail = await admin.call('GET', `/api/account/clients/${client.id}`);
     expect(JSON.stringify(await detail.json())).not.toContain('client_secret');
   });
 
@@ -271,7 +274,7 @@ describe('secret 轮换', () => {
     const { client, secret } = await createClient(admin, { clientType: 'confidential' });
     const anon = new TestClient();
 
-    const rotateRes = await admin.call('POST', `/api/admin/clients/${client.id}/rotate-secret`);
+    const rotateRes = await admin.call('POST', `/api/account/clients/${client.id}/rotate-secret`);
     expect(rotateRes.status).toBe(200);
     const rotated = await admin.json<ClientSecretCreated>(rotateRes);
     const newSecret = rotated.clientSecret;
@@ -291,18 +294,18 @@ describe('secret 轮换', () => {
 
     // public 客户端无 secret，轮换 → 400
     const { client: pub } = await createClient(admin, { name: 'pub-app' });
-    const badRotate = await admin.call('POST', `/api/admin/clients/${pub.id}/rotate-secret`);
+    const badRotate = await admin.call('POST', `/api/account/clients/${pub.id}/rotate-secret`);
     expect(badRotate.status).toBe(400);
     expect((await admin.json<{ error: string }>(badRotate)).error).toBe('validation_error');
   });
 });
 
-describe('客户端更新（PATCH /api/admin/clients/:id）', () => {
+describe('客户端更新（PATCH /api/account/clients/:id）', () => {
   it('更新 name/redirect_uris/TTL 成功：响应含新值，未传字段保持不变，审计 oauth.client.update', async () => {
     const admin = await adminClient();
     const { client } = await createClient(admin, { clientType: 'confidential' });
 
-    const res = await admin.call('PATCH', `/api/admin/clients/${client.id}`, {
+    const res = await admin.call('PATCH', `/api/account/clients/${client.id}`, {
       body: {
         name: 'mstor-cli-v2',
         redirect_uris: ['https://client.example.com/cb2', 'https://client.example.com/cb3'],
@@ -330,11 +333,11 @@ describe('客户端更新（PATCH /api/admin/clients/:id）', () => {
     const admin = await adminClient();
     const { client } = await createClient(admin);
 
-    const empty = await admin.call('PATCH', `/api/admin/clients/${client.id}`, { body: {} });
+    const empty = await admin.call('PATCH', `/api/account/clients/${client.id}`, { body: {} });
     expect(empty.status).toBe(400);
     expect((await admin.json<{ error: string }>(empty)).error).toBe('validation_error');
 
-    const withType = await admin.call('PATCH', `/api/admin/clients/${client.id}`, {
+    const withType = await admin.call('PATCH', `/api/account/clients/${client.id}`, {
       body: { clientType: 'confidential' },
     });
     expect(withType.status).toBe(400);
@@ -344,13 +347,13 @@ describe('客户端更新（PATCH /api/admin/clients/:id）', () => {
     const admin = await adminClient();
     const { client } = await createClient(admin);
 
-    const badScope = await admin.call('PATCH', `/api/admin/clients/${client.id}`, {
+    const badScope = await admin.call('PATCH', `/api/account/clients/${client.id}`, {
       body: { allowed_scopes: ['not:a:scope'] },
     });
     expect(badScope.status).toBe(400);
     expect((await admin.json<{ error: string }>(badScope)).error).toBe('validation_error');
 
-    const selfResource = await admin.call('PATCH', `/api/admin/clients/${client.id}`, {
+    const selfResource = await admin.call('PATCH', `/api/account/clients/${client.id}`, {
       body: { resource: 'http://api.test' }, // 测试环境 APP_BASE_URL
     });
     expect(selfResource.status).toBe(400);
@@ -358,20 +361,81 @@ describe('客户端更新（PATCH /api/admin/clients/:id）', () => {
 
   it('不存在的客户端 → 404', async () => {
     const admin = await adminClient();
-    const res = await admin.call('PATCH', '/api/admin/clients/c_notexist', { body: { name: 'ghost' } });
+    const res = await admin.call('PATCH', '/api/account/clients/c_notexist', { body: { name: 'ghost' } });
     expect(res.status).toBe(404);
     expect((await admin.json<{ error: string }>(res)).error).toBe('not_found');
   });
+});
 
-  it('非 admin → 403', async () => {
-    const admin = await adminClient();
-    const { client } = await createClient(admin);
+describe('归属权模型（/api/account/clients，谁创建谁管理）', () => {
+  it('member 无需 admin 即可完整管理自己的客户端：创建/更新/轮换/删除', async () => {
+    const member = new TestClient();
+    const reg = await member.register('member@example.com');
+    const { user } = await member.json<{ user: { id: string } }>(reg);
+
+    const { client } = await createClient(member, {
+      clientType: 'confidential',
+      allowed_scopes: MEMBER_ALLOWED,
+    });
+    expect(client.createdBy).toBe(user.id);
+
+    const patch = await member.call('PATCH', `/api/account/clients/${client.id}`, {
+      body: { name: 'member-cli-v2' },
+    });
+    expect(patch.status).toBe(200);
+    expect((await member.json<{ client: OAuthClient }>(patch)).client.name).toBe('member-cli-v2');
+
+    const rotate = await member.call('POST', `/api/account/clients/${client.id}/rotate-secret`);
+    expect(rotate.status).toBe(200);
+
+    const del = await member.call('DELETE', `/api/account/clients/${client.id}`);
+    expect(del.status).toBe(204);
+  });
+
+  it('用户 B 列表看不到用户 A 的客户端；B 对 A 的 GET/PATCH/DELETE/rotate → 404（防枚举）', async () => {
+    // alice 用 admin 仅为可注册全量 scope，归属权语义与角色无关
+    const alice = await adminClient('alice@example.com');
+    const { client } = await createClient(alice, { clientType: 'confidential' });
+    const bob = new TestClient();
+    await bob.register('bob@example.com');
+
+    // B 的列表不含 A 的客户端
+    const list = await bob.call('GET', '/api/account/clients');
+    expect(list.status).toBe(200);
+    expect((await bob.json<{ clients: OAuthClient[] }>(list)).clients.some((c) => c.id === client.id)).toBe(false);
+
+    // B 操作 A 的客户端 → 与「不存在」同响应的 404
+    const detail = await bob.call('GET', `/api/account/clients/${client.id}`);
+    expect(detail.status).toBe(404);
+    const patch = await bob.call('PATCH', `/api/account/clients/${client.id}`, { body: { name: 'hijack' } });
+    expect(patch.status).toBe(404);
+    const rotate = await bob.call('POST', `/api/account/clients/${client.id}/rotate-secret`);
+    expect(rotate.status).toBe(404);
+    const del = await bob.call('DELETE', `/api/account/clients/${client.id}`);
+    expect(del.status).toBe(404);
+
+    // 对照组：A 自己的列表仍可见
+    const own = await alice.call('GET', '/api/account/clients');
+    expect((await alice.json<{ clients: OAuthClient[] }>(own)).clients.some((c) => c.id === client.id)).toBe(true);
+  });
+
+  it('member 创建含 mstor:admin（仅 admin 矩阵有）的客户端 → 400 invalid_scope；admin 同请求 → 201（对照组）', async () => {
     const member = new TestClient();
     await member.register('member@example.com');
+    const body = {
+      name: 'esc-cli',
+      redirect_uris: [REDIRECT_URI],
+      allowed_scopes: ['profile:read', 'mstor:admin'],
+      resource: RESOURCE,
+    };
 
-    const res = await member.call('PATCH', `/api/admin/clients/${client.id}`, { body: { name: 'hijack' } });
-    expect(res.status).toBe(403);
-    expect((await member.json<{ error: string }>(res)).error).toBe('forbidden');
+    const bad = await member.call('POST', '/api/account/clients', { body });
+    expect(bad.status).toBe(400);
+    expect((await member.json<{ error: string }>(bad)).error).toBe('invalid_scope');
+
+    const admin = await adminClient();
+    const okRes = await admin.call('POST', '/api/account/clients', { body });
+    expect(okRes.status).toBe(201);
   });
 });
 
